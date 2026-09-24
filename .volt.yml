@@ -1,0 +1,6 @@
+# volt release config (https://github.com/khanakia/voltkit). No ldflags block:
+# volt's default stamps github.com/ubgo/buildinfo.{Version,Commit,BuildTime},
+# which is exactly what voltkit/versioncmd (`agx version`) reads. Adding
+# ldflags.vars here would REPLACE that default and make `agx version` say "dev".
+binary: agx
+extra_files: [README.md, LICENSE]

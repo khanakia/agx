@@ -1,4 +1,4 @@
-<!-- Thanks for contributing to claude-usage! -->
+<!-- Thanks for contributing to agx! -->
 
 ## What & why
 

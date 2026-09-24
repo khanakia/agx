@@ -1,21 +1,56 @@
 {
-  "name": "claude-usage",
-  "tagline": "Every Claude account's plan limits, in one terminal command.",
-  "description": "CLI that shows Claude plan usage limits (5-hour session, weekly, per-model) for every Claude Code account on your machine at once — the claude.ai Usage page, in your terminal, across accounts.",
-  "repo": "khanakia/claude-usage",
+  "name": "agx",
+  "tagline": "One CLI for your AI coding agents and all their accounts.",
+  "description": "Command-line toolkit for AI coding agents: Claude Code and Codex plan usage for every account at once, launch on the account with the most headroom, resume conversations on the right account, and manage session folders.",
+  "repo": "khanakia/agx",
   "homepage": "",
   "language": "go",
   "kind": "cli",
   "license": "Apache-2.0",
-  "author": { "name": "khanakia", "email": "khanakia@gmail.com", "github": "khanakia" },
-  "topics": ["claude", "claude-code", "anthropic", "usage", "rate-limit", "usage-tracker", "cli", "golang", "developer-tools", "macos", "ai", "llm"],
+  "author": {
+    "name": "khanakia",
+    "email": "khanakia@gmail.com",
+    "github": "khanakia"
+  },
+  "topics": [
+    "ai-agents",
+    "coding-agents",
+    "claude",
+    "claude-code",
+    "codex",
+    "openai",
+    "anthropic",
+    "usage-tracker",
+    "rate-limit",
+    "cli",
+    "golang",
+    "developer-tools",
+    "macos",
+    "llm"
+  ],
   "positioning": {
-    "category": "Claude plan usage tracker",
+    "category": "AI coding agent toolkit",
     "audience": "Claude Code users who switch between several accounts (CLAUDE_CONFIG_DIR)",
     "wedge": "See which account still has headroom before starting a long session, without logging into each one",
-    "alternatives": ["claude.ai Settings → Usage", "Claude Code /usage", "local log analyzers (ccusage)", "menu-bar tracker apps"],
-    "differentiators": ["all accounts in one view", "real plan percentages, not token estimates", "read-only: never refreshes or rewrites tokens", "zero dependencies, single Go binary", "--json for scripts"]
+    "alternatives": [
+      "claude.ai Settings → Usage",
+      "Claude Code /usage",
+      "local log analyzers (ccusage)",
+      "menu-bar tracker apps"
+    ],
+    "differentiators": [
+      "all accounts and providers in one view",
+      "auto-pick the account with the most headroom",
+      "resume conversations on the account that holds them",
+      "session folder gc and promote with history",
+      "read-only: never refreshes or rewrites tokens",
+      "--json for scripts"
+    ]
   },
-  "install": { "go": "go install github.com/khanakia/claude-usage@latest" },
-  "khanakia": { "addToApps": false }
+  "install": {
+    "go": "go install github.com/khanakia/agx@latest"
+  },
+  "khanakia": {
+    "addToApps": false
+  }
 }

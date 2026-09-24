@@ -6,7 +6,7 @@
 
 Instead, report them privately:
 
-- Use **[GitHub Security Advisories](https://github.com/khanakia/claude-usage/security/advisories/new)** (preferred), or
+- Use **[GitHub Security Advisories](https://github.com/khanakia/agx/security/advisories/new)** (preferred), or
 - Email **khanakia@gmail.com** with the details.
 
 Please include:

@@ -1,21 +1,23 @@
 version: '3'
 
 vars:
-  BIN: bin/claude-usage
+  BIN: bin/agx
+  # Every platform the README claims; `task cross` proves each one builds.
+  PLATFORMS: darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64 windows/arm64
 
 tasks:
   build:
-    desc: Build the claude-usage binary into bin/
+    desc: Build the agx binary into bin/
     cmds:
       - go build -o {{.BIN}} .
 
   run:
-    desc: Show plan usage for every local Claude Code account (pass flags after --, e.g. task run -- --json)
+    desc: Run agx from source (pass args after --, e.g. task run -- resume --list)
     cmds:
       - go run . {{.CLI_ARGS}}
 
   test:
-    desc: Run the full test suite with the race detector
+    desc: Run the full test suite with the race detector (includes the layering guard)
     cmds:
       - go test -race -count=1 ./...
 
@@ -26,14 +28,21 @@ tasks:
       - go vet ./...
       - staticcheck ./...
 
+  cross:
+    desc: Cross-compile for every supported platform (verifies platform claims)
+    cmds:
+      - for: { var: PLATFORMS, split: ' ' }
+        cmd: GOOS={{index (splitList "/" .ITEM) 0}} GOARCH={{index (splitList "/" .ITEM) 1}} go build -o /dev/null .
+
   check:
-    desc: Everything that must be green before a commit (lint + test + build)
+    desc: Everything that must be green before a commit (lint + test + cross + build)
     cmds:
       - task: lint
       - task: test
+      - task: cross
       - task: build
 
   install:
-    desc: Install claude-usage into $GOBIN (or ~/go/bin) so it is on PATH
+    desc: Install agx into $GOBIN (or ~/go/bin) so it is on PATH
     cmds:
       - go install .

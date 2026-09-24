@@ -1,14 +1,14 @@
-# Contributing to claude-usage
+# Contributing to agx
 
-Thanks for your interest in improving **claude-usage**. This guide covers how to get set up, the conventions we follow, and what a good pull request looks like.
+Thanks for your interest in improving **agx**. This guide covers how to get set up, the conventions we follow, and what a good pull request looks like.
 
 By participating, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Getting started
 
 ```sh
-git clone https://github.com/khanakia/claude-usage.git
-cd claude-usage
+git clone https://github.com/khanakia/agx.git
+cd agx
 task check   # gofmt, go vet, staticcheck, go test -race, build (needs Go 1.25+, Task, staticcheck)
 ```
 
@@ -38,4 +38,4 @@ User-facing changes go under `[Unreleased]` in [CHANGELOG.md](CHANGELOG.md), fol
 
 ## Questions
 
-Open a [discussion or issue](https://github.com/khanakia/claude-usage/issues). We're happy to help you land your first contribution.
+Open a [discussion or issue](https://github.com/khanakia/agx/issues). We're happy to help you land your first contribution.

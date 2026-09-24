@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to **claude-usage** are documented here.
+All notable changes to **agx** are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -8,10 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- `claude-usage` CLI: shows Claude plan usage limits (current 5-hour session, weekly across all models, weekly per model) for every Claude Code account on the machine at once, as bars with reset countdowns.
-- Automatic discovery of `~/.claude` and every `~/.claude-*` config dir; explicit dirs can be passed as arguments.
-- Token resolution across `.credentials.json` and the macOS Keychain (`Claude Code-credentials-<hash>`), picking the freshest login; tokens are never refreshed or written.
-- `--json` output, `--color auto|always|never` (honours `NO_COLOR`), `--timeout`, `--version`.
-- Exit codes: 0 all accounts reported, 1 some account failed, 2 usage error.
+- `agx`, a toolkit CLI for AI coding agents (formerly `claude-usage`), built on voltkit (`appdir`, `output`, `versioncmd`) and cobra.
+- Providers behind one interface: Claude Code and OpenAI Codex (`provider`, `provider/claude`, `provider/codex`, all importable).
+- `agx usage` (also bare `agx`): plan usage for every account of every provider, deduplicated per login; `--provider`, `--json`, `--color`, `--timeout`.
+- `agx profiles`: every configured or discovered profile with account, plan and login state.
+- `agx run [-p profile|auto]`: launch on a profile, or on the account with the most headroom (`auto` scores each account by its fullest window).
+- `agx new [slug…]`: timestamped session folder + launch; `agx resume [query]`: continue a conversation on the account whose home stores it, with fzf / numbered picker, `--last`, `--all`, `--list`, `--json`.
+- `agx sessions ls | gc | promote`: list session folders, remove empty history-less ones safely, move one into a project together with its Claude history.
+- `agx doctor`, `agx shell-init zsh|bash` (plan-file protocol so `new` / `resume` can `cd` the shell, plus aliases from config), `agx version`.
+- Optional `~/.agx/config.yaml`: profiles, provider default args, env, `gopass:` / `env:` secrets resolved at launch, `billing: api` profiles, shell aliases. Zero-config discovery of `~/.claude`, `~/.claude-*` and `~/.codex`.
+- `--dry-run` on `run` / `new` / `resume` prints the command with secret values redacted.
+- Layering guard test (`internal/archtest`) and cross-compilation for macOS, Linux and Windows in `task check`.
 
-[Unreleased]: https://github.com/khanakia/claude-usage/commits/main
+### Changed
+
+- Minimum Go version is now 1.26 (required by voltkit).
+
+[Unreleased]: https://github.com/khanakia/agx/commits/main

@@ -1,16 +1,16 @@
-# claude-usage
+# agx
 
-> Terminal CLI that shows Claude subscription plan usage limits (5-hour session and weekly, per model) for every Claude Code account on your machine at once, the same numbers as claude.ai Settings → Usage.
+> Command-line toolkit for AI coding agents (Claude Code, OpenAI Codex): plan usage for every account at once, launch on the account with the most headroom, resume a conversation on the account that stores it, and manage session folders.
 
-claude-usage is open source (khanakia/claude-usage), written in Go with no dependencies beyond the standard library. It reads the OAuth token Claude Code already stores locally and makes one read-only GET per account to api.anthropic.com; nothing is sent anywhere else and no quota is consumed.
+agx is open source (khanakia/agx), written in Go. It reads the logins the agent CLIs already stored and makes one read-only GET per account to the vendor's own usage endpoint (api.anthropic.com, chatgpt.com); tokens are never refreshed, written or printed, and there is no telemetry.
 
 ## Docs
-- [README](https://github.com/khanakia/claude-usage/blob/main/README.md): overview, install, usage, FAQ
-- [CHANGELOG](https://github.com/khanakia/claude-usage/blob/main/CHANGELOG.md): release history
-- [CONTRIBUTING](https://github.com/khanakia/claude-usage/blob/main/CONTRIBUTING.md): how to contribute
+- [README](https://github.com/khanakia/agx/blob/main/README.md): overview, install, usage, FAQ
+- [CHANGELOG](https://github.com/khanakia/agx/blob/main/CHANGELOG.md): release history
+- [CONTRIBUTING](https://github.com/khanakia/agx/blob/main/CONTRIBUTING.md): how to contribute
 
 ## Install
-- Go: `go install github.com/khanakia/claude-usage@latest`
+- Go: `go install github.com/khanakia/agx@latest`
 
 ## Links
-- Repository: https://github.com/khanakia/claude-usage
+- Repository: https://github.com/khanakia/agx

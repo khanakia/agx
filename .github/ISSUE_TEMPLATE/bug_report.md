@@ -17,7 +17,7 @@ A clear description of the bug.
 What you expected to happen instead.
 
 **Environment**
-- claude-usage version: <!-- e.g. output of `claude-usage --version` -->
+- agx version: <!-- e.g. output of `agx --version` -->
 - OS / arch:
 - Install method: <!-- brew / script / go install / binary -->
 
