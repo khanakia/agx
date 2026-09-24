@@ -103,7 +103,12 @@ func TestResolveFolder(t *testing.T) {
 	if err := os.WriteFile(file, []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	for arg, want := range map[string]string{".": h.cwd, "named": named, named + "/": named} {
+	here := filepath.Join(h.cwd, "project-here")
+	if err := os.MkdirAll(here, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// h.cwd's own base name is "cwd": typed from inside, it is the cwd.
+	for arg, want := range map[string]string{".": h.cwd, "named": named, named + "/": named, "project-here": here, filepath.Base(h.cwd): h.cwd} {
 		if got, err := a.resolveFolder(cfg, arg); err != nil || got != want {
 			t.Errorf("resolveFolder(%q) = %q, %v; want %q", arg, got, err, want)
 		}

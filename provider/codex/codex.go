@@ -101,6 +101,7 @@ var (
 	_ provider.Provider           = (*Provider)(nil)
 	_ provider.ConversationLister = (*Provider)(nil)
 	_ provider.HistoryChecker     = (*Provider)(nil)
+	_ provider.MoveUnsupported    = (*Provider)(nil)
 )
 
 // HasHistory implements provider.HistoryChecker. Codex keys rollouts by id,
@@ -448,4 +449,12 @@ func readMeta(path string) (sessionMeta, bool) {
 		return sessionMeta{}, false
 	}
 	return m, true
+}
+
+// MoveUnsupportedReason implements provider.MoveUnsupported: Codex indexes
+// conversations in SQLite (state_5.sqlite threads.rollout_path holds absolute
+// paths; titles live in session_index.jsonl), so moving rollout files would
+// leave its index pointing at files that are gone.
+func (p *Provider) MoveUnsupportedReason() string {
+	return "Codex indexes conversations in its own SQLite database with absolute paths (state_5.sqlite), so moving its files would break its index; continue Codex work in the original account"
 }

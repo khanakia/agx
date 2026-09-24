@@ -37,10 +37,10 @@ const (
 func newSessionsCmd(a *app) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "sessions",
-		Short: "Session folders: list, clean up, promote to a project",
+		Short: "Session folders: list, clean up, promote to a project, move to another account",
 		Args:  usageArgs(cobra.NoArgs),
 	}
-	c.AddCommand(newSessionsLsCmd(a), newSessionsGCCmd(a), newSessionsPromoteCmd(a))
+	c.AddCommand(newSessionsLsCmd(a), newSessionsGCCmd(a), newSessionsPromoteCmd(a), newSessionsMoveCmd(a))
 	return c
 }
 
@@ -289,8 +289,8 @@ func (a *app) runPromote(ctx context.Context, folder, name, to string, dryRun, g
 }
 
 // resolveFolder turns a folder argument into an existing directory: "." is
-// the cwd, a bare name is looked up under sessions.root, anything else is a
-// path.
+// the cwd; a bare name is looked up under sessions.root, then in the cwd,
+// then matched against the cwd's own name; anything else is a path.
 func (a *app) resolveFolder(cfg config.Config, arg string) (string, error) {
 	var path string
 	switch {
@@ -301,7 +301,20 @@ func (a *app) resolveFolder(cfg config.Config, arg string) (string, error) {
 		}
 		path = wd
 	case filepath.Base(arg) == arg:
+		// A bare name is, in order: a session folder, a folder here, or the
+		// folder you are in (`agx sessions move docker_setup_mac` typed from
+		// inside docker_setup_mac must not look for docker_setup_mac/docker_setup_mac).
 		path = filepath.Join(cfg.SessionsRoot, arg)
+		if _, err := os.Stat(path); err != nil {
+			wd, werr := a.Getwd()
+			if werr != nil {
+				return "", werr
+			}
+			path = filepath.Join(wd, arg)
+			if _, err := os.Stat(path); err != nil && filepath.Base(wd) == arg {
+				path = wd
+			}
+		}
 	default:
 		abs, err := filepath.Abs(arg)
 		if err != nil {

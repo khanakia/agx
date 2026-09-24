@@ -283,6 +283,70 @@ agx resume --last          # continues the chat that started in the session fold
 claude -c                  # Claude's own "continue" finds it too
 ```
 
+### Switch a project to another account: `agx sessions move`
+
+Worked in a folder on your personal account and want it on work from now on? Move its conversations; they then resume on work.
+
+```sh
+# from inside the project (the folder defaults to the current one)
+cd ~/code/docker_setup_mac
+agx sessions move --to work --dry-run          # show what would move
+agx sessions move --to work                    # move this folder's conversations personal → work
+
+# naming the folder instead
+agx sessions move docker_setup_mac --to work   # works from ~/code or from inside docker_setup_mac
+agx sessions move ~/code/docker_setup_mac --to work
+
+# more control
+agx sessions move . --to personal --from work  # move them back
+agx sessions move . --to work --from personal  # only from this account (default: every other account)
+agx sessions move . --to work --only aeba9843  # just one conversation (full id or unique prefix)
+agx sessions move . --to work --only aeba9843,6144697a
+agx sessions move . --to work --no-backup      # skip the backup copy
+agx sessions move . --to work --json           # machine-readable plan / result
+
+# afterwards
+agx resume --list                              # the conversations now list under the new account
+clr                                            # pick one — it opens on work
+```
+
+```text
+$ agx sessions move --to work --dry-run
+would move 3 claude conversation(s) for ~/code/docker_setup_mac
+  from ~/.claude → ~/.claude-work (work)
+    33f18428-fc35-4b31-baeb-8e9f01576ff9  (untitled)
+    6144697a-4e8c-4ef3-8caa-f5c0498e8530  (untitled)
+    aeba9843-dbea-4d03-a715-7f83e009bf7c  Hatchet, ClickHouse, HyperDX services
+  8 file(s)/folder(s) involved
+
+$ agx sessions move --to work
+moved 3 claude conversation(s) for ~/code/docker_setup_mac
+  from ~/.claude → ~/.claude-work (work)
+  …
+  backup: ~/.claude/backups/agx-move-docker_setup_mac-20260924-203228
+done — continue with: cd ~/code/docker_setup_mac && agx resume  (or claude -c on work)
+
+$ agx sessions move --to work          # again: already done
+no claude conversations for ~/code/docker_setup_mac outside work — nothing to move
+
+$ agx sessions move --from personal --to codex
+agx: can't move conversations from personal (claude) to codex (codex): providers store conversations in different formats — choose a --to profile of the same provider
+```
+
+How it works:
+
+- The **target profile decides the provider** (`work` is a Claude profile, so Claude conversations move). Sources are every other account of that provider, or just `--from`.
+- **Same provider only.** `--from personal --to codex` is refused — Claude and Codex store conversations in different formats. `personal → kimi` is refused too: they share `~/.claude`, so there is nothing to move.
+- **Which folder:** no argument = the current folder. A bare name is looked up under `sessions.root`, then in the current folder, then matched against the current folder's own name (so `agx sessions move docker_setup_mac …` works from inside it too). Anything with a `/` is a path.
+- **What moves (Claude):** each conversation's transcript and tool results, its file checkpoints (`file-history/`) and environment snapshot (`session-env/`), plus the folder's project memory. It merges into whatever the target already has; after a full move the now-empty history folder in the old account is removed (anything the move doesn't recognise is left in place and listed).
+- **Safe by default:** it stops before changing anything if Claude is running in that folder (in either account) or a conversation already exists in the target; it copies the sources to `<home>/backups/agx-move-<folder>-<time>/` first (`--no-backup` to skip); and if a move fails half-way, everything already moved is put back. Running it twice is harmless — the second run finds nothing to move.
+- **Exit status:** `0` moved (or nothing to move), `1` blocked or failed (nothing changed), `2` a wrong request (unknown profile, different providers, same home, missing folder).
+- **Undo:** `agx sessions move --to personal --from work` moves them back; the backup folder holds the untouched originals.
+- **Not moved:** Claude's global up-arrow prompt history and the folder's trust / allowed-tools settings — Claude asks to trust the folder once on the new account.
+- **Codex:** not supported yet. Codex indexes conversations in its own SQLite database with absolute paths, so moving its files would break its index; agx says so instead of trying.
+
+After moving: `agx resume` (or `clr`) in the folder opens the conversations on the new account, and `claude -c` works there under that account.
+
 ### Health check: `agx doctor`
 
 ```sh
@@ -392,6 +456,7 @@ Then `clw`, `clanew spike`, `clr pglite`, … work like the commands they stand 
 | `agx sessions ls` | Session folders with file counts and whether any provider holds history for them |
 | `agx sessions gc [--yes]` | Remove empty session folders with no history (dry run unless `--yes`) |
 | `agx sessions promote <folder> <name>` | Move a session folder into a project, taking its Claude history along; `--dry-run`, `--git-init` |
+| `agx sessions move [folder] --to <profile>` | Move a folder's conversations to another account of the same provider (e.g. personal → work); `--from`, `--only`, `--dry-run`, `--no-backup`, `--json` |
 | `agx doctor` | Local health checks (no network, never resolves secret values) |
 | `agx shell-init [zsh\|bash]` | Print the shell layer (see below) |
 | `agx version` | Version, commit and build provenance |
@@ -423,6 +488,7 @@ agx new -p auto --provider codex my spike   # auto-pick among Codex accounts
 | `agx sessions ls` | `--json` |
 | `agx sessions gc` | `--yes` · `--min-age 24h` · `--json` |
 | `agx sessions promote <folder> <name>` | `--to <parent>` · `--dry-run` · `--git-init` · `--json` |
+| `agx sessions move [folder]` | `--to <profile>` (required) · `--from <profile>` · `--only <ids>` · `--dry-run` · `--no-backup` · `--json` |
 | `agx doctor` | `--json` |
 | `agx shell-init` | `zsh` (default) or `bash` |
 | `agx version` / `agx --version` | `--json` (on `version`) |
@@ -493,7 +559,7 @@ Every listing command has `--json`, emitting a stable envelope:
 { "schema_version": 1, "kind": "usage.list", "count": 3, "data": [ … ] }
 ```
 
-Kinds: `usage.list`, `profile.list`, `conversation.list`, `session.list`, `session.gc`, `session.promote`, `doctor.report`, `version.show`.
+Kinds: `usage.list`, `profile.list`, `conversation.list`, `session.list`, `session.gc`, `session.promote`, `session.move`, `doctor.report`, `version.show`.
 
 ```sh
 agx usage --json | jq '.data[] | {profile, windows: [.windows[] | {label, percent}]}'
@@ -567,6 +633,10 @@ It fetches usage for each plan-billed account of the provider, scores each by it
 **After `agx sessions promote`, does Claude still have my conversation in the new folder?**
 
 Yes. Promote moves the Claude history along with the folder, so `claude -c`, `claude --resume` and `agx resume` in the new folder continue the same chat (verified against a live Claude Code 2.1.281 session). Codex conversations are not tied to a folder and stay resumable by id.
+
+**I worked in a folder on my personal account — can I switch it to my work account?**
+
+Yes: `agx sessions move --to work` in that folder moves its Claude conversations (with their tool results, checkpoints and project memory) to work, after a backup, so `agx resume` and `claude -c` continue them there. Try it with `--dry-run` first. Codex conversations can't be moved yet.
 
 **Can I run `agx` on every shell prompt or in a tight loop?**
 
