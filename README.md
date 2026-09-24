@@ -80,7 +80,18 @@ With Go 1.26 or newer:
 go install github.com/khanakia/agx@latest
 ```
 
-This puts `agx` in `$(go env GOPATH)/bin`, which needs to be on your `PATH`. From source: `git clone https://github.com/khanakia/agx.git && cd agx && task install`.
+This puts `agx` in `$(go env GOPATH)/bin`, which needs to be on your `PATH`.
+
+Prebuilt binaries (macOS, Linux, Windows; amd64 and arm64) are on the [Releases page](https://github.com/khanakia/agx/releases), with a `checksums.txt`:
+
+```sh
+# macOS on Apple Silicon — swap darwin_arm64 for darwin_amd64, linux_amd64, linux_arm64
+curl -sL https://github.com/khanakia/agx/releases/download/v0.1.0/agx_v0.1.0_darwin_arm64.tar.gz | tar -xz agx
+sudo mv agx /usr/local/bin/
+agx version
+```
+
+From source: `git clone https://github.com/khanakia/agx.git && cd agx && task install`.
 
 ## Quick start
 

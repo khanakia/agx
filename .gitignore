@@ -1,5 +1,6 @@
-# Build output (task build)
+# Build output (task build, volt release)
 /bin/
+/dist/
 # BEGIN repolink (managed — do not edit)
 /CLAUDE.md
 /docsi

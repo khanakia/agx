@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-24
+
+
 ### Added
 
 - `agx`, a toolkit CLI for AI coding agents (formerly `claude-usage`), built on voltkit (`appdir`, `output`, `versioncmd`) and cobra.
@@ -33,4 +36,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/commits/main
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/khanakia/agx/releases/tag/v0.1.0
