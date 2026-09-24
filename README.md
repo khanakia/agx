@@ -525,7 +525,7 @@ task test       # tests only
 task run -- resume --list
 ```
 
-The design lives in [`docsi/AGX_SPEC.md`](docsi/AGX_SPEC.md). See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev loop and conventions.
 
 ## FAQ
 

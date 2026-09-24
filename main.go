@@ -1,7 +1,7 @@
 // Command agx is one CLI for your AI coding agents and all their accounts:
 // plan usage across every account, launching on the account with the most
 // headroom, resuming a conversation on the account that holds it, and
-// managing session folders. See docsi/AGX_SPEC.md.
+// managing session folders. See README.md.
 //
 // main only wires the process: signal-aware context, the command tree from
 // internal/cli, and the exit code. All behaviour lives in packages.
