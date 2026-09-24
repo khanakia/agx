@@ -180,6 +180,26 @@ func TestConversations(t *testing.T) {
 	}
 }
 
+// TestConversations_AfterMove pins the promote case: history re-keyed to a
+// new folder still carries the OLD cwd inside the transcript, and a scoped
+// lookup from the new folder must find it and report the new folder.
+func TestConversations_AfterMove(t *testing.T) {
+	t.Parallel()
+	home := t.TempDir()
+	writeTranscript(t, home, "/s/old", "id-1", `{"type":"ai-title","aiTitle":"Moved chat"}`)
+	p := &Provider{}
+	if _, err := p.MoveHistory(home, "/s/old", "/p/new"); err != nil {
+		t.Fatal(err)
+	}
+	got, err := p.Conversations(context.Background(), home, provider.ConversationQuery{Dir: "/p/new"})
+	if err != nil || len(got) != 1 || got[0].ID != "id-1" || got[0].Dir != "/p/new" || got[0].Title != "Moved chat" {
+		t.Fatalf("after move = %+v, %v", got, err)
+	}
+	if old, _ := p.Conversations(context.Background(), home, provider.ConversationQuery{Dir: "/s/old"}); len(old) != 0 {
+		t.Errorf("old folder still lists %+v", old)
+	}
+}
+
 func TestMoveHistoryAndHasHistory(t *testing.T) {
 	t.Parallel()
 	home := t.TempDir()

@@ -187,7 +187,7 @@ func (a *app) runResume(ctx context.Context, o *resumeOpts, query []string) erro
 	}
 	chosen := convs[idx]
 	if info, err := os.Stat(chosen.Dir); err != nil || !info.IsDir() {
-		return fmt.Errorf("the conversation's folder %s no longer exists", chosen.Dir)
+		return fmt.Errorf("the conversation's folder %s no longer exists — if you moved it (e.g. `agx sessions promote`), cd into the new folder and run `agx resume` there", chosen.Dir)
 	}
 
 	p, ok := cfg.ForHome(chosen.Provider, chosen.Home)

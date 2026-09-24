@@ -43,27 +43,45 @@ const (
 // otherwise a numbered prompt read from /dev/tty. Reading the terminal
 // directly — not stdin — keeps it working inside the shell layer's plan
 // protocol and under redirection.
-type TerminalPicker struct{}
+type TerminalPicker struct {
+	// FzfBin overrides the fzf executable (tests point it at a fake); empty
+	// means fzf on PATH.
+	FzfBin string
+	// NoFzf forces the numbered prompt even when fzf is installed.
+	NoFzf bool
+}
 
 // Pick implements Picker.
-func (TerminalPicker) Pick(prompt string, items []string) (int, error) {
+func (t TerminalPicker) Pick(prompt string, items []string) (int, error) {
 	if len(items) == 0 {
 		return 0, ErrCancelled
 	}
-	if _, err := exec.LookPath(fzfBin); err == nil {
-		return pickFzf(prompt, items)
+	bin := t.FzfBin
+	if bin == "" {
+		bin = fzfBin
 	}
-	return pickNumbered(prompt, items)
+	if !t.NoFzf {
+		if path, err := exec.LookPath(bin); err == nil {
+			return pickFzf(path, prompt, items)
+		}
+	}
+	tty, err := os.OpenFile(ttyPath, os.O_RDWR, 0)
+	if err != nil {
+		return 0, ErrNoTerminal
+	}
+	// The tty was only prompted and read; a close error cannot lose anything.
+	defer func() { _ = tty.Close() }()
+	return pickNumbered(tty, prompt, items)
 }
 
 // pickFzf feeds "index<TAB>text" lines to fzf, shows only the text, and
 // parses the index back from the selection.
-func pickFzf(prompt string, items []string) (int, error) {
+func pickFzf(bin, prompt string, items []string) (int, error) {
 	var in bytes.Buffer
 	for i, it := range items {
 		fmt.Fprintf(&in, "%d%s%s\n", i, itemSep, strings.ReplaceAll(it, "\n", " "))
 	}
-	cmd := exec.Command(fzfBin, "--with-nth=2..", "--delimiter="+itemSep, "--prompt="+prompt+"> ", "--height="+fzfHeight, "--reverse", "--no-sort")
+	cmd := exec.Command(bin, "--with-nth=2..", "--delimiter="+itemSep, "--prompt="+prompt+"> ", "--height="+fzfHeight, "--reverse", "--no-sort")
 	cmd.Stdin = &in
 	cmd.Stderr = os.Stderr
 	out, err := cmd.Output()
@@ -82,14 +100,8 @@ func pickFzf(prompt string, items []string) (int, error) {
 	return n, nil
 }
 
-// pickNumbered prints a numbered list to the terminal and reads a number.
-func pickNumbered(prompt string, items []string) (int, error) {
-	tty, err := os.OpenFile(ttyPath, os.O_RDWR, 0)
-	if err != nil {
-		return 0, ErrNoTerminal
-	}
-	// The tty was only prompted and read; a close error cannot lose anything.
-	defer func() { _ = tty.Close() }()
+// pickNumbered prints a numbered list to tty and reads a number from it.
+func pickNumbered(tty io.ReadWriter, prompt string, items []string) (int, error) {
 	var b strings.Builder
 	for i, it := range items {
 		fmt.Fprintf(&b, "%3d) %s\n", i+1, it)

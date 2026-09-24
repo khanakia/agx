@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os/exec"
 	"time"
 )
@@ -17,6 +18,9 @@ type Keychain struct {
 	// Timeout bounds one lookup. macOS may show an access prompt the first
 	// time; a lookup nobody answers must not hang the whole run.
 	Timeout time.Duration
+	// Bin overrides the `security` executable (tests point it at a fake);
+	// empty means securityBin on PATH.
+	Bin string
 }
 
 const (
@@ -37,14 +41,18 @@ func (k Keychain) Get(service string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	out, err := exec.CommandContext(ctx, securityBin, "find-generic-password", "-s", service, "-w").Output()
+	bin := k.Bin
+	if bin == "" {
+		bin = securityBin
+	}
+	out, err := exec.CommandContext(ctx, bin, "find-generic-password", "-s", service, "-w").Output()
 	if err == nil {
 		return bytes.TrimSpace(out), nil
 	}
 
 	var exitErr *exec.ExitError
 	switch {
-	case errors.Is(err, exec.ErrNotFound):
+	case errors.Is(err, exec.ErrNotFound), errors.Is(err, fs.ErrNotExist): // not on PATH, or an absolute path that is missing
 		return nil, fmt.Errorf("%w: %s not installed", ErrSecretNotFound, securityBin)
 	case errors.As(err, &exitErr) && exitErr.ExitCode() == securityNotFoundExit:
 		return nil, fmt.Errorf("%w: %s", ErrSecretNotFound, service)

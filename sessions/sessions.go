@@ -244,6 +244,11 @@ func RemoveEmpty(path string) error {
 // ErrExists means a promote destination already exists.
 var ErrExists = errors.New("sessions: destination already exists")
 
+// ErrCrossDevice means the destination is on a different disk. Promote uses
+// a single rename — atomic, and never leaves a half-copied project — which
+// the OS cannot do across filesystems, so it refuses instead of copying.
+var ErrCrossDevice = errors.New("sessions: destination is on a different disk; promote only moves within one disk (move it yourself, e.g. with mv)")
+
 // Promote moves src to dst with os.Rename (same volume), refusing to
 // overwrite. Parent directories of dst are created.
 func Promote(src, dst string) error {
@@ -256,7 +261,16 @@ func Promote(src, dst string) error {
 		return fmt.Errorf("sessions: create parent of %s: %w", dst, err)
 	}
 	if err := os.Rename(src, dst); err != nil {
-		return fmt.Errorf("sessions: move %s → %s: %w", src, dst, err)
+		return renameError(src, dst, err)
 	}
 	return nil
+}
+
+// renameError classifies a failed rename, mapping a cross-device move to
+// ErrCrossDevice so callers and users get an actionable message.
+func renameError(src, dst string, err error) error {
+	if isCrossDevice(err) {
+		return fmt.Errorf("%w: %s → %s", ErrCrossDevice, src, dst)
+	}
+	return fmt.Errorf("sessions: move %s → %s: %w", src, dst, err)
 }

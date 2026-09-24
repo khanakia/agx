@@ -42,7 +42,9 @@ func HistoryDir(home, dir string) string {
 
 // Conversations lists the resumable conversations stored in home, newest
 // first. With q.Dir set only that directory's history folder is read (a
-// direct lookup via EncodePath); otherwise every project folder is scanned.
+// direct lookup via EncodePath, as Claude Code does) and every result's Dir
+// is q.Dir; otherwise every project folder is scanned and Dir is the cwd
+// recorded in the transcript, which is stale for history moved by promote.
 //
 // Each transcript is read only at its head (for the cwd) and tail (for the
 // title), never whole — see headScanBytes / tailScanBytes. A transcript that
@@ -103,8 +105,12 @@ func (p *Provider) Conversations(ctx context.Context, home string, q provider.Co
 		if !ok {
 			continue
 		}
-		if q.Dir != "" && filepath.Clean(conv.Dir) != filepath.Clean(q.Dir) {
-			continue // encoded-name collision (e.g. "a_b" vs "a.b"): keep only exact cwd
+		if q.Dir != "" {
+			// Found under HistoryDir(q.Dir), which is exactly how Claude Code
+			// looks conversations up. The cwd recorded inside the transcript
+			// can be stale — `sessions promote` re-keys the history folder but
+			// never rewrites transcripts — so the queried dir is the truth.
+			conv.Dir = filepath.Clean(q.Dir)
 		}
 		conv.Provider = provider.Claude
 		conv.Home = home

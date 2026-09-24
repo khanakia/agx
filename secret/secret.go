@@ -16,6 +16,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"strings"
@@ -80,6 +81,9 @@ type System struct {
 	LookupEnv func(string) (string, bool)
 	// Timeout bounds a gopass call; zero means defaultTimeout.
 	Timeout time.Duration
+	// GopassBin overrides the gopass executable (tests point it at a fake);
+	// empty means GopassBin on PATH.
+	GopassBin string
 }
 
 // Resolve implements Resolver. An empty result is an error (ErrEmpty): an
@@ -124,13 +128,17 @@ func (s System) gopass(ctx context.Context, path string) (string, error) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, GopassBin, "show", "-o", path)
+	bin := s.GopassBin
+	if bin == "" {
+		bin = GopassBin
+	}
+	cmd := exec.CommandContext(ctx, bin, "show", "-o", path)
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
-		if errors.Is(err, exec.ErrNotFound) {
+		if errors.Is(err, exec.ErrNotFound) || errors.Is(err, fs.ErrNotExist) {
 			return "", fmt.Errorf("secret: %s is not installed", GopassBin)
 		}
 		// Never include stdout in the error: it may hold a partial secret.

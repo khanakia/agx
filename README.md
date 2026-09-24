@@ -254,6 +254,24 @@ would move ~/work/sessions/20260923_175923 → ~/work/my-tool
   history in ~/.claude would move with it
 ```
 
+**What promote does, step by step** (`agx sessions promote pglite_spike_20260924_101500 pglite-go`):
+
+1. Finds the folder: a bare name is looked up under `sessions.root`; `.` is the folder you are in; anything else is a path.
+2. Checks every account's history (Claude and Codex, all homes) for conversations started in that folder.
+3. Moves the folder to `<promote_root>/pglite-go` with a single rename, refusing if the destination exists.
+4. **Claude:** Claude Code files each folder's conversations under `~/.claude*/projects/<folder path with punctuation as ->`. Promote renames that history folder to match the new path in whichever account holds it, so **starting Claude in the new folder continues the same chats**: `claude -c`, `claude --resume`, `agx resume`, `clr`.
+5. **Codex:** Codex files conversations by date, not by folder, so there is nothing to move. The conversation stays resumable by id (`agx resume --all <words>`), but it still names the old folder, so after promoting a folder with Codex chats, `cd` into the new folder and start a new Codex session or resume by id from there.
+6. Optionally runs `git init` (`--git-init`).
+
+The destination must be on the same disk as the session folder — the move is one atomic rename, so it never leaves a half-copied project. Across disks promote stops with "destination is on a different disk" and changes nothing; use `mv` yourself in that case.
+
+```sh
+# after promoting:
+cd ~/work/pglite-go
+agx resume --last          # continues the chat that started in the session folder
+claude -c                  # Claude's own "continue" finds it too
+```
+
 ### Health check: `agx doctor`
 
 ```sh
@@ -534,6 +552,10 @@ Start Claude Code with `CLAUDE_CONFIG_DIR=~/.claude-work claude`, log in once, a
 **How does `-p auto` choose?**
 
 It fetches usage for each plan-billed account of the provider, scores each by its fullest window (because any one window at 100% blocks you), and picks the lowest score; ties go to config order. API-billed profiles are never picked.
+
+**After `agx sessions promote`, does Claude still have my conversation in the new folder?**
+
+Yes. Promote moves the Claude history along with the folder, so `claude -c`, `claude --resume` and `agx resume` in the new folder continue the same chat (verified against a live Claude Code 2.1.281 session). Codex conversations are not tied to a folder and stay resumable by id.
 
 **Can I run `agx` on every shell prompt or in a tight loop?**
 

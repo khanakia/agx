@@ -3,8 +3,11 @@ package secret
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestParse(t *testing.T) {
@@ -82,5 +85,47 @@ func TestResolveAll(t *testing.T) {
 	}
 	if _, err := ResolveAll(context.Background(), r, map[string]string{"X": "nocolon"}); !errors.Is(err, ErrBadRef) {
 		t.Errorf("bad ref err = %v", err)
+	}
+}
+
+// fakeGopass writes a stand-in for the gopass CLI that runs body.
+func fakeGopass(t *testing.T, body string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "gopass")
+	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+body+"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestSystemResolveGopass(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	ref := Ref{SchemeGopass, "ai/kimi"}
+
+	// `gopass show -o <path>` prints the secret; the trailing newline is trimmed.
+	s := System{GopassBin: fakeGopass(t, `[ "$1" = show ] && [ "$2" = -o ] && [ "$3" = ai/kimi ] && printf 'sk-123\n'`)}
+	if v, err := s.Resolve(ctx, ref); err != nil || v != "sk-123" {
+		t.Errorf("resolve = %q, %v", v, err)
+	}
+	// An empty secret is an error, not an empty token.
+	s = System{GopassBin: fakeGopass(t, "printf ''")}
+	if _, err := s.Resolve(ctx, ref); !errors.Is(err, ErrEmpty) {
+		t.Errorf("empty = %v", err)
+	}
+	// A failing gopass never leaks what it printed into the error.
+	s = System{GopassBin: fakeGopass(t, "printf 'partial-secret'; exit 3")}
+	if _, err := s.Resolve(ctx, ref); err == nil || strings.Contains(err.Error(), "partial-secret") {
+		t.Errorf("failure = %v", err)
+	}
+	// Not installed.
+	s = System{GopassBin: filepath.Join(t.TempDir(), "missing")}
+	if _, err := s.Resolve(ctx, ref); err == nil {
+		t.Error("missing gopass should fail")
+	}
+	// A pinentry prompt nobody answers times out.
+	s = System{GopassBin: fakeGopass(t, "sleep 5"), Timeout: 100 * time.Millisecond}
+	if _, err := s.Resolve(ctx, ref); err == nil {
+		t.Error("hung gopass should time out")
 	}
 }
