@@ -1,0 +1,39 @@
+version: '3'
+
+vars:
+  BIN: bin/claude-usage
+
+tasks:
+  build:
+    desc: Build the claude-usage binary into bin/
+    cmds:
+      - go build -o {{.BIN}} .
+
+  run:
+    desc: Show plan usage for every local Claude Code account (pass flags after --, e.g. task run -- --json)
+    cmds:
+      - go run . {{.CLI_ARGS}}
+
+  test:
+    desc: Run the full test suite with the race detector
+    cmds:
+      - go test -race -count=1 ./...
+
+  lint:
+    desc: gofmt check, go vet and staticcheck
+    cmds:
+      - test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - go vet ./...
+      - staticcheck ./...
+
+  check:
+    desc: Everything that must be green before a commit (lint + test + build)
+    cmds:
+      - task: lint
+      - task: test
+      - task: build
+
+  install:
+    desc: Install claude-usage into $GOBIN (or ~/go/bin) so it is on PATH
+    cmds:
+      - go install .

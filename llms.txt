@@ -1,0 +1,16 @@
+# claude-usage
+
+> Terminal CLI that shows Claude subscription plan usage limits (5-hour session and weekly, per model) for every Claude Code account on your machine at once, the same numbers as claude.ai Settings → Usage.
+
+claude-usage is open source (khanakia/claude-usage), written in Go with no dependencies beyond the standard library. It reads the OAuth token Claude Code already stores locally and makes one read-only GET per account to api.anthropic.com; nothing is sent anywhere else and no quota is consumed.
+
+## Docs
+- [README](https://github.com/khanakia/claude-usage/blob/main/README.md): overview, install, usage, FAQ
+- [CHANGELOG](https://github.com/khanakia/claude-usage/blob/main/CHANGELOG.md): release history
+- [CONTRIBUTING](https://github.com/khanakia/claude-usage/blob/main/CONTRIBUTING.md): how to contribute
+
+## Install
+- Go: `go install github.com/khanakia/claude-usage@latest`
+
+## Links
+- Repository: https://github.com/khanakia/claude-usage

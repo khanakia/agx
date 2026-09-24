@@ -1,0 +1,21 @@
+{
+  "name": "claude-usage",
+  "tagline": "Every Claude account's plan limits, in one terminal command.",
+  "description": "CLI that shows Claude plan usage limits (5-hour session, weekly, per-model) for every Claude Code account on your machine at once — the claude.ai Usage page, in your terminal, across accounts.",
+  "repo": "khanakia/claude-usage",
+  "homepage": "",
+  "language": "go",
+  "kind": "cli",
+  "license": "Apache-2.0",
+  "author": { "name": "khanakia", "email": "khanakia@gmail.com", "github": "khanakia" },
+  "topics": ["claude", "claude-code", "anthropic", "usage", "rate-limit", "usage-tracker", "cli", "golang", "developer-tools", "macos", "ai", "llm"],
+  "positioning": {
+    "category": "Claude plan usage tracker",
+    "audience": "Claude Code users who switch between several accounts (CLAUDE_CONFIG_DIR)",
+    "wedge": "See which account still has headroom before starting a long session, without logging into each one",
+    "alternatives": ["claude.ai Settings → Usage", "Claude Code /usage", "local log analyzers (ccusage)", "menu-bar tracker apps"],
+    "differentiators": ["all accounts in one view", "real plan percentages, not token estimates", "read-only: never refreshes or rewrites tokens", "zero dependencies, single Go binary", "--json for scripts"]
+  },
+  "install": { "go": "go install github.com/khanakia/claude-usage@latest" },
+  "khanakia": { "addToApps": false }
+}
