@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-24
+
 ### Added
 
 - `agx sessions move [folder] --to <profile>`: move a folder's conversations to another account of the same provider (e.g. personal → work) so they resume there. The target profile picks the provider; cross-provider and same-home moves are refused. Claude: transcripts, tool results, file checkpoints, environment snapshots and project memory move, merged into the target. Refuses while Claude runs in the folder or when an id already exists in the target; backs up the sources first (`--no-backup`); rolls back on a half-way failure; `--from`, `--only` (id or prefix), `--dry-run`, `--json`. Codex is refused with the reason (its SQLite index holds absolute paths).
@@ -46,5 +48,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/khanakia/agx/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/khanakia/agx/releases/tag/v0.1.0
