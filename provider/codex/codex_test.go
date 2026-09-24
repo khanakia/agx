@@ -103,6 +103,7 @@ func TestUsage_HTTP(t *testing.T) {
 		{"ok", http.StatusOK, false, false},
 		{"401", http.StatusUnauthorized, true, true},
 		{"500", http.StatusInternalServerError, false, true},
+		{"429", http.StatusTooManyRequests, false, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -120,6 +121,9 @@ func TestUsage_HTTP(t *testing.T) {
 			u, err := p.Usage(context.Background(), provider.Profile{Home: home})
 			if (err != nil) != tc.wantErr || errors.Is(err, provider.ErrUnauthorized) != tc.wantUnaut {
 				t.Fatalf("err = %v", err)
+			}
+			if tc.status == http.StatusTooManyRequests && !errors.Is(err, provider.ErrRateLimited) {
+				t.Errorf("429 err = %v, want ErrRateLimited", err)
 			}
 			if !tc.wantErr && (len(u.Windows) != 2 || !strings.HasSuffix(u.Identity.CredentialSource, authFile)) {
 				t.Errorf("usage = %+v", u)

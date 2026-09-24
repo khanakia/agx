@@ -179,6 +179,7 @@ func TestUsageClientFetch(t *testing.T) {
 		{"401", http.StatusUnauthorized, []byte(`{"error":"expired"}`), true, true},
 		{"403", http.StatusForbidden, nil, true, true},
 		{"500", http.StatusInternalServerError, []byte("oops"), true, false},
+		{"429", http.StatusTooManyRequests, []byte("{\n  \"error\": \"rate\"\n}"), true, false},
 		{"200 garbage", http.StatusOK, []byte("<html>"), true, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -205,6 +206,9 @@ func TestUsageClientFetch(t *testing.T) {
 			}
 			if errors.Is(err, provider.ErrUnauthorized) != tc.wantUnaut {
 				t.Errorf("ErrUnauthorized = %v, want %v (%v)", !tc.wantUnaut, tc.wantUnaut, err)
+			}
+			if tc.status == http.StatusTooManyRequests && !errors.Is(err, provider.ErrRateLimited) {
+				t.Errorf("429 err = %v, want ErrRateLimited", err)
 			}
 			if !tc.wantErr && len(u.Windows) != 3 {
 				t.Errorf("got %d windows", len(u.Windows))

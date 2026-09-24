@@ -1,8 +1,12 @@
 package provider
 
 import (
+	"errors"
+	"net/http"
 	"slices"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestSetAndUnsetEnv(t *testing.T) {
@@ -40,5 +44,25 @@ func TestMaxPercent(t *testing.T) {
 	u := Usage{Windows: []Window{{Percent: 5}, {Percent: 77}, {Percent: 60}}}
 	if u.MaxPercent() != 77 {
 		t.Errorf("MaxPercent = %v", u.MaxPercent())
+	}
+}
+
+func TestRateLimitError(t *testing.T) {
+	t.Parallel()
+	h := http.Header{}
+	if err := RateLimitError(h); !errors.Is(err, ErrRateLimited) || strings.Contains(err.Error(), "retry after") {
+		t.Errorf("no header: %v", err)
+	}
+	h.Set(retryAfterHeader, "30")
+	if err := RateLimitError(h); !errors.Is(err, ErrRateLimited) || !strings.Contains(err.Error(), "retry after 30s") {
+		t.Errorf("seconds: %v", err)
+	}
+	h.Set(retryAfterHeader, time.Now().Add(2*time.Minute).UTC().Format(http.TimeFormat))
+	if err := RateLimitError(h); !strings.Contains(err.Error(), "retry after 1m") && !strings.Contains(err.Error(), "retry after 2m") {
+		t.Errorf("http date: %v", err)
+	}
+	h.Set(retryAfterHeader, "soon")
+	if err := RateLimitError(h); strings.Contains(err.Error(), "retry after") {
+		t.Errorf("garbage header must be ignored: %v", err)
 	}
 }

@@ -334,8 +334,10 @@ func (p *Provider) Usage(ctx context.Context, pr provider.Profile) (provider.Usa
 	switch {
 	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
 		return provider.Usage{}, fmt.Errorf("%w (HTTP %d)", provider.ErrUnauthorized, resp.StatusCode)
+	case resp.StatusCode == http.StatusTooManyRequests:
+		return provider.Usage{}, provider.RateLimitError(resp.Header)
 	case resp.StatusCode != http.StatusOK:
-		b := string(body)
+		b := strings.Join(strings.Fields(string(body)), " ") // one line, even for pretty JSON
 		if len(b) > snippetMax {
 			b = b[:snippetMax] + "…"
 		}

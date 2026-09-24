@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/khanakia/agx/provider"
 )
@@ -57,6 +58,8 @@ func (c *UsageClient) Fetch(ctx context.Context, accessToken string) (provider.U
 	switch {
 	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
 		return provider.Usage{}, fmt.Errorf("%w (HTTP %d)", provider.ErrUnauthorized, resp.StatusCode)
+	case resp.StatusCode == http.StatusTooManyRequests:
+		return provider.Usage{}, provider.RateLimitError(resp.Header)
 	case resp.StatusCode != http.StatusOK:
 		return provider.Usage{}, fmt.Errorf("claude: unexpected HTTP %d: %s", resp.StatusCode, snippet(body))
 	}
@@ -65,8 +68,9 @@ func (c *UsageClient) Fetch(ctx context.Context, accessToken string) (provider.U
 
 // snippet trims an error body for inclusion in an error message.
 func snippet(b []byte) string {
-	if len(b) > snippetMax {
-		return string(b[:snippetMax]) + "…"
+	s := strings.Join(strings.Fields(string(b)), " ") // one line, even for pretty JSON
+	if len(s) > snippetMax {
+		return s[:snippetMax] + "…"
 	}
-	return string(b)
+	return s
 }

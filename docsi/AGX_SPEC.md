@@ -373,4 +373,5 @@ One extra dependency; strict parsing catches typos the way `.volt.yml` does.
 | Shell layer | shipped | `internal/shellinit/` | Also supports bash; verified end-to-end in real zsh and bash with a fake agent binary. |
 | Layering guard | shipped | `internal/archtest/` | Verified by adding a forbidden import inside a multi-line block: 3 violations reported. |
 | Build / release | shipped | `Taskfile.yml`, `.volt.yml` | `task check` adds a cross-compile matrix (verified by removing the Windows shim). Minimum Go 1.26 (voltkit). agx requires `voltkit/output` directly, which is what makes `versioncmd@v0.1.0` resolve — its published go.mod requires a non-existent `output v0.0.0`; fix upstream with a `versioncmd/v0.1.1`. |
+| Rate limiting | shipped | `provider/ratelimit.go` | Added after live use: HTTP 429 maps to `provider.ErrRateLimited` with the server's Retry-After, and is never shown as a login problem. |
 | Not built | deferred | — | `doctor` does not report the stale legacy `Claude Code-credentials` keychain entry (credential resolution already ignores it by picking the freshest login). Kimi balance, other providers, release: see §15. |

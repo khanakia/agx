@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `--dry-run` on `run` / `new` / `resume` prints the command with secret values redacted.
 - Layering guard test (`internal/archtest`) and cross-compilation for macOS, Linux and Windows in `task check`.
 
+- README: a full copy-paste Examples section (every command, `jq` recipes, config recipes), a `-p` guide and a flags-by-command reference.
+
+### Fixed
+
+- HTTP 429 from a usage endpoint is reported as "usage endpoint rate-limited this account; try again shortly (retry after …)" instead of a raw status line, and error bodies are flattened to one line.
+
 ### Changed
 
 - Minimum Go version is now 1.26 (required by voltkit).

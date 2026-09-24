@@ -39,6 +39,7 @@ agx: auto → work (max 9%) over personal (max 78%)
 - [Why agx?](#why-agx)
 - [Install](#install)
 - [Quick start](#quick-start)
+- [Examples](#examples)
 - [Commands](#commands)
 - [Configuration](#configuration)
 - [Shell integration](#shell-integration)
@@ -94,6 +95,262 @@ agx resume               # pick a conversation from this folder and continue it
 
 No config is needed: agx discovers `~/.claude` (profile `personal`), every `~/.claude-<name>` (profile `<name>`), and `~/.codex` (profile `codex`). Add a config file when you want named profiles, extra flags, secrets or aliases.
 
+## Examples
+
+Copy-paste recipes for every command. Output shown is trimmed; emails are placeholders.
+
+### Check usage
+
+```sh
+agx                                  # every account, every provider (same as `agx usage`)
+agx usage work                       # one profile
+agx usage work personal              # several profiles, in this order
+agx usage --provider claude          # only Claude accounts
+agx usage --provider codex           # only Codex accounts
+agx usage --color=never | less       # plain text, e.g. for a pager or a log
+agx usage --timeout 5s               # give up on a slow account sooner
+```
+
+```text
+$ agx usage work
+you@work.example  Max (20x)  work · claude  ~/.claude-work
+  Current session    ███░░░░░░░░░░░░░░░░░░░░░░░░░░░    9% used  resets in 3 hr 33 min
+  Weekly limits
+  All models         █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    3% used  resets in 6 d 0 hr
+```
+
+### Script usage with `--json` and `jq`
+
+```sh
+# one line per account: its fullest window
+agx usage --json | jq -r '.data[] | "\(.profile): \([.windows[]?.percent] | max // 0)%"'
+# personal: 79%
+# work: 15%
+# codex: 10%
+
+# accounts that still have room (every window under 50%)
+agx usage --json | jq -r '.data[] | select(([.windows[]?.percent] | max // 100) < 50) | .profile'
+
+# compact one-liner for a status bar or tmux
+agx usage --json --provider claude | jq -r '[.data[] | "\(.profile) \([.windows[]?.percent] | max // 0 | floor)%"] | join(" · ")'
+# personal 79% · work 15%
+
+# when each account's 5-hour session window resets
+agx usage --json | jq -r '.data[] | .profile as $p | .windows[]? | select(.kind=="session") | "\($p) resets \(.resets_at)"'
+
+# only the accounts that failed (expired login, rate limit, …)
+agx usage --json | jq -r '.data[] | select(.error) | "\(.profile): \(.error)"'
+
+# branch on the exit code: 0 all ok, 1 some account failed, 2 bad usage
+agx usage >/dev/null || echo "at least one account needs attention"
+```
+
+### See your accounts
+
+```sh
+agx profiles                         # table: profile, provider, home, account, login, billing, source
+agx who                              # same thing (alias; also `agx accounts`)
+agx profiles --json | jq -r '.data[] | "\(.name)\t\(.login)\t\(.email // "-")"'
+```
+
+```text
+$ agx profiles
+PROFILE    PROVIDER  HOME            ACCOUNT                         LOGIN             BILLING  SOURCE
+*personal  claude    ~/.claude       you@example.com · Max (20x)     ok (3 hr 38 min)  plan     config
+work       claude    ~/.claude-work  you@work.example · Max (20x)    ok (6 hr 37 min)  plan     config
+kimi       claude    ~/.claude       you@example.com · Max (20x)     ok (3 hr 38 min)  api      config
+*codex     codex     ~/.codex                                        ok                plan     config
+```
+
+`*` marks each provider's default profile — the one `run` / `new` use when you pass no `-p`.
+
+### Start an agent here: `agx run`
+
+```sh
+agx run                              # default Claude profile, in the current folder
+agx run -p work                      # the work account
+agx run -p auto                      # the Claude account with the most headroom
+agx run -p codex                     # Codex
+agx run -p auto --provider codex     # the Codex account with the most headroom
+agx run -p kimi                      # Claude Code on Kimi (key fetched from gopass at launch)
+agx run -p work -- --model sonnet    # everything after -- goes to the agent
+agx run -p work -- -c                # e.g. continue Claude's most recent conversation here
+agx run -p work --dry-run            # print what would run; starts nothing
+```
+
+```text
+$ agx run -p work --dry-run
+profile: work (claude, /Users/you/.claude-work)
+dir:     /Users/you/code/app
+env:     CLAUDE_CONFIG_DIR=/Users/you/.claude-work
+exec:    claude --dangerously-skip-permissions
+
+$ agx run -p auto
+agx: auto → work (max 9%) over personal (max 78%)
+```
+
+### Start in a fresh session folder: `agx new`
+
+```sh
+agx new                              # ~/…/sessions/20260924_101500, default profile
+agx new pglite spike                 # ~/…/sessions/pglite_spike_20260924_101500
+agx new -p work invoice bug          # on the work account
+agx new -p auto                      # on whichever Claude account has more room
+agx new -p codex refactor            # a Codex session
+agx new -p work demo --dry-run       # show the folder and command; create nothing
+```
+
+With the [shell layer](#shell-integration) loaded, your shell is left inside the new folder when the agent exits.
+
+### Pick up where you left off: `agx resume`
+
+```sh
+agx resume                           # conversations started in THIS folder → fzf picker
+agx resume pglite                    # filter by title, folder or id (all words must match)
+agx resume --last                    # newest match, no picker
+agx resume --all                     # search every folder, not just this one
+agx resume --all --last invoice      # newest conversation anywhere mentioning "invoice"
+agx resume --list                    # print instead of launching
+agx resume --all --list --limit 20   # the 20 most recent conversations anywhere
+agx resume --last --dry-run          # show which account / folder / id it would use
+agx resume -p personal --last        # force a profile (normally chosen automatically)
+agx resume --all --list --json | jq -r '.data[] | "\(.updated[0:16])  \(.provider)  \(.title // "(untitled)")"'
+```
+
+```text
+$ agx resume --all --list --limit 3
+just now     claude   Claude account usage limits          ~/work/sessions/20260923_175923   2bec3f80-…
+23 min ago   claude   Automate visa application form        ~/work/sessions/visa_20260901_…   5c9565db-…
+1 hr ago     codex    (untitled)                           ~/work/agentop                    019eea1d-…
+
+$ agx resume --last --dry-run         # in a folder whose conversation lives on the work account
+profile: work (claude, /Users/you/.claude-work)
+dir:     /Users/you/work/sessions/20260921_091439
+exec:    claude --dangerously-skip-permissions --resume dbcaeaf2-…
+```
+
+The account is picked for you: a conversation stored in `~/.claude-work` resumes on `work`, one in `~/.codex` resumes with `codex resume`.
+
+### Session folders: `agx sessions`
+
+```sh
+agx sessions ls                      # every folder: last activity, file count, has history?
+agx sessions ls --json | jq -r '.data[] | select(.files==0) | .name'   # folders with no files
+
+agx sessions gc                      # show which empty, history-less folders would go
+agx sessions gc --yes                # actually remove them
+agx sessions gc --min-age 72h --yes  # only ones older than 3 days
+
+agx sessions promote pglite_spike_20260924_101500 pglite-go             # → <promote_root>/pglite-go
+agx sessions promote . my-tool                  # promote the folder you are in
+agx sessions promote . my-tool --git-init       # …and git init it
+agx sessions promote . my-tool --to ~/code      # choose the destination parent
+agx sessions promote . my-tool --dry-run        # show the plan; change nothing
+```
+
+```text
+$ agx sessions promote . my-tool --dry-run
+would move ~/work/sessions/20260923_175923 → ~/work/my-tool
+  history in ~/.claude would move with it
+```
+
+### Health check: `agx doctor`
+
+```sh
+agx doctor
+agx doctor --json | jq -r '.data[] | select(.level=="warn" or .level=="fail") | "\(.level) \(.area): \(.detail)"'
+```
+
+```text
+✓ config             ~/.agx/config.yaml (decided by home-dotfile)
+✓ sessions.root      ~/work/sessions
+✓ profile personal   you@example.com Max (20x)
+✓ profile work       you@work.example Max (20x)
+✓ profile kimi       api-billed (secrets: [ANTHROPIC_AUTH_TOKEN])
+✓ profile codex      logged in
+✓ shell              shell layer active (zsh)
+```
+
+### Shell setup, completion and version
+
+```sh
+echo 'eval "$(agx shell-init zsh)"' >> ~/.zshrc      # zsh
+echo 'eval "$(agx shell-init bash)"' >> ~/.bashrc    # bash
+agx shell-init zsh                                   # just look at what it defines
+
+agx completion zsh > "${fpath[1]}/_agx"              # zsh tab completion (restart the shell)
+agx completion bash > "$(brew --prefix)/etc/bash_completion.d/agx"   # Homebrew bash-completion
+
+agx version                                          # version, commit, build time
+agx version --json
+agx --version
+```
+
+### Config recipes
+
+Two Claude accounts, nothing else:
+
+```yaml
+# ~/.agx/config.yaml
+profiles:
+  - { name: personal, provider: claude, home: ~/.claude, default: true }
+  - { name: work,     provider: claude, home: ~/.claude-work }
+```
+
+Add a third Claude account (log in once with `CLAUDE_CONFIG_DIR=~/.claude-client claude`, then):
+
+```yaml
+  - { name: client, provider: claude, home: ~/.claude-client }
+```
+
+A second Codex account (log in once with `CODEX_HOME=~/.codex-work codex`, then):
+
+```yaml
+  - { name: codex-work, provider: codex, home: ~/.codex-work }
+```
+
+Flags for every Claude launch, and your session folder:
+
+```yaml
+sessions:
+  root: ~/work/sessions
+  promote_root: ~/work
+providers:
+  claude:
+    args: [--dangerously-skip-permissions]
+```
+
+A third-party backend billed per token (Kimi shown), with its key in gopass or in another env var:
+
+```yaml
+  - name: kimi
+    provider: claude
+    home: ~/.claude
+    billing: api
+    env:
+      ANTHROPIC_BASE_URL: https://api.moonshot.ai/anthropic
+      ANTHROPIC_MODEL: kimi-k3
+    secrets:
+      ANTHROPIC_AUTH_TOKEN: gopass:personal/ai/moonshot     # or: env:MOONSHOT_API_KEY
+```
+
+Short aliases (generated by `agx shell-init`):
+
+```yaml
+shell:
+  aliases:
+    cl: run -p personal
+    clw: run -p work
+    cla: run -p auto
+    clnew: new -p personal
+    clwnew: new -p work
+    clanew: new -p auto
+    clr: resume
+    clwho: profiles
+```
+
+Then `clw`, `clanew spike`, `clr pglite`, … work like the commands they stand for, and extra words are passed through (`clw -- --model sonnet`).
+
 ## Commands
 
 | Command | Does |
@@ -109,8 +366,39 @@ No config is needed: agx discovers `~/.claude` (profile `personal`), every `~/.c
 | `agx doctor` | Local health checks (no network, never resolves secret values) |
 | `agx shell-init [zsh\|bash]` | Print the shell layer (see below) |
 | `agx version` | Version, commit and build provenance |
+| `agx completion zsh\|bash\|fish` | Shell tab-completion script |
 
-`run`, `new` and `resume` accept `--dry-run` to print the exact command, working folder and environment changes without starting anything; secret values are shown as `<secret:scheme>`. Exit status: `0` ok, `1` a runtime failure (including "some accounts failed", with the others still printed), `2` a usage error.
+### Choosing a profile: `-p`
+
+`run`, `new` and `resume` take `-p` / `--profile`. The value is a profile name from `agx profiles` (e.g. `personal`, `work`, `kimi`, `codex`) or `auto`:
+
+```sh
+agx run                   # the default Claude profile (marked * in `agx profiles`)
+agx run -p work           # a named profile
+agx run -p auto           # the Claude account with the most headroom
+agx run -p codex          # any profile, any provider
+agx new -p auto --provider codex my spike   # auto-pick among Codex accounts
+```
+
+`--provider` (default `claude`) only matters when no profile is named or `-p auto` is used: it says which provider's default / auto-pick to use. `resume` normally needs no `-p` — it resumes on the account whose home stores the conversation — and `-p` there is an override.
+
+### Flags by command
+
+| Command | Flags |
+|---|---|
+| `agx` / `agx usage` | `--provider claude\|codex` · `--json` · `--color auto\|always\|never` · `--timeout 15s` |
+| `agx profiles` | `--json` (aliases: `agx who`, `agx accounts`) |
+| `agx run` | `-p/--profile` · `--provider` · `--dry-run` · `-- <args passed to the agent>` |
+| `agx new` | `-p/--profile` · `--provider` · `--dry-run` · `[slug words]` |
+| `agx resume` | `[query words]` · `--last` · `--all` · `--list` · `--json` (with `--list`) · `--limit 50` · `-p/--profile` · `--dry-run` |
+| `agx sessions ls` | `--json` |
+| `agx sessions gc` | `--yes` · `--min-age 24h` · `--json` |
+| `agx sessions promote <folder> <name>` | `--to <parent>` · `--dry-run` · `--git-init` · `--json` |
+| `agx doctor` | `--json` |
+| `agx shell-init` | `zsh` (default) or `bash` |
+| `agx version` / `agx --version` | `--json` (on `version`) |
+
+`run`, `new` and `resume` accept `--dry-run` to print the exact command, working folder and environment changes without starting anything; secret values are shown as `<secret:scheme>`. Every command has `--help` with examples. Exit status: `0` ok, `1` a runtime failure (including "some accounts failed", with the others still printed), `2` a usage error.
 
 ## Configuration
 
@@ -246,6 +534,10 @@ Start Claude Code with `CLAUDE_CONFIG_DIR=~/.claude-work claude`, log in once, a
 **How does `-p auto` choose?**
 
 It fetches usage for each plan-billed account of the provider, scores each by its fullest window (because any one window at 100% blocks you), and picks the lowest score; ties go to config order. API-billed profiles are never picked.
+
+**Can I run `agx` on every shell prompt or in a tight loop?**
+
+Don't: the vendors rate-limit their usage endpoints, and polling many times a minute gets an account answered with HTTP 429. agx then shows "usage endpoint rate-limited this account; try again shortly (retry after …)" for that account and keeps showing the others. Every few minutes (for example `watch -n 300 agx`) is fine.
 
 **Is it safe to run `agx sessions gc --yes`?**
 

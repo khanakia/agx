@@ -248,4 +248,8 @@ var (
 	ErrNotLoggedIn  = errors.New("not logged in")
 	ErrExpired      = errors.New("login expired")
 	ErrUnauthorized = errors.New("login rejected by the server")
+	// ErrRateLimited means the usage endpoint answered 429. It is transient
+	// (usually from polling usage many times a minute) and never a login
+	// problem, so callers must not suggest re-logging in for it.
+	ErrRateLimited = errors.New("usage endpoint rate-limited this account; try again shortly")
 )
