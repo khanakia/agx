@@ -15,3 +15,7 @@ require (
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/ubgo/buildinfo v0.1.2 // indirect
 )
+
+// v0.2.0 read a stale "Claude Code-credentials" keychain entry and reported
+// a logged-in account as expired; fixed in v0.2.1.
+retract v0.2.0

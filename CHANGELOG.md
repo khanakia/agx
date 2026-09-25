@@ -6,9 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-25
+
 ### Fixed
 
 - Personal Claude account reported "login expired" while logged in: the keychain can hold two `Claude Code-credentials` entries (a stale one from an old Claude Code version with an empty token, and the live one). agx now reads the entry saved under the current macOS username — the account Claude Code writes — before falling back to any entry with that name.
+
+### Removed
+
+- v0.2.0 is retracted (`retract v0.2.0` in go.mod) and its GitHub release page removed; it contained the keychain bug above. Use v0.2.1.
 
 ## [0.2.0] - 2026-09-24
 
@@ -52,6 +58,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/khanakia/agx/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/khanakia/agx/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/khanakia/agx/releases/tag/v0.1.0

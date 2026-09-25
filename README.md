@@ -86,7 +86,7 @@ Prebuilt binaries (macOS, Linux, Windows; amd64 and arm64) are on the [Releases 
 
 ```sh
 # macOS on Apple Silicon — swap darwin_arm64 for darwin_amd64, linux_amd64, linux_arm64
-curl -sL https://github.com/khanakia/agx/releases/download/v0.2.0/agx_v0.2.0_darwin_arm64.tar.gz | tar -xz agx
+curl -sL https://github.com/khanakia/agx/releases/download/v0.2.1/agx_v0.2.1_darwin_arm64.tar.gz | tar -xz agx
 sudo mv agx /usr/local/bin/
 agx version
 ```
