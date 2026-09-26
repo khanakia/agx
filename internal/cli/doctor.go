@@ -116,8 +116,9 @@ func (a *app) doctor() []finding {
 	now := a.Now()
 	for _, p := range cfg.Profiles {
 		area := "profile " + p.Name
-		// Secrets first: they do not depend on the binary or home, and a
-		// missing secret backend must be reported even when those are broken.
+		// Config-only checks first (secrets): they do not depend on the
+		// binary or home, and must be reported even when those are broken —
+		// the later checks `continue` on the first failure.
 		for name, raw := range p.Secrets {
 			ref, err := secret.Parse(raw)
 			if err != nil {

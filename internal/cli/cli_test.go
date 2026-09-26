@@ -32,6 +32,8 @@ type fakeProv struct {
 	moved [][2]string
 	// history is the set of dirs with history, by home.
 	history map[string]map[string]bool
+	// subs are subscriptions by home (nil map = zero subscription).
+	subs map[string]provider.Subscription
 }
 
 func (f *fakeProv) ID() provider.ID                             { return f.id }
@@ -73,6 +75,12 @@ func (f *fakeProv) Conversations(_ context.Context, home string, q provider.Conv
 	return out, nil
 }
 func (f *fakeProv) HasHistory(home, dir string) bool { return f.history[home][dir] }
+func (f *fakeProv) Subscription(_ context.Context, p provider.Profile) (provider.Subscription, error) {
+	if err := f.errs[p.Home]; err != nil {
+		return provider.Subscription{}, err
+	}
+	return f.subs[p.Home], nil
+}
 func (f *fakeProv) MoveHistory(home, from, to string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

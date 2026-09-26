@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-26
+
+### Added
+
+- `agx plan [profile…]` (alias `subscription`): plan, subscription status and start date for every account, `--json` (kind `plan.list`). Claude reads `/api/oauth/profile`; Codex reports its plan from the usage response. The next renewal date is not shown — it is not available to the Claude Code login (claude.ai → Settings → Billing has it).
+- Provider interface `SubscriptionReader`.
+
+### Changed
+
+- Codex: the access token's expiry is read from the JWT locally (never printed), so an expired login reads "login expired <time>" in `usage` / `plan` / `profiles` instead of a server 401.
+
 ## [0.2.1] - 2026-09-25
 
 ### Fixed
@@ -58,7 +69,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/khanakia/agx/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/khanakia/agx/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/khanakia/agx/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/khanakia/agx/releases/tag/v0.1.0

@@ -2,7 +2,9 @@ package codex
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,6 +12,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/khanakia/agx/provider"
 )
@@ -208,5 +211,65 @@ func TestConversationsAndHistory(t *testing.T) {
 	}
 	if none, err := p.Conversations(context.Background(), t.TempDir(), provider.ConversationQuery{}); err != nil || len(none) != 0 {
 		t.Errorf("empty home = %v, %v", none, err)
+	}
+}
+
+// fakeJWT builds header.payload.signature with the given exp claim.
+func fakeJWT(t *testing.T, exp int64) string {
+	t.Helper()
+	enc := base64.RawURLEncoding
+	payload := enc.EncodeToString([]byte(fmt.Sprintf(`{"exp":%d,"sub":"x"}`, exp)))
+	return enc.EncodeToString([]byte(`{"alg":"RS256"}`)) + "." + payload + ".sig"
+}
+
+func TestJWTExpiry(t *testing.T) {
+	t.Parallel()
+	if got := jwtExpiry(fakeJWT(t, 1790000000)); got.Unix() != 1790000000 {
+		t.Errorf("exp = %v", got)
+	}
+	for _, bad := range []string{"", "not-a-jwt", "a.b", "a.!!!.c", "a." + base64.RawURLEncoding.EncodeToString([]byte(`{"sub":"x"}`)) + ".c"} {
+		if !jwtExpiry(bad).IsZero() {
+			t.Errorf("jwtExpiry(%q) should be zero", bad)
+		}
+	}
+}
+
+func TestUsage_ExpiredJWTShortCircuits(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC)
+	home := t.TempDir()
+	auth := fmt.Sprintf(`{"auth_mode":"chatgpt","tokens":{"access_token":%q,"account_id":"acc-1"}}`, fakeJWT(t, now.Add(-time.Hour).Unix()))
+	writeFile(t, filepath.Join(home, authFile), auth)
+	called := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { called = true }))
+	defer srv.Close()
+	p := &Provider{Endpoint: srv.URL, HTTP: srv.Client(), Now: func() time.Time { return now }}
+	if _, err := p.Usage(context.Background(), provider.Profile{Home: home}); !errors.Is(err, provider.ErrExpired) {
+		t.Errorf("err = %v, want ErrExpired", err)
+	}
+	if called {
+		t.Error("an expired token was sent to the server")
+	}
+	id, err := p.Identity(provider.Profile{Home: home})
+	if err != nil || id.ExpiresAt.IsZero() {
+		t.Errorf("identity expiry = %v, %v", id.ExpiresAt, err)
+	}
+}
+
+func TestSubscription(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprint(w, `{"plan_type":"plus","rate_limit":{"primary_window":{"used_percent":1,"limit_window_seconds":18000}}}`) // test server
+	}))
+	defer srv.Close()
+	home := t.TempDir()
+	writeFile(t, filepath.Join(home, authFile), chatgptAuth)
+	p := &Provider{Endpoint: srv.URL, HTTP: srv.Client()}
+	sub, err := p.Subscription(context.Background(), provider.Profile{Home: home})
+	if err != nil || sub.Plan != "Plus" {
+		t.Errorf("sub = %+v, %v", sub, err)
+	}
+	if _, err := p.Subscription(context.Background(), provider.Profile{Home: t.TempDir()}); !errors.Is(err, provider.ErrNotLoggedIn) {
+		t.Errorf("logged out: %v", err)
 	}
 }

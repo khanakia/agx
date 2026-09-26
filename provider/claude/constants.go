@@ -69,6 +69,9 @@ const (
 	// DefaultEndpoint is the usage endpoint Claude Code's /usage calls. It is
 	// undocumented and may change shape; parsing is defensive for that reason.
 	DefaultEndpoint = "https://api.anthropic.com/api/oauth/usage"
+	// DefaultProfileEndpoint returns the account + organization profile,
+	// including subscription status and start (no renewal date).
+	DefaultProfileEndpoint = "https://api.anthropic.com/api/oauth/profile"
 	// oauthBetaHeader opts a request into OAuth bearer auth on
 	// api.anthropic.com. Without it the endpoint rejects subscription tokens.
 	oauthBetaHeader = "anthropic-beta"

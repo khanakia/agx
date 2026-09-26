@@ -86,7 +86,7 @@ Prebuilt binaries (macOS, Linux, Windows; amd64 and arm64) are on the [Releases 
 
 ```sh
 # macOS on Apple Silicon — swap darwin_arm64 for darwin_amd64, linux_amd64, linux_arm64
-curl -sL https://github.com/khanakia/agx/releases/download/v0.2.1/agx_v0.2.1_darwin_arm64.tar.gz | tar -xz agx
+curl -sL https://github.com/khanakia/agx/releases/download/v0.3.0/agx_v0.3.0_darwin_arm64.tar.gz | tar -xz agx
 sudo mv agx /usr/local/bin/
 agx version
 ```
@@ -155,6 +155,25 @@ agx usage --json | jq -r '.data[] | select(.error) | "\(.profile): \(.error)"'
 # branch on the exit code: 0 all ok, 1 some account failed, 2 bad usage
 agx usage >/dev/null || echo "at least one account needs attention"
 ```
+
+### Plan and subscription: `agx plan`
+
+```sh
+agx plan                             # every account: plan, subscription status, since when
+agx plan personal                    # one profile
+agx subscription                     # same command (alias)
+agx plan --json | jq -r '.data[] | "\(.profile): \(.subscription.plan // "-") \(.subscription.status // "")"'
+```
+
+```text
+$ agx plan
+PROFILE   PROVIDER  ACCOUNT            PLAN       STATUS  SINCE
+personal  claude    you@example.com    Max (20x)  active  2025-11-25
+work      claude    you@work.example   Max (20x)  active  2026-04-23
+codex     codex     —                  Free       —       —
+```
+
+The next renewal date is **not** shown: the Claude Code login agx reads can see the plan, status and start date (`/api/oauth/profile`) but not billing details — `api.anthropic.com` answers "This endpoint does not accept OAuth access tokens" for them. Find the next charge date on claude.ai → Settings → Billing.
 
 ### See your accounts
 
@@ -449,6 +468,7 @@ Then `clw`, `clanew spike`, `clr pglite`, … work like the commands they stand 
 | Command | Does |
 |---|---|
 | `agx` / `agx usage [profile…]` | Plan usage bars for every plan-billed login; `--provider`, `--json`, `--color`, `--timeout` |
+| `agx plan [profile…]` | Plan, subscription status and start date for every account; `--json`, `--timeout` |
 | `agx profiles` | Every profile: provider, home, account, plan, login state, billing, source |
 | `agx run [-p profile\|auto] [-- args…]` | Start the agent in the current folder with the profile's flags, env and secrets |
 | `agx new [-p profile\|auto] [slug…]` | Create `sessions.root/[slug_]YYYYMMDD_HHMMSS`, enter it, start the agent |
@@ -481,6 +501,7 @@ agx new -p auto --provider codex my spike   # auto-pick among Codex accounts
 | Command | Flags |
 |---|---|
 | `agx` / `agx usage` | `--provider claude\|codex` · `--json` · `--color auto\|always\|never` · `--timeout 15s` |
+| `agx plan` | `[profile…]` · `--json` · `--timeout 15s` (alias: `agx subscription`) |
 | `agx profiles` | `--json` (aliases: `agx who`, `agx accounts`) |
 | `agx run` | `-p/--profile` · `--provider` · `--dry-run` · `-- <args passed to the agent>` |
 | `agx new` | `-p/--profile` · `--provider` · `--dry-run` · `[slug words]` |
@@ -559,7 +580,7 @@ Every listing command has `--json`, emitting a stable envelope:
 { "schema_version": 1, "kind": "usage.list", "count": 3, "data": [ … ] }
 ```
 
-Kinds: `usage.list`, `profile.list`, `conversation.list`, `session.list`, `session.gc`, `session.promote`, `session.move`, `doctor.report`, `version.show`.
+Kinds: `usage.list`, `plan.list`, `profile.list`, `conversation.list`, `session.list`, `session.gc`, `session.promote`, `session.move`, `doctor.report`, `version.show`.
 
 ```sh
 agx usage --json | jq '.data[] | {profile, windows: [.windows[] | {label, percent}]}'
@@ -637,6 +658,10 @@ Yes. Promote moves the Claude history along with the folder, so `claude -c`, `cl
 **I worked in a folder on my personal account — can I switch it to my work account?**
 
 Yes: `agx sessions move --to work` in that folder moves its Claude conversations (with their tool results, checkpoints and project memory) to work, after a backup, so `agx resume` and `claude -c` continue them there. Try it with `--dry-run` first. Codex conversations can't be moved yet.
+
+**When does my Claude subscription renew?**
+
+agx can't tell you: the login it reads doesn't have access to billing details. `agx plan` shows the plan, status and start date; the next charge date is on claude.ai → Settings → Billing.
 
 **Can I run `agx` on every shell prompt or in a tight loop?**
 

@@ -68,6 +68,25 @@ type Profile struct {
 	Source  Source
 }
 
+// Subscription is what a provider reports about an account's plan. Fields
+// are empty when the provider does not report them.
+type Subscription struct {
+	// Plan is a display label ("Max (20x)", "Free").
+	Plan string `json:"plan,omitempty"`
+	// Status is the vendor's status ("active", "past_due", …).
+	Status string `json:"status,omitempty"`
+	// Billing is the vendor's billing type ("stripe_subscription", …).
+	Billing string `json:"billing,omitempty"`
+	// StartedAt is when the subscription began; nil when unknown.
+	StartedAt *time.Time `json:"started_at,omitempty"`
+}
+
+// SubscriptionReader is an optional upgrade for providers that can report
+// an account's subscription (a network call, like Usage).
+type SubscriptionReader interface {
+	Subscription(ctx context.Context, p Profile) (Subscription, error)
+}
+
 // Identity is what can be known about a profile's login without the network.
 type Identity struct {
 	Email        string

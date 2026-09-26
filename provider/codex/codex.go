@@ -10,6 +10,7 @@ package codex
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -201,8 +202,39 @@ func (p *Provider) Identity(pr provider.Profile) (provider.Identity, error) {
 	}
 	id := provider.Identity{CredentialSource: filepath.Join(pr.Home, authFile)}
 	id.LoggedIn = (a.Tokens != nil && a.Tokens.AccessToken != "") || a.apiKeyOnly()
+	if a.Tokens != nil {
+		id.ExpiresAt = jwtExpiry(a.Tokens.AccessToken)
+	}
 	return id, nil
 }
+
+// jwtExpiry reads the "exp" claim of a JWT access token WITHOUT verifying
+// it — only to tell the user their login expired before asking the server.
+// The token is never printed or stored. Zero time when the token is not a
+// JWT or has no exp claim (then the server's 401 remains the authority).
+func jwtExpiry(token string) time.Time {
+	parts := strings.Split(token, jwtSep)
+	if len(parts) != jwtParts {
+		return time.Time{}
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return time.Time{}
+	}
+	var claims struct {
+		Exp int64 `json:"exp"`
+	}
+	if json.Unmarshal(payload, &claims) != nil || claims.Exp <= 0 {
+		return time.Time{}
+	}
+	return time.Unix(claims.Exp, 0).UTC()
+}
+
+// JWT shape: header.payload.signature.
+const (
+	jwtSep   = "."
+	jwtParts = 3
+)
 
 // wireUsage is the subset of GET /backend-api/wham/usage agx reads.
 type wireUsage struct {
@@ -301,6 +333,9 @@ func (p *Provider) Usage(ctx context.Context, pr provider.Profile) (provider.Usa
 	}
 	if a.Tokens == nil || a.Tokens.AccessToken == "" {
 		return provider.Usage{}, provider.ErrNotLoggedIn
+	}
+	if exp := jwtExpiry(a.Tokens.AccessToken); !exp.IsZero() && !p.now().Before(exp) {
+		return provider.Usage{}, fmt.Errorf("%w %s", provider.ErrExpired, exp.Local().Format(time.DateTime))
 	}
 
 	endpoint := p.Endpoint
@@ -457,4 +492,24 @@ func readMeta(path string) (sessionMeta, bool) {
 // leave its index pointing at files that are gone.
 func (p *Provider) MoveUnsupportedReason() string {
 	return "Codex indexes conversations in its own SQLite database with absolute paths (state_5.sqlite), so moving its files would break its index; continue Codex work in the original account"
+}
+
+var _ provider.SubscriptionReader = (*Provider)(nil)
+
+// Subscription implements provider.SubscriptionReader from the usage
+// response — Codex reports only the plan type (no status or start date).
+func (p *Provider) Subscription(ctx context.Context, pr provider.Profile) (provider.Subscription, error) {
+	u, err := p.Usage(ctx, pr)
+	if err != nil {
+		return provider.Subscription{}, err
+	}
+	return provider.Subscription{Plan: u.Identity.Plan}, nil
+}
+
+// now is the clock for expiry checks; Now overrides it in tests.
+func (p *Provider) now() time.Time {
+	if p.Now != nil {
+		return p.Now()
+	}
+	return time.Now()
 }
