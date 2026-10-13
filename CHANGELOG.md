@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- voltkit modules now come from `github.com/ubgo/voltkit` (the repo moved from the khanakia account): `appdir` and `output` v0.2.0, `versioncmd` v0.2.1. versioncmd v0.2.1 requires a published `output`, so agx no longer depends on its own direct `output` requirement to build.
+
 ## [0.3.0] - 2026-09-26
 
 ### Added

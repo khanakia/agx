@@ -12,7 +12,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/khanakia/voltkit/appdir"
+	"github.com/ubgo/voltkit/appdir"
 
 	"github.com/khanakia/agx/config"
 	"github.com/khanakia/agx/internal/appmeta"

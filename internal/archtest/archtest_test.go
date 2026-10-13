@@ -20,7 +20,7 @@ const module = "github.com/khanakia/agx"
 // Imports that mark a package as framework-bound.
 const (
 	cobraPath      = "github.com/spf13/cobra"
-	versioncmdPath = "github.com/khanakia/voltkit/versioncmd"
+	versioncmdPath = "github.com/ubgo/voltkit/versioncmd"
 )
 
 // repoRoot is two levels up from internal/archtest.
@@ -98,7 +98,7 @@ func TestLayering(t *testing.T) {
 			}
 			// 2. Libraries never import internal packages or the framework.
 			isLibrary := strings.HasPrefix(dir, "provider") || dir == "config" || dir == "secret" || dir == "pick" || dir == "sessions"
-			if isLibrary && (strings.HasPrefix(imp, module+"/internal/") || imp == cobraPath || strings.HasPrefix(imp, "github.com/khanakia/voltkit/")) {
+			if isLibrary && (strings.HasPrefix(imp, module+"/internal/") || imp == cobraPath || strings.HasPrefix(imp, "github.com/ubgo/voltkit/")) {
 				t.Errorf("library %s imports %s", dir, imp)
 			}
 			// 3. Only internal/cli touches cobra and voltkit command modules.

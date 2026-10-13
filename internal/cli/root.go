@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"github.com/khanakia/voltkit/versioncmd"
 	"github.com/spf13/cobra"
+	"github.com/ubgo/voltkit/versioncmd"
 
 	"github.com/khanakia/agx/internal/appmeta"
 )

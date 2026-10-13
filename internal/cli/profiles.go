@@ -4,8 +4,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/khanakia/voltkit/output"
 	"github.com/spf13/cobra"
+	"github.com/ubgo/voltkit/output"
 
 	"github.com/khanakia/agx/internal/render"
 	"github.com/khanakia/agx/provider"
