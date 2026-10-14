@@ -44,10 +44,48 @@ func TestResume_ListText(t *testing.T) {
 	if out := h.stdout.String(); !strings.Contains(out, untitled) || !strings.Contains(out, "2 hr ago") || !strings.Contains(out, "id-1") {
 		t.Errorf("list = %q", out)
 	}
-	// No conversations anywhere: a clear error, nothing launched.
+	// No conversations in this folder: a clear error naming it, nothing launched.
 	h2 := newHarness(t, "")
-	if code := h2.run("resume"); code == ExitOK || !strings.Contains(h2.stderr.String(), "no matching conversations") {
+	if code := h2.run("resume"); code != ExitFailure || !strings.Contains(h2.stderr.String(), "no conversations in "+h2.cwd) {
 		t.Errorf("empty resume: %d %s", code, h2.stderr.String())
+	}
+}
+
+// An empty folder never widens to other folders: resume and --list fail with
+// a hint naming --all, --list --json prints an empty envelope, and --all still
+// reaches the conversation stored elsewhere.
+func TestResume_EmptyFolderNoFallback(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t, "")
+	home := filepath.Join(h.home, ".claude")
+	other := filepath.Join(h.root, "other")
+	if err := os.MkdirAll(other, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	h.claude.convs[home] = []provider.Conversation{
+		{Provider: provider.Claude, Home: home, ID: "elsewhere", Title: "Elsewhere", Dir: other, Updated: h.now},
+	}
+	for _, args := range [][]string{{"resume"}, {"resume", "--last"}, {"resume", "--list"}} {
+		h.stdout.Reset()
+		h.stderr.Reset()
+		code := h.run(args...)
+		errOut := h.stderr.String()
+		if code != ExitFailure || !strings.Contains(errOut, "no conversations in "+h.cwd) || !strings.Contains(errOut, "resume --all") {
+			t.Errorf("%v: exit %d, stderr %q", args, code, errOut)
+		}
+		if strings.Contains(h.stdout.String(), "elsewhere") || len(h.execs) != 0 {
+			t.Errorf("%v widened to another folder: stdout %q, execs %d", args, h.stdout.String(), len(h.execs))
+		}
+	}
+	h.stdout.Reset()
+	if code := h.run("resume", "--list", "--json"); code != ExitOK {
+		t.Fatalf("--list --json: exit %d %s", code, h.stderr.String())
+	}
+	if e := decode[[]conversationView](t, h.stdout.Bytes()); e.Kind != kindConversationList || len(e.Data) != 0 {
+		t.Errorf("--list --json = %+v", e)
+	}
+	if code := h.run("resume", "--all", "--last"); code != ExitOK || h.lastExec().Dir != other {
+		t.Errorf("--all: exit %d %s", code, h.stderr.String())
 	}
 }
 

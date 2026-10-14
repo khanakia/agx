@@ -159,7 +159,7 @@ func (a *app) loadWorkspaces(ctx context.Context, cfg config.Config, q string) (
 	if err != nil {
 		return nil, err
 	}
-	convs, _, err := a.findConversations(ctx, cfg, cwd, true, 0)
+	convs, err := a.findConversations(ctx, cfg, cwd, true, 0)
 	if err != nil {
 		return nil, err
 	}

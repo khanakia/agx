@@ -86,7 +86,7 @@ Prebuilt binaries (macOS, Linux, Windows; amd64 and arm64) are on the [Releases 
 
 ```sh
 # macOS on Apple Silicon — swap darwin_arm64 for darwin_amd64, linux_amd64, linux_arm64
-curl -sL https://github.com/khanakia/agx/releases/download/v0.3.1/agx_v0.3.1_darwin_arm64.tar.gz | tar -xz agx
+curl -sL https://github.com/khanakia/agx/releases/download/v0.3.2/agx_v0.3.2_darwin_arm64.tar.gz | tar -xz agx
 sudo mv agx /usr/local/bin/
 agx version
 ```
@@ -251,6 +251,8 @@ agx ws invoice                       # only workspaces with a chat mentioning "i
 agx ws --list                        # print the workspaces (--json: kind workspace.list)
 agx resume --all --list --json | jq -r '.data[] | "\(.updated[0:16])  \(.provider)  \(.profile)  \(.title // "(untitled)")"'
 ```
+
+In a folder with no conversations, `agx resume` (and `--last`, `--list`) stops with `no conversations in <folder>` and a hint to use `--all`, exit 1; it never falls back to other folders on its own. `--list --json` prints an empty list with exit 0, so scripts still get valid JSON.
 
 ```text
 $ agx resume --all --list --limit 3
@@ -492,7 +494,7 @@ Then `clw`, `clanew spike`, `clr pglite`, … work like the commands they stand 
 | `agx profiles` | Every profile: provider, home, account, plan, login state, billing, source |
 | `agx run [-p profile\|auto] [-- args…]` | Start the agent in the current folder with the profile's flags, env and secrets |
 | `agx new [-p profile\|auto] [slug…]` | Create `sessions.root/[slug_]YYYYMMDD_HHMMSS`, enter it, start the agent |
-| `agx resume [query…]` | Pick a conversation (this folder first, else recent everywhere) and continue it on its own account; `--last`, `--all`, `--list`, `--json`, `-b/--browse` |
+| `agx resume [query…]` | Pick a conversation (this folder, or every folder with `--all`) and continue it on its own account; `--last`, `--all`, `--list`, `--json`, `-b/--browse` |
 | `agx ws [query…]` | Pick a workspace (any folder with conversations), then a chat in it, and resume it; `--list`, `--json` |
 | `agx sessions ls` | Session folders with file counts and whether any provider holds history for them |
 | `agx sessions gc [--yes]` | Remove empty session folders with no history (dry run unless `--yes`) |

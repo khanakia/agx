@@ -116,11 +116,11 @@ func (a *app) pickMove(ctx context.Context, o *moveOpts) (string, error) {
 	dir := cwd
 	var chats []conversationView
 	if !o.all {
-		convs, scoped, err := a.findConversations(ctx, cfg, cwd, false, 0)
+		convs, err := a.findConversations(ctx, cfg, cwd, false, 0)
 		if err != nil {
 			return "", err
 		}
-		if scoped && len(convs) > 0 {
+		if len(convs) > 0 {
 			chats = conversationViews(cfg, convs)
 		}
 	}

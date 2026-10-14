@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-14
+
+### Changed
+
+- `agx resume` no longer falls back to every folder when the current folder has no conversations. It prints `agx: no conversations in <folder>` with the hint `(agx resume --all to pick from every folder)` and exits 1; `--last` and `--list` do the same. `--list --json` prints an empty `conversation.list` envelope and exits 0. Every folder is still one flag away with `--all`.
+
+### Fixed
+
+- Sessions launched by agx (`run`, `new`, `resume`, aliases) no longer inherit `CLAUDE_CODE_CHILD_SESSION`. A terminal opened from inside a Claude Code session carries that marker, and a top-level session started with it does not save its transcript, so it could not be resumed later. agx now removes the variable from the child environment.
+
 ## [0.3.1] - 2026-10-14
 
 ### Added
@@ -87,7 +97,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/khanakia/agx/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/khanakia/agx/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/khanakia/agx/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/khanakia/agx/compare/v0.2.0...v0.2.1

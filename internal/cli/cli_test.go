@@ -684,3 +684,35 @@ func TestTruncate(t *testing.T) {
 		t.Errorf("truncate = %q / %q", truncate("héllo", 10), truncate("héllo world", 5))
 	}
 }
+
+// TestRun_DropsChildSessionMarker pins that a leaked Claude helper marker never
+// reaches a session agx launches, and that --dry-run reports the removal.
+func TestRun_DropsChildSessionMarker(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t, `
+providers:
+  claude: {}
+profiles:
+  - {name: personal, provider: claude, home: HOME/.claude}
+`)
+	raw, _ := os.ReadFile(h.cfgPath)
+	if err := os.WriteFile(h.cfgPath, bytes.ReplaceAll(raw, []byte("HOME/"), []byte(h.home+"/")), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h.env[childSessionEnv] = "1"
+	if code := h.run("run", "-p", "personal"); code != ExitOK {
+		t.Fatalf("exit %d: %s", code, h.stderr.String())
+	}
+	for _, kv := range h.lastExec().Env {
+		if strings.HasPrefix(kv, childSessionEnv+"=") {
+			t.Errorf("marker leaked into child env: %s", kv)
+		}
+	}
+	h.stdout.Reset()
+	if code := h.run("run", "-p", "personal", "--dry-run"); code != ExitOK {
+		t.Fatalf("exit %d", code)
+	}
+	if !strings.Contains(h.stdout.String(), "-"+childSessionEnv+" (removed)") {
+		t.Errorf("dry run:\n%s", h.stdout.String())
+	}
+}

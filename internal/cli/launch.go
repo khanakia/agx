@@ -118,9 +118,9 @@ func newResumeCmd(a *app) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "resume [query...]",
 		Short: "Continue a conversation on the account that holds it",
-		Long: "Lists conversations started in this folder (or, if there are none, recent ones\n" +
-			"everywhere) across every provider home, lets you pick one, and continues it in its\n" +
-			"folder on the profile whose home stores it — so a work conversation resumes on work.",
+		Long: "Lists conversations started in this folder (or every folder with --all) across\n" +
+			"every provider home, lets you pick one, and continues it in its folder on the\n" +
+			"profile whose home stores it — so a work conversation resumes on work.",
 		Example: "  agx resume                 # pick from this folder's conversations\n" +
 			"  agx resume pglite          # filter by title / folder / id\n" +
 			"  agx resume --last          # newest, no picker\n" +
@@ -160,9 +160,16 @@ func (a *app) runResume(ctx context.Context, o *resumeOpts, query []string) erro
 	if q != "" {
 		fetchLimit = 0
 	}
-	convs, scoped, err := a.findConversations(ctx, cfg, cwd, o.all, fetchLimit)
+	convs, err := a.findConversations(ctx, cfg, cwd, o.all, fetchLimit)
 	if err != nil {
 		return err
+	}
+	// An empty folder is an answer, not a cue to list every other folder:
+	// the global list is reachable by name (--all), never as a fallback.
+	// --json still prints its empty envelope so scripts get valid output.
+	jsonList := o.list && o.json
+	if len(convs) == 0 && !o.all && !jsonList {
+		return fmt.Errorf("no conversations in %s\n     (%s resume --all to pick from every folder)", cwd, appmeta.Name)
 	}
 	convs = filterConversations(convs, q)
 	if o.limit > 0 && len(convs) > o.limit {
@@ -174,9 +181,6 @@ func (a *app) runResume(ctx context.Context, o *resumeOpts, query []string) erro
 	}
 	if len(convs) == 0 {
 		return errors.New("no matching conversations")
-	}
-	if !scoped && !o.all {
-		a.warn("no conversations in this folder — showing recent ones everywhere")
 	}
 
 	idx := 0
@@ -218,10 +222,10 @@ func (a *app) resumeConversation(ctx context.Context, cfg config.Config, o *resu
 	return a.launchOrPlan(ctx, plan{Dir: chosen.Dir, Profile: p.Name, ResumeID: chosen.ID}, p, req)
 }
 
-// findConversations lists conversations from every distinct provider home.
-// scoped is true when the result is limited to cwd; with no conversations in
-// cwd (and !all) it falls back to every folder.
-func (a *app) findConversations(ctx context.Context, cfg config.Config, cwd string, all bool, limit int) (convs []provider.Conversation, scoped bool, err error) {
+// findConversations lists conversations from every distinct provider home,
+// limited to cwd unless all is set. It never widens on its own: an empty cwd
+// returns an empty list.
+func (a *app) findConversations(ctx context.Context, cfg config.Config, cwd string, all bool, limit int) ([]provider.Conversation, error) {
 	collect := func(dir string) ([]provider.Conversation, error) {
 		var out []provider.Conversation
 		for _, p := range cfg.Homes() {
@@ -246,14 +250,10 @@ func (a *app) findConversations(ctx context.Context, cfg config.Config, cwd stri
 		}
 		return out, nil
 	}
-	if !all {
-		convs, err = collect(cwd)
-		if err != nil || len(convs) > 0 {
-			return convs, true, err
-		}
+	if all {
+		return collect("")
 	}
-	convs, err = collect("")
-	return convs, false, err
+	return collect(cwd)
 }
 
 // filterConversations keeps conversations whose title, folder or id contains
@@ -424,6 +424,13 @@ func (a *app) autoPick(ctx context.Context, cfg config.Config, id provider.ID) (
 	return res.Chosen, nil
 }
 
+// childSessionEnv is the variable Claude Code sets on its own internal helper
+// processes. Terminals opened from inside a Claude session inherit it, and a
+// top-level session started with it present turns transcript saving off, so
+// the owner's sessions cannot be resumed. agx only launches sessions the user
+// starts, so it must never pass the marker on.
+const childSessionEnv = "CLAUDE_CODE_CHILD_SESSION"
+
 // launch builds the provider command (resolving secrets) and executes it,
 // or prints it for --dry-run.
 func (a *app) launch(ctx context.Context, p provider.Profile, req provider.LaunchRequest, dryRun bool) error {
@@ -431,7 +438,7 @@ func (a *app) launch(ctx context.Context, p provider.Profile, req provider.Launc
 	if err != nil {
 		return err
 	}
-	req.Env = a.Environ()
+	req.Env = provider.UnsetEnv(a.Environ(), childSessionEnv)
 	secretNames := make([]string, 0, len(p.Secrets))
 	for k := range p.Secrets {
 		secretNames = append(secretNames, k)

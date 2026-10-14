@@ -70,7 +70,4 @@ func TestPromoteThenResume(t *testing.T) {
 	if c.Dir != newDir || !slices.Contains(c.Args, "sid-123") || !slices.Contains(c.Env, claude.ConfigDirEnv+"="+workHome) {
 		t.Errorf("resume after promote = %+v", c)
 	}
-	if strings.Contains(h.stderr.String(), "showing recent ones everywhere") {
-		t.Error("resume fell back to searching everywhere instead of finding the folder's conversation")
-	}
 }
