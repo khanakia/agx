@@ -647,6 +647,8 @@ task run -- resume --list
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev loop and conventions.
 
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs `task check` plus golangci-lint on every push and pull request to `main`. To release, move the `[Unreleased]` notes in CHANGELOG.md under a new `## [X.Y.Z] - date` heading, commit, then `git tag vX.Y.Z && git push --tags`: the release workflow tests, builds every platform with checksums and publishes the GitHub release with that CHANGELOG section as its notes.
+
 ## FAQ
 
 **Can I see how many tokens I have left on my Claude or Codex plan?**

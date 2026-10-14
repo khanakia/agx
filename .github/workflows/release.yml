@@ -1,0 +1,67 @@
+# release: publish a GitHub release for a pushed v* tag, the same way a
+# local `volt release . vX.Y.Z` does: volt runs the tests, builds every
+# platform in .volt.yml, writes checksums.txt, takes the notes from the
+# matching CHANGELOG.md section and verifies the published release.
+#
+# Flow: update CHANGELOG.md, commit, then `git tag vX.Y.Z && git push --tags`.
+#
+# A tag that already has a release (for example one published from a laptop
+# with `volt release`, which also pushes the tag) is skipped on push, so the
+# verified assets and checksums are never rebuilt behind the publisher's back.
+# Run the workflow by hand with the tag to republish one on purpose: volt's
+# --from-tag path is idempotent (it edits the release and re-uploads assets
+# with --clobber).
+name: release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to (re)publish, e.g. v0.3.1
+        required: true
+        type: string
+permissions:
+  contents: write
+# Never two releases at once, and never cancel one mid-publish: that can
+# leave a permanent tag with no assets.
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      # Values reach scripts through env, never inline expressions.
+      TAG: ${{ inputs.tag || github.ref_name }}
+      EVENT: ${{ github.event_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Skip a tag that is already released
+        id: exists
+        run: |
+          if [ "$EVENT" = push ] && gh release view "$TAG" --json tagName >/dev/null 2>&1; then
+            echo "release $TAG already exists (published locally?) — skipping; run this workflow by hand to republish"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Test
+        if: steps.exists.outputs.skip != 'true'
+        run: go test -race ./...
+      # volt-action installs a checksum-verified volt binary and runs it with
+      # GH_TOKEN; the volt version is pinned here, not left to the action's
+      # moving default.
+      - name: Build and publish (volt release --from-tag)
+        if: steps.exists.outputs.skip != 'true'
+        uses: ubgo/volt-action@v1
+        with:
+          version: volt/v0.3.2
+          args: release --from-tag ${{ env.TAG }}

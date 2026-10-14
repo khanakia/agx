@@ -36,6 +36,13 @@ task check   # gofmt, go vet, staticcheck, go test -race, build (needs Go 1.25+,
 
 User-facing changes go under `[Unreleased]` in [CHANGELOG.md](CHANGELOG.md), following [Keep a Changelog](https://keepachangelog.com/).
 
+## Releasing (maintainers)
+
+1. Move the `[Unreleased]` notes under `## [X.Y.Z] - YYYY-MM-DD` in CHANGELOG.md (plus the compare link) and update the README download link; commit and push.
+2. `git tag vX.Y.Z && git push --tags`.
+
+The tag starts `.github/workflows/release.yml`: it runs the tests, then `volt release --from-tag vX.Y.Z` builds every platform, writes `checksums.txt`, publishes the GitHub release with that CHANGELOG section as notes and verifies it. A tag that already has a release (for example one published locally with `volt release . vX.Y.Z`) is skipped; to republish, run the workflow by hand with the tag. Bump the patch number unless a bigger bump was agreed.
+
 ## Questions
 
 Open a [discussion or issue](https://github.com/khanakia/agx/issues). We're happy to help you land your first contribution.

@@ -1,0 +1,43 @@
+# ci: the repo's own gate on every push and pull request to main.
+# This is `task check` (gofmt, go vet, staticcheck, race tests, cross-build,
+# build) plus golangci-lint, the same commands a contributor runs locally.
+# The repo is public, so Actions minutes are free; the local `task check`
+# stays the gate before a commit.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  # Tool versions are pinned so a new upstream release cannot turn the gate
+  # red without a commit here. Bump them on purpose.
+  TASK_VERSION: v3.53.1
+  STATICCHECK_VERSION: 2026.2.1
+  GOLANGCI_LINT_VERSION: v2.13.2
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # go-version-file reads go.mod, so CI never drifts from the module's
+      # declared Go version.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # Built with the go.mod toolchain (not a prebuilt binary), so the
+      # linters always understand the language version the module targets.
+      - name: Install task, staticcheck, golangci-lint
+        run: |
+          go install github.com/go-task/task/v3/cmd/task@"$TASK_VERSION"
+          go install honnef.co/go/tools/cmd/staticcheck@"$STATICCHECK_VERSION"
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@"$GOLANGCI_LINT_VERSION"
+      - name: task check
+        run: task check
+      - name: golangci-lint
+        run: golangci-lint run ./...
