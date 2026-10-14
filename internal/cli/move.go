@@ -47,6 +47,8 @@ type moveOpts struct {
 	dryRun   bool
 	noBackup bool
 	json     bool
+	pick     bool
+	all      bool
 }
 
 func newSessionsMoveCmd(a *app) *cobra.Command {
@@ -63,12 +65,25 @@ func newSessionsMoveCmd(a *app) *cobra.Command {
 			"  agx sessions move --to work                    # this folder, personal → work\n" +
 			"  agx sessions move docker_setup_mac --to work   # a folder by name or path\n" +
 			"  agx sessions move . --to personal --from work  # back again\n" +
-			"  agx sessions move . --to work --only aeba9843  # one conversation (id or unique prefix)",
+			"  agx sessions move . --to work --only aeba9843  # one conversation (id or unique prefix)\n" +
+			"  agx sessions move -i                           # pick this folder's chats, then the target\n" +
+			"  agx sessions move -i --all --to work --dry-run # pick any folder, then its chats",
+
 		Args: usageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			folder := "."
 			if len(args) == 1 {
 				folder = args[0]
+			}
+			if o.pick {
+				if len(args) == 1 || len(o.only) > 0 {
+					return usageErr(errors.New("--pick chooses the folder and the chats; drop the folder argument and --only"))
+				}
+				dir, err := a.pickMove(ctxOf(cmd), o)
+				if err != nil {
+					return err
+				}
+				folder = dir
 			}
 			return a.runMove(ctxOf(cmd), folder, o)
 		},
@@ -80,7 +95,133 @@ func newSessionsMoveCmd(a *app) *cobra.Command {
 	f.BoolVar(&o.dryRun, flagDryRun, false, "print the plan and change nothing")
 	f.BoolVar(&o.noBackup, "no-backup", false, "skip copying the sources to <home>/backups first")
 	f.BoolVar(&o.json, flagJSON, false, "print the JSON envelope")
+	f.BoolVarP(&o.pick, "pick", "i", false, "pick this folder's chats to move (and --to, when not given); --all to pick the folder first")
+	f.BoolVar(&o.all, "all", false, "with --pick: choose the folder from every workspace first")
 	return c
+}
+
+// pickMove is `sessions move --pick`. It is scoped to the folder you are
+// in and lists its chats; only --all opens the workspace picker first (no
+// automatic global fallback when this folder has none). The chosen chats
+// become --only, and --to is picked when not given. Returns the folder.
+func (a *app) pickMove(ctx context.Context, o *moveOpts) (string, error) {
+	cfg, err := a.config()
+	if err != nil {
+		return "", err
+	}
+	cwd, err := a.Getwd()
+	if err != nil {
+		return "", err
+	}
+	dir := cwd
+	var chats []conversationView
+	if !o.all {
+		convs, scoped, err := a.findConversations(ctx, cfg, cwd, false, 0)
+		if err != nil {
+			return "", err
+		}
+		if scoped && len(convs) > 0 {
+			chats = conversationViews(cfg, convs)
+		}
+	}
+	if !o.all && chats == nil {
+		// Scoped on purpose: the user asked for "this folder" by default and
+		// a global list only by name (--all), never as a silent fallback.
+		return "", fmt.Errorf("no chats in %s; use --all to pick from every folder", render.ShortenHome(cwd, a.UserHome))
+	}
+	if o.all {
+		ws, err := a.loadWorkspaces(ctx, cfg, "")
+		if err != nil {
+			return "", err
+		}
+		wi, err := a.pickWorkspace(ws)
+		if err != nil {
+			return "", err
+		}
+		dir, chats = ws[wi].Dir, ws[wi].convs
+	}
+	picked, err := a.pickChats(chats)
+	if err != nil {
+		return "", err
+	}
+	o.only = nil
+	for _, v := range picked {
+		o.only = append(o.only, v.ID)
+	}
+	if o.to == "" {
+		to, err := a.pickMoveTarget(cfg, picked)
+		if err != nil {
+			return "", err
+		}
+		o.to = to
+	}
+	return dir, nil
+}
+
+// pickChats multi-selects conversations in the resume row format, falling
+// back to a single choice when the picker cannot select several.
+func (a *app) pickChats(chats []conversationView) ([]conversationView, error) {
+	items := make([]string, len(chats))
+	for i, v := range chats {
+		items[i] = a.conversationLine(v)
+	}
+	var idx []int
+	var err error
+	if mp, ok := a.Picker.(MultiPicker); ok {
+		idx, err = mp.PickMany("move (tab: mark)", items)
+	} else {
+		var i int
+		i, err = a.Picker.Pick("move", items)
+		idx = []int{i}
+	}
+	if errors.Is(err, ErrCancelled) {
+		return nil, &ExitError{Code: ExitFailure, Err: err}
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := make([]conversationView, len(idx))
+	for i, n := range idx {
+		out[i] = chats[n]
+	}
+	return out, nil
+}
+
+// pickMoveTarget lists the profiles the chosen chats could move to (same
+// provider as one of them), each marked with how many of those chats its
+// home holds now, and returns the chosen profile's name.
+func (a *app) pickMoveTarget(cfg config.Config, chats []conversationView) (string, error) {
+	here := map[provider.ID]bool{}
+	held := map[string]int{} // provider + clean home → chats in this folder
+	key := func(id provider.ID, home string) string { return string(id) + "\x00" + filepath.Clean(home) }
+	for _, v := range chats {
+		here[v.Provider] = true
+		held[key(v.Provider, v.Home)]++
+	}
+	var names, items []string
+	for _, p := range cfg.Profiles {
+		if !here[p.Provider] {
+			continue
+		}
+		mark := ""
+		if n := held[key(p.Provider, p.Home)]; n > 0 {
+			mark = fmt.Sprintf("← %d chat(s) here now", n)
+		}
+		names = append(names, p.Name)
+		items = append(items, fmt.Sprintf("%-*s %-*s %-*s %s", profileWidth, p.Name, providerWidth, p.Provider,
+			dirWidth, render.ShortenHome(p.Home, a.UserHome), mark))
+	}
+	if len(names) == 0 {
+		return "", errors.New("no profile shares a provider with this folder's conversations")
+	}
+	i, err := a.Picker.Pick("move to", items)
+	if errors.Is(err, ErrCancelled) {
+		return "", &ExitError{Code: ExitFailure, Err: err}
+	}
+	if err != nil {
+		return "", err
+	}
+	return names[i], nil
 }
 
 // moveResult is one source home's entry in the session.move payload.

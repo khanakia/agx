@@ -20,6 +20,7 @@ const (
 	kindUsageList        = "usage.list"
 	kindProfileList      = "profile.list"
 	kindConversationList = "conversation.list"
+	kindWorkspaceList    = "workspace.list"
 	kindSessionList      = "session.list"
 	kindSessionGC        = "session.gc"
 	kindSessionPromote   = "session.promote"

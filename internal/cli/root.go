@@ -15,6 +15,7 @@ const (
 	flagColor    = "color"
 	flagTimeout  = "timeout"
 	flagDryRun   = "dry-run"
+	flagBrowse   = "browse"
 )
 
 // Command groups for `agx --help`.
@@ -59,7 +60,7 @@ func NewRoot(d Deps) *cobra.Command {
 			root.AddCommand(c)
 		}
 	}
-	add(groupAgents, usage, newPlanCmd(a), newProfilesCmd(a), newRunCmd(a), newNewCmd(a), newResumeCmd(a))
+	add(groupAgents, usage, newPlanCmd(a), newProfilesCmd(a), newRunCmd(a), newNewCmd(a), newResumeCmd(a), newWsCmd(a))
 	add(groupSessions, newSessionsCmd(a))
 	add(groupSetup, newDoctorCmd(a), newShellInitCmd(a),
 		versioncmd.New(versioncmd.WithBinaryName(appmeta.Name)))

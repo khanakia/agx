@@ -6,9 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-14
+
+### Added
+
+- `agx ws` (also `agx resume --browse` / `-b`): a two-level picker. First every folder that has conversations, across all accounts and providers, newest activity first (chat count and profiles per folder); then that folder's chats; the chosen chat resumes on its own account. Esc on the chats goes back to the folders. `--list` prints the folders, `--list --json` as kind `workspace.list`. The shell layer routes `ws` through the plan file, so the shell is left in the chat's folder.
+- `agx sessions move -i` / `--pick`: multi-select this folder's chats (fzf `--multi`; Tab marks), then pick the target profile when `--to` is not given (same-provider profiles; the ones holding the chats now are marked). The chosen chats become `--only`; `--dry-run` and every safety check apply. `--all` picks the folder from every workspace first; in a folder with no chats it stops and says to use `--all`. Without fzf, numbers such as `1 3` or `1,3` are accepted.
+- `agx resume --list` and the resume picker show the profile each conversation resumes on (the same `config.ForHome` rule the launch uses) in a column after the provider. `--json` (kind `conversation.list`) adds `profile` and `profiles` (every profile on that home, so a shared home such as personal + kimi on `~/.claude` lists both); all existing fields are unchanged. Library: `config.Config.ProfilesForHome`.
+
 ### Changed
 
+- `agx resume --list` rows fit on one line: the id is cut to 8 characters (still usable as a query), long titles end in `…`, and a folder that does not fit shows its last path segment. `--json` keeps full values.
+- Folders that no longer exist are left out of the workspace lists (`ws`, `sessions move -i --all`).
 - voltkit modules now come from `github.com/ubgo/voltkit` (the repo moved from the khanakia account): `appdir` and `output` v0.2.0, `versioncmd` v0.2.1. versioncmd v0.2.1 requires a published `output`, so agx no longer depends on its own direct `output` requirement to build.
+
+### Fixed
+
+- A keychain lookup that timed out could still block until the `security` process's children exited, because they held its output pipe open; the lookup now gives up shortly after the timeout (`exec.Cmd.WaitDelay`).
 
 ## [0.3.0] - 2026-09-26
 
@@ -73,7 +87,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/khanakia/agx/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/khanakia/agx/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/khanakia/agx/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/khanakia/agx/compare/v0.1.0...v0.2.0

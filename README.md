@@ -56,9 +56,9 @@ Claude and Codex subscriptions don't give you a token balance. They give you a *
 
 - **Every account, every provider, one view.** Claude Code and Codex, all config dirs, found automatically.
 - **Launch where there is room.** `-p auto` scores each account by its fullest window and picks the emptiest, explaining the choice.
-- **Resume on the right account.** agx knows which home stores each conversation, finds it by folder or title, and resumes it there.
+- **Resume on the right account.** agx knows which home stores each conversation, finds it by folder or title, and resumes it there. Forgot the folder? `agx ws` lists every folder with conversations, then its chats.
 - **Session folders that clean up after themselves.** `agx new` makes a timestamped folder; `agx sessions gc` removes the empty ones that have no history; `agx sessions promote` turns one into a project and moves its Claude history with it.
-- **Your shell habits, kept.** `agx shell-init` generates your old `cl` / `clw` / `clnew` style aliases from config, and lets `new` / `resume` leave your shell in the session folder.
+- **Your shell habits, kept.** `agx shell-init` generates your old `cl` / `clw` / `clnew` style aliases from config, and lets `new` / `resume` / `ws` leave your shell in the session folder.
 - **Read-only and quota-free.** One GET per account to the vendor's own usage endpoint; tokens are never refreshed, written or printed.
 
 | | **agx** | claude.ai / ChatGPT usage pages | Claude Code `/usage` | Local log analyzers | Hand-written shell aliases |
@@ -86,7 +86,7 @@ Prebuilt binaries (macOS, Linux, Windows; amd64 and arm64) are on the [Releases 
 
 ```sh
 # macOS on Apple Silicon — swap darwin_arm64 for darwin_amd64, linux_amd64, linux_arm64
-curl -sL https://github.com/khanakia/agx/releases/download/v0.3.0/agx_v0.3.0_darwin_arm64.tar.gz | tar -xz agx
+curl -sL https://github.com/khanakia/agx/releases/download/v0.3.1/agx_v0.3.1_darwin_arm64.tar.gz | tar -xz agx
 sudo mv agx /usr/local/bin/
 agx version
 ```
@@ -102,6 +102,7 @@ agx doctor               # check config, logins, binaries, shell integration
 agx run -p auto          # start Claude Code on the account with the most headroom
 agx new pglite spike     # new session folder pglite_spike_YYYYMMDD_HHMMSS, start there
 agx resume               # pick a conversation from this folder and continue it
+agx ws                   # pick any folder with conversations, then a chat in it
 ```
 
 No config is needed: agx discovers `~/.claude` (profile `personal`), every `~/.claude-<name>` (profile `<name>`), and `~/.codex` (profile `codex`). Add a config file when you want named profiles, extra flags, secrets or aliases.
@@ -244,14 +245,18 @@ agx resume --list                    # print instead of launching
 agx resume --all --list --limit 20   # the 20 most recent conversations anywhere
 agx resume --last --dry-run          # show which account / folder / id it would use
 agx resume -p personal --last        # force a profile (normally chosen automatically)
-agx resume --all --list --json | jq -r '.data[] | "\(.updated[0:16])  \(.provider)  \(.title // "(untitled)")"'
+agx ws                               # workspace picker: any folder with chats → its chats → resume
+agx resume -b                        # the same (--browse)
+agx ws invoice                       # only workspaces with a chat mentioning "invoice"
+agx ws --list                        # print the workspaces (--json: kind workspace.list)
+agx resume --all --list --json | jq -r '.data[] | "\(.updated[0:16])  \(.provider)  \(.profile)  \(.title // "(untitled)")"'
 ```
 
 ```text
 $ agx resume --all --list --limit 3
-just now     claude   Claude account usage limits          ~/work/sessions/20260923_175923   2bec3f80-…
-23 min ago   claude   Automate visa application form        ~/work/sessions/visa_20260901_…   5c9565db-…
-1 hr ago     codex    (untitled)                           ~/work/agentop                    019eea1d-…
+just now     claude work       Claude account usage limits      …/20260923_175923             2bec3f80
+23 min ago   claude personal   Automate visa application form   …/visa_20260901_194915        5c9565db
+1 hr ago     codex  codex      (untitled)                       ~/work/agentop                019eea1d
 
 $ agx resume --last --dry-run         # in a folder whose conversation lives on the work account
 profile: work (claude, /Users/you/.claude-work)
@@ -259,7 +264,16 @@ dir:     /Users/you/work/sessions/20260921_091439
 exec:    claude --dangerously-skip-permissions --resume dbcaeaf2-…
 ```
 
-The account is picked for you: a conversation stored in `~/.claude-work` resumes on `work`, one in `~/.codex` resumes with `codex resume`.
+The account is picked for you: a conversation stored in `~/.claude-work` resumes on `work`, one in `~/.codex` resumes with `codex resume`. In `--list` and the picker, the provider (`claude` / `codex`) is followed by that profile. Each row stays on one line: long titles end in `…`, a folder that does not fit shows its last segment, and the id is cut to 8 characters, which still works as a query (`agx resume 2bec3f80`). When several profiles share one home (say `personal` and an api-billed `kimi` both on `~/.claude`), the transcript does not record which one made it, so the row shows the profile `resume` launches on (plan-billed first, then the default, then config order) and `--json` adds `profiles` with every candidate. `--json` keeps the full id, folder and `home`, plus `profile` and `profiles`.
+
+**Don't remember which folder a chat was in?** `agx ws` (same as `agx resume --browse` / `-b`) lists every folder that has conversations, across all accounts and providers, newest activity first. Pick one, then pick a chat in it, and it resumes there on its own account. Esc on the chat list goes back to the folders; typing filters both lists. Folders that no longer exist are hidden. With the shell layer loaded, your shell is left in the chat's folder.
+
+```text
+$ agx ws --list
+just now     8 chats   work,personal        ~/code/brick
+2 min ago    3 chats   personal             ~/code/sqlb
+17 d ago     4 chats   work                 ~/code/docker_setup_mac
+```
 
 ### Session folders: `agx sessions`
 
@@ -324,6 +338,11 @@ agx sessions move . --to work --only aeba9843,6144697a
 agx sessions move . --to work --no-backup      # skip the backup copy
 agx sessions move . --to work --json           # machine-readable plan / result
 
+# pick instead of typing ids / folder names
+agx sessions move -i                           # mark this folder's chats (Tab), then pick the target account
+agx sessions move -i --to work --dry-run       # mark chats, show the plan
+agx sessions move -i --all                     # pick the folder from every workspace first
+
 # afterwards
 agx resume --list                              # the conversations now list under the new account
 clr                                            # pick one — it opens on work
@@ -356,6 +375,7 @@ How it works:
 
 - The **target profile decides the provider** (`work` is a Claude profile, so Claude conversations move). Sources are every other account of that provider, or just `--from`.
 - **Same provider only.** `--from personal --to codex` is refused — Claude and Codex store conversations in different formats. `personal → kimi` is refused too: they share `~/.claude`, so there is nothing to move.
+- **Picking (`-i` / `--pick`):** lists this folder's conversations (provider, profile, title, id); mark one or more with Tab (Enter alone takes the highlighted one). Without `--to`, a second list offers the profiles of the same provider and marks the ones that hold the chosen chats now. The chosen chats become `--only`, and every check below still applies. In a folder with no conversations it stops with "use --all"; only `--all` opens the workspace list first. Without fzf, type numbers such as `1 3` or `1,3`. `-i` cannot be combined with a folder argument or `--only`.
 - **Which folder:** no argument = the current folder. A bare name is looked up under `sessions.root`, then in the current folder, then matched against the current folder's own name (so `agx sessions move docker_setup_mac …` works from inside it too). Anything with a `/` is a path.
 - **What moves (Claude):** each conversation's transcript and tool results, its file checkpoints (`file-history/`) and environment snapshot (`session-env/`), plus the folder's project memory. It merges into whatever the target already has; after a full move the now-empty history folder in the old account is removed (anything the move doesn't recognise is left in place and listed).
 - **Safe by default:** it stops before changing anything if Claude is running in that folder (in either account) or a conversation already exists in the target; it copies the sources to `<home>/backups/agx-move-<folder>-<time>/` first (`--no-backup` to skip); and if a move fails half-way, everything already moved is put back. Running it twice is harmless — the second run finds nothing to move.
@@ -472,11 +492,12 @@ Then `clw`, `clanew spike`, `clr pglite`, … work like the commands they stand 
 | `agx profiles` | Every profile: provider, home, account, plan, login state, billing, source |
 | `agx run [-p profile\|auto] [-- args…]` | Start the agent in the current folder with the profile's flags, env and secrets |
 | `agx new [-p profile\|auto] [slug…]` | Create `sessions.root/[slug_]YYYYMMDD_HHMMSS`, enter it, start the agent |
-| `agx resume [query…]` | Pick a conversation (this folder first, else recent everywhere) and continue it on its own account; `--last`, `--all`, `--list`, `--json` |
+| `agx resume [query…]` | Pick a conversation (this folder first, else recent everywhere) and continue it on its own account; `--last`, `--all`, `--list`, `--json`, `-b/--browse` |
+| `agx ws [query…]` | Pick a workspace (any folder with conversations), then a chat in it, and resume it; `--list`, `--json` |
 | `agx sessions ls` | Session folders with file counts and whether any provider holds history for them |
 | `agx sessions gc [--yes]` | Remove empty session folders with no history (dry run unless `--yes`) |
 | `agx sessions promote <folder> <name>` | Move a session folder into a project, taking its Claude history along; `--dry-run`, `--git-init` |
-| `agx sessions move [folder] --to <profile>` | Move a folder's conversations to another account of the same provider (e.g. personal → work); `--from`, `--only`, `--dry-run`, `--no-backup`, `--json` |
+| `agx sessions move [folder] --to <profile>` | Move a folder's conversations to another account of the same provider (e.g. personal → work); `--from`, `--only`, `-i/--pick`, `--all`, `--dry-run`, `--no-backup`, `--json` |
 | `agx doctor` | Local health checks (no network, never resolves secret values) |
 | `agx shell-init [zsh\|bash]` | Print the shell layer (see below) |
 | `agx version` | Version, commit and build provenance |
@@ -505,11 +526,12 @@ agx new -p auto --provider codex my spike   # auto-pick among Codex accounts
 | `agx profiles` | `--json` (aliases: `agx who`, `agx accounts`) |
 | `agx run` | `-p/--profile` · `--provider` · `--dry-run` · `-- <args passed to the agent>` |
 | `agx new` | `-p/--profile` · `--provider` · `--dry-run` · `[slug words]` |
-| `agx resume` | `[query words]` · `--last` · `--all` · `--list` · `--json` (with `--list`) · `--limit 50` · `-p/--profile` · `--dry-run` |
+| `agx resume` | `[query words]` · `--last` · `--all` · `--list` · `--json` (with `--list`) · `--limit 50` · `-b/--browse` · `-p/--profile` · `--dry-run` |
+| `agx ws` | `[query words]` · `--list` · `--json` (with `--list`) · `-p/--profile` · `--dry-run` |
 | `agx sessions ls` | `--json` |
 | `agx sessions gc` | `--yes` · `--min-age 24h` · `--json` |
 | `agx sessions promote <folder> <name>` | `--to <parent>` · `--dry-run` · `--git-init` · `--json` |
-| `agx sessions move [folder]` | `--to <profile>` (required) · `--from <profile>` · `--only <ids>` · `--dry-run` · `--no-backup` · `--json` |
+| `agx sessions move [folder]` | `--to <profile>` (required unless `-i` picks it) · `-i/--pick` · `--all` (with `-i`) · `--from <profile>` · `--only <ids>` · `--dry-run` · `--no-backup` · `--json` |
 | `agx doctor` | `--json` |
 | `agx shell-init` | `zsh` (default) or `bash` |
 | `agx version` / `agx --version` | `--json` (on `version`) |
@@ -570,7 +592,7 @@ A program cannot change its parent shell's directory, so add this to `~/.zshrc` 
 eval "$(agx shell-init zsh)"
 ```
 
-It defines an `agx` function: for `new` and `resume`, the binary writes a short-lived launch plan (never containing secrets), the function `cd`s into the session folder, reports it to your terminal (OSC 7) so new tabs open there, and then starts the agent. It also defines one function per `shell.aliases` entry, so `cl`, `clw`, `clnew` and friends keep working. Without it, every command still works; your shell just stays where it was.
+It defines an `agx` function: for `new`, `resume` and `ws`, the binary writes a short-lived launch plan (never containing secrets), the function `cd`s into the session folder, reports it to your terminal (OSC 7) so new tabs open there, and then starts the agent. It also defines one function per `shell.aliases` entry, so `cl`, `clw`, `clnew` and friends keep working. Without it, every command still works; your shell just stays where it was.
 
 ## JSON output
 
@@ -580,7 +602,7 @@ Every listing command has `--json`, emitting a stable envelope:
 { "schema_version": 1, "kind": "usage.list", "count": 3, "data": [ … ] }
 ```
 
-Kinds: `usage.list`, `plan.list`, `profile.list`, `conversation.list`, `session.list`, `session.gc`, `session.promote`, `session.move`, `doctor.report`, `version.show`.
+Kinds: `usage.list`, `plan.list`, `profile.list`, `conversation.list`, `workspace.list`, `session.list`, `session.gc`, `session.promote`, `session.move`, `doctor.report`, `version.show`.
 
 ```sh
 agx usage --json | jq '.data[] | {profile, windows: [.windows[] | {label, percent}]}'

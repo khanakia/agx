@@ -43,6 +43,12 @@ const (
 	securityNotFoundExit = 44
 	// defaultKeychainTimeout applies when Keychain.Timeout is zero.
 	defaultKeychainTimeout = 10 * time.Second
+	// keychainWaitDelay bounds how long a timed-out lookup waits for its
+	// output pipe to close after the process is killed. Killing `security`
+	// (or a wrapper script) does not kill a child that inherited stdout, and
+	// Output would otherwise block until that child exits — turning the
+	// timeout into "however long the child lives".
+	keychainWaitDelay = 200 * time.Millisecond
 	// userEnv is the fallback source of the username when os/user fails.
 	userEnv = "USER"
 )
@@ -89,7 +95,9 @@ func (k Keychain) find(service, account string) ([]byte, error) {
 		args = append(args, "-a", account)
 	}
 	args = append(args, "-w")
-	out, err := exec.CommandContext(ctx, bin, args...).Output()
+	cmd := exec.CommandContext(ctx, bin, args...)
+	cmd.WaitDelay = keychainWaitDelay
+	out, err := cmd.Output()
 	if err == nil {
 		return bytes.TrimSpace(out), nil
 	}

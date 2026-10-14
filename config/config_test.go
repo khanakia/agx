@@ -239,3 +239,51 @@ func TestExpand(t *testing.T) {
 		}
 	}
 }
+
+// TestForHome_Matrix pins the home → profile rule that both `resume` launch
+// and its listing use, across every shape of home sharing.
+func TestForHome_Matrix(t *testing.T) {
+	t.Parallel()
+	plan, api := provider.BillingPlan, provider.BillingAPI
+	prof := func(name string, id provider.ID, home string, b provider.Billing, def bool) provider.Profile {
+		return provider.Profile{Name: name, Provider: id, Home: home, Billing: b, Default: def}
+	}
+	tests := []struct {
+		name      string
+		profiles  []provider.Profile
+		id        provider.ID
+		home      string
+		want      string // "" = no profile
+		wantNames string // ProfilesForHome, config order
+	}{
+		{"unique home", []provider.Profile{prof("personal", provider.Claude, "/h/.claude", plan, true), prof("work", provider.Claude, "/h/.claude-work", plan, false)},
+			provider.Claude, "/h/.claude-work", "work", "work"},
+		{"shared home, default wins", []provider.Profile{prof("kimi", provider.Claude, "/h/.claude", plan, false), prof("personal", provider.Claude, "/h/.claude", plan, true)},
+			provider.Claude, "/h/.claude", "personal", "kimi,personal"},
+		{"shared home, plan beats api default", []provider.Profile{prof("kimi", provider.Claude, "/h/.claude", api, true), prof("personal", provider.Claude, "/h/.claude", plan, false)},
+			provider.Claude, "/h/.claude", "personal", "kimi,personal"},
+		{"shared home, no default, first configured", []provider.Profile{prof("a", provider.Claude, "/h/.claude", plan, false), prof("b", provider.Claude, "/h/.claude", plan, false)},
+			provider.Claude, "/h/.claude", "a", "a,b"},
+		{"unknown home", []provider.Profile{prof("personal", provider.Claude, "/h/.claude", plan, true)},
+			provider.Claude, "/h/.claude-old", "", ""},
+		{"unclean path still matches", []provider.Profile{prof("work", provider.Claude, "/h/.claude-work", plan, false)},
+			provider.Claude, "/h/./.claude-work/", "work", "work"},
+		{"same home, other provider ignored", []provider.Profile{prof("codex", provider.Codex, "/h/agent", plan, true), prof("cl", provider.Claude, "/h/agent", plan, true)},
+			provider.Codex, "/h/agent", "codex", "codex"},
+		{"provider with no profiles on that home", []provider.Profile{prof("cl", provider.Claude, "/h/agent", plan, true)},
+			provider.Codex, "/h/agent", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			cfg := Config{Profiles: tt.profiles}
+			p, ok := cfg.ForHome(tt.id, tt.home)
+			if ok != (tt.want != "") || p.Name != tt.want {
+				t.Errorf("ForHome = %q, %v; want %q", p.Name, ok, tt.want)
+			}
+			if got := names(cfg.ProfilesForHome(tt.id, tt.home)); got != tt.wantNames {
+				t.Errorf("ProfilesForHome = %q; want %q", got, tt.wantNames)
+			}
+		})
+	}
+}

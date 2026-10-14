@@ -18,6 +18,12 @@ type Picker interface {
 	Pick(prompt string, items []string) (int, error)
 }
 
+// MultiPicker is an optional upgrade: choose any number of items at once.
+// Callers fall back to a single Pick when the picker lacks it.
+type MultiPicker interface {
+	PickMany(prompt string, items []string) ([]int, error)
+}
+
 // ErrCancelled means the user dismissed the picker.
 var ErrCancelled = errors.New("cancelled")
 
@@ -74,30 +80,73 @@ func (t TerminalPicker) Pick(prompt string, items []string) (int, error) {
 	return pickNumbered(tty, prompt, items)
 }
 
+// PickMany implements MultiPicker: fzf --multi (Tab marks, Enter accepts;
+// Enter with nothing marked takes the current row), else numbers typed as
+// "1 3 4" or "1,3".
+func (t TerminalPicker) PickMany(prompt string, items []string) ([]int, error) {
+	if len(items) == 0 {
+		return nil, ErrCancelled
+	}
+	bin := t.FzfBin
+	if bin == "" {
+		bin = fzfBin
+	}
+	if !t.NoFzf {
+		if path, err := exec.LookPath(bin); err == nil {
+			return runFzf(path, prompt, items, true)
+		}
+	}
+	tty, err := os.OpenFile(ttyPath, os.O_RDWR, 0)
+	if err != nil {
+		return nil, ErrNoTerminal
+	}
+	// The tty was only prompted and read; a close error cannot lose anything.
+	defer func() { _ = tty.Close() }()
+	return pickNumberedMany(tty, prompt, items)
+}
+
 // pickFzf feeds "index<TAB>text" lines to fzf, shows only the text, and
 // parses the index back from the selection.
 func pickFzf(bin, prompt string, items []string) (int, error) {
+	idx, err := runFzf(bin, prompt, items, false)
+	if err != nil {
+		return 0, err
+	}
+	return idx[0], nil
+}
+
+// runFzf runs fzf over items and returns the selected indexes (one unless
+// multi).
+func runFzf(bin, prompt string, items []string, multi bool) ([]int, error) {
 	var in bytes.Buffer
 	for i, it := range items {
 		fmt.Fprintf(&in, "%d%s%s\n", i, itemSep, strings.ReplaceAll(it, "\n", " "))
 	}
-	cmd := exec.Command(bin, "--with-nth=2..", "--delimiter="+itemSep, "--prompt="+prompt+"> ", "--height="+fzfHeight, "--reverse", "--no-sort")
+	args := []string{"--with-nth=2..", "--delimiter=" + itemSep, "--prompt=" + prompt + "> ", "--height=" + fzfHeight, "--reverse", "--no-sort"}
+	if multi {
+		args = append(args, "--multi")
+	}
+	cmd := exec.Command(bin, args...)
 	cmd.Stdin = &in
 	cmd.Stderr = os.Stderr
 	out, err := cmd.Output()
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) && (exitErr.ExitCode() == fzfCancelled || exitErr.ExitCode() == fzfNoMatch) {
-		return 0, ErrCancelled
+		return nil, ErrCancelled
 	}
 	if err != nil {
-		return 0, fmt.Errorf("fzf: %w", err)
+		return nil, fmt.Errorf("fzf: %w", err)
 	}
-	idx, _, _ := strings.Cut(strings.TrimSpace(string(out)), itemSep)
-	n, err := strconv.Atoi(idx)
-	if err != nil || n < 0 || n >= len(items) {
-		return 0, fmt.Errorf("fzf returned an unexpected selection %q", strings.TrimSpace(string(out)))
+	var picked []int
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		idx, _, _ := strings.Cut(line, itemSep)
+		n, err := strconv.Atoi(idx)
+		if err != nil || n < 0 || n >= len(items) {
+			return nil, fmt.Errorf("fzf returned an unexpected selection %q", strings.TrimSpace(string(out)))
+		}
+		picked = append(picked, n)
 	}
-	return n, nil
+	return picked, nil
 }
 
 // pickNumbered prints a numbered list to tty and reads a number from it.
@@ -123,4 +172,34 @@ func pickNumbered(tty io.ReadWriter, prompt string, items []string) (int, error)
 		return 0, fmt.Errorf("not a choice between 1 and %d: %q", len(items), line)
 	}
 	return n - 1, nil
+}
+
+// pickNumberedMany prints a numbered list to tty and reads one or more
+// numbers ("1 3" or "1,3") from it.
+func pickNumberedMany(tty io.ReadWriter, prompt string, items []string) ([]int, error) {
+	var b strings.Builder
+	for i, it := range items {
+		fmt.Fprintf(&b, "%3d) %s\n", i+1, it)
+	}
+	fmt.Fprintf(&b, "%s [numbers 1-%d, e.g. 1 3; Enter to cancel]: ", prompt, len(items))
+	if _, err := io.WriteString(tty, b.String()); err != nil {
+		return nil, fmt.Errorf("write prompt: %w", err)
+	}
+	line, err := bufio.NewReader(tty).ReadString('\n')
+	if err != nil {
+		return nil, ErrCancelled
+	}
+	fields := strings.FieldsFunc(line, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' || r == '\n' || r == '\r' })
+	if len(fields) == 0 {
+		return nil, ErrCancelled
+	}
+	var picked []int
+	for _, f := range fields {
+		n, err := strconv.Atoi(f)
+		if err != nil || n < 1 || n > len(items) {
+			return nil, fmt.Errorf("not a choice between 1 and %d: %q", len(items), f)
+		}
+		picked = append(picked, n-1)
+	}
+	return picked, nil
 }

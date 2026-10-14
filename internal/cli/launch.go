@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 	"github.com/ubgo/voltkit/output"
@@ -101,11 +102,12 @@ func newNewCmd(a *app) *cobra.Command {
 // resumeOpts configure `agx resume`.
 type resumeOpts struct {
 	launchOpts
-	list  bool
-	all   bool
-	last  bool
-	json  bool
-	limit int
+	list   bool
+	all    bool
+	last   bool
+	json   bool
+	browse bool
+	limit  int
 }
 
 // defaultResumeLimit bounds the picker list.
@@ -122,11 +124,13 @@ func newResumeCmd(a *app) *cobra.Command {
 		Example: "  agx resume                 # pick from this folder's conversations\n" +
 			"  agx resume pglite          # filter by title / folder / id\n" +
 			"  agx resume --last          # newest, no picker\n" +
-			"  agx resume --all --list    # print, don't launch",
+			"  agx resume --all --list    # print, don't launch\n" +
+			"  agx resume -b              # pick a workspace, then a chat (same as agx ws)",
 		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error { return a.runResume(ctxOf(cmd), o, args) },
 	}
 	f := c.Flags()
+	f.BoolVarP(&o.browse, flagBrowse, "b", false, "pick a workspace (any folder with conversations), then a chat in it")
 	f.BoolVar(&o.list, "list", false, "print matching conversations instead of launching")
 	f.BoolVar(&o.all, "all", false, "search every folder, not just this one")
 	f.BoolVar(&o.last, "last", false, "take the newest match without a picker")
@@ -149,6 +153,9 @@ func (a *app) runResume(ctx context.Context, o *resumeOpts, query []string) erro
 	// A query must search everything before the limit applies, or older
 	// matches would be cut before they are seen.
 	q := strings.Join(query, " ")
+	if o.browse {
+		return a.runBrowse(ctx, cfg, o, q)
+	}
 	fetchLimit := o.limit
 	if q != "" {
 		fetchLimit = 0
@@ -161,8 +168,9 @@ func (a *app) runResume(ctx context.Context, o *resumeOpts, query []string) erro
 	if o.limit > 0 && len(convs) > o.limit {
 		convs = convs[:o.limit]
 	}
+	views := conversationViews(cfg, convs)
 	if o.list {
-		return a.printConversations(convs, o.json)
+		return a.printConversations(views, o.json)
 	}
 	if len(convs) == 0 {
 		return errors.New("no matching conversations")
@@ -173,9 +181,9 @@ func (a *app) runResume(ctx context.Context, o *resumeOpts, query []string) erro
 
 	idx := 0
 	if !o.last && len(convs) > 1 {
-		items := make([]string, len(convs))
-		for i, c := range convs {
-			items[i] = a.conversationLine(c)
+		items := make([]string, len(views))
+		for i, v := range views {
+			items[i] = a.conversationLine(v)
 		}
 		idx, err = a.Picker.Pick("resume", items)
 		if errors.Is(err, ErrCancelled) {
@@ -185,7 +193,13 @@ func (a *app) runResume(ctx context.Context, o *resumeOpts, query []string) erro
 			return err
 		}
 	}
-	chosen := convs[idx]
+	return a.resumeConversation(ctx, cfg, o, convs[idx])
+}
+
+// resumeConversation continues chosen in its folder on the profile whose
+// home holds it (or -p). Shared by the flat picker and --browse so both
+// launch the same way.
+func (a *app) resumeConversation(ctx context.Context, cfg config.Config, o *resumeOpts, chosen provider.Conversation) error {
 	if info, err := os.Stat(chosen.Dir); err != nil || !info.IsDir() {
 		return fmt.Errorf("the conversation's folder %s no longer exists — if you moved it (e.g. `agx sessions promote`), cd into the new folder and run `agx resume` there", chosen.Dir)
 	}
@@ -266,32 +280,94 @@ func filterConversations(cs []provider.Conversation, q string) []provider.Conver
 	return out
 }
 
-// Conversation row layout.
+// Conversation row layout. The widths keep a row near 100 columns so it
+// never wraps in a normal terminal; --json carries every value in full.
 const (
 	// untitled is shown for conversations without a title.
 	untitled = "(untitled)"
 	// Column widths in picker / list rows.
 	agoWidth      = 12
-	providerWidth = 8
-	titleWidth    = 60
+	providerWidth = 6 // "claude", "codex"
+	profileWidth  = 10
+	titleWidth    = 32
+	dirWidth      = 28
+	// shortIDLen is how much of the conversation id a row shows: enough to
+	// tell rows apart and to type back as a `resume` query (ids match by
+	// substring), short enough to keep the row on one line.
+	shortIDLen = 8
 )
 
-// conversationLine formats one picker / list row.
-func (a *app) conversationLine(c provider.Conversation) string {
-	title := c.Title
+// conversationView is a conversation as `resume` lists it: the listing plus
+// the profile it resumes on. The provider fields stay at the top level of the
+// JSON (additive to the conversation.list shape).
+type conversationView struct {
+	provider.Conversation
+	// Profile is the profile `resume` launches the conversation on —
+	// config.ForHome, the same rule the launch uses, so the list and the
+	// launch can never disagree. A home no profile uses shows its basename.
+	Profile string `json:"profile"`
+	// Profiles lists every configured profile on this home, in config order.
+	// More than one means the home is shared (personal + kimi on ~/.claude)
+	// and the conversation could have been made on any of them.
+	Profiles []string `json:"profiles,omitempty"`
+}
+
+// conversationViews attributes each conversation to a profile.
+func conversationViews(cfg config.Config, cs []provider.Conversation) []conversationView {
+	out := make([]conversationView, len(cs))
+	for i, c := range cs {
+		v := conversationView{Conversation: c, Profile: filepath.Base(c.Home)}
+		if p, ok := cfg.ForHome(c.Provider, c.Home); ok {
+			v.Profile = p.Name
+		}
+		for _, p := range cfg.ProfilesForHome(c.Provider, c.Home) {
+			v.Profiles = append(v.Profiles, p.Name)
+		}
+		out[i] = v
+	}
+	return out
+}
+
+// shortDir fits a folder into dirWidth: `~`-relative when it fits, else the
+// last path segment behind an ellipsis (the part that tells folders apart).
+func shortDir(dir, userHome string) string {
+	d := render.ShortenHome(dir, userHome)
+	if utf8.RuneCountInString(d) <= dirWidth {
+		return d
+	}
+	return truncate(ellipsis+"/"+filepath.Base(dir), dirWidth)
+}
+
+// shortID is the first shortIDLen runes of id, unmarked: it is a prefix the
+// user can type back as a query, so it must not carry an ellipsis.
+func shortID(id string) string {
+	r := []rune(id)
+	return string(r[:min(len(r), shortIDLen)])
+}
+
+// conversationLine formats one picker / list row on a single line.
+func (a *app) conversationLine(v conversationView) string {
+	title := v.Title
 	if title == "" {
 		title = untitled
 	}
-	return fmt.Sprintf("%-*s %-*s %-*s %s", agoWidth, render.FormatAgo(a.Now(), c.Updated), providerWidth, c.Provider, titleWidth, truncate(title, titleWidth), render.ShortenHome(c.Dir, a.UserHome))
+	return fmt.Sprintf("%-*s %-*s %-*s %-*s %-*s  %s",
+		agoWidth, render.FormatAgo(a.Now(), v.Updated),
+		providerWidth, truncate(string(v.Provider), providerWidth),
+		profileWidth, truncate(v.Profile, profileWidth),
+		titleWidth, truncate(title, titleWidth),
+		dirWidth, shortDir(v.Dir, a.UserHome),
+		shortID(v.ID))
 }
 
-func (a *app) printConversations(cs []provider.Conversation, asJSON bool) error {
+func (a *app) printConversations(vs []conversationView, asJSON bool) error {
 	if asJSON {
-		return output.JSON(a.Stdout, kindConversationList, cs, len(cs))
+		return output.JSON(a.Stdout, kindConversationList, vs, len(vs))
 	}
 	var b strings.Builder
-	for _, c := range cs {
-		fmt.Fprintf(&b, "%s  %s\n", a.conversationLine(c), c.ID)
+	for _, v := range vs {
+		b.WriteString(a.conversationLine(v))
+		b.WriteByte('\n')
 	}
 	_, err := io.WriteString(a.Stdout, b.String())
 	return err

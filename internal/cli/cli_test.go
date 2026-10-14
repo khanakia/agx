@@ -93,11 +93,42 @@ type fakePicker struct {
 	choice int
 	err    error
 	items  []string
+	// script, when set, answers successive calls in order (Pick takes the
+	// first index); prompts and shown record every call.
+	script  []pickStep
+	prompts []string
+	shown   [][]string
 }
 
-func (p *fakePicker) Pick(_ string, items []string) (int, error) {
+// pickStep is one scripted picker answer.
+type pickStep struct {
+	idx []int
+	err error
+}
+
+func (p *fakePicker) next(prompt string, items []string) ([]int, error) {
 	p.items = items
-	return p.choice, p.err
+	p.prompts = append(p.prompts, prompt)
+	p.shown = append(p.shown, items)
+	if len(p.script) > 0 {
+		s := p.script[0]
+		p.script = p.script[1:]
+		return s.idx, s.err
+	}
+	return []int{p.choice}, p.err
+}
+
+func (p *fakePicker) Pick(prompt string, items []string) (int, error) {
+	idx, err := p.next(prompt, items)
+	if err != nil {
+		return 0, err
+	}
+	return idx[0], nil
+}
+
+// PickMany makes fakePicker a MultiPicker, as the terminal picker is.
+func (p *fakePicker) PickMany(prompt string, items []string) ([]int, error) {
+	return p.next(prompt, items)
 }
 
 // mapSecrets resolves from a map.
@@ -503,9 +534,19 @@ func TestResume(t *testing.T) {
 	if code := h.run("resume", "--all", "--list", "--json"); code != ExitOK || len(h.execs) != n {
 		t.Fatalf("list: %d", code)
 	}
-	e := decode[[]provider.Conversation](t, h.stdout.Bytes())
-	if e.Kind != kindConversationList || len(e.Data) != 3 || e.Data[0].ID != "w-new" {
+	e := decode[[]conversationView](t, h.stdout.Bytes())
+	if e.Kind != kindConversationList || len(e.Data) != 3 || e.Data[0].ID != "w-new" || e.Data[0].Home != work {
 		t.Errorf("list = %+v", e)
+	}
+	// Each row names the profile resume launches it on.
+	if e.Data[0].Profile != "work" || e.Data[1].Profile != "personal" {
+		t.Errorf("profiles = %q, %q", e.Data[0].Profile, e.Data[1].Profile)
+	}
+
+	// The text list shows the profile and a short id that resumes as a query.
+	h.stdout.Reset()
+	if code := h.run("resume", "--list"); code != ExitOK || !strings.Contains(h.stdout.String(), "work ") || !strings.Contains(h.stdout.String(), "personal ") {
+		t.Errorf("text list: %q", h.stdout.String())
 	}
 }
 

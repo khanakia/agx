@@ -417,6 +417,20 @@ func (c Config) ForHome(id provider.ID, home string) (provider.Profile, bool) {
 	return best, found
 }
 
+// ProfilesForHome returns every profile of provider id that uses home, in
+// config order. Why it exists: a shared home (personal + kimi on ~/.claude)
+// stores conversations made on any of them, and the transcript does not say
+// which, so listings expose every candidate next to the one ForHome picks.
+func (c Config) ProfilesForHome(id provider.ID, home string) []provider.Profile {
+	var out []provider.Profile
+	for _, p := range c.Profiles {
+		if p.Provider == id && filepath.Clean(p.Home) == filepath.Clean(home) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 // Homes returns each distinct (provider, home) pair once, in profile order,
 // represented by the profile ForHome would choose. Used wherever work is per
 // login rather than per profile (usage, conversation listing).

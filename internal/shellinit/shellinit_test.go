@@ -23,7 +23,7 @@ func TestWrite(t *testing.T) {
 	out := render(t, Zsh, Alias{Name: "cl", Args: "run -p personal"}, Alias{Name: "clw", Args: "new -p work"})
 	for _, want := range []string{
 		"export AGX_SHELL_INIT=zsh",
-		"new|resume)",
+		"new|resume|ws)",
 		`AGX_PLAN_FILE="$plan" command agx "$@"`,
 		`command agx exec --plan "$plan" --print-dir`,
 		"cl() { agx run -p personal \"$@\"; }",
