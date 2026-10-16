@@ -1,0 +1,33 @@
+func newNewCmd(a *app) *cobra.Command {
+	o := &launchOpts{}
+	c := &cobra.Command{
+		Use:   "new [-p profile|auto] [slug words...]",
+		Short: "Create a timestamped session folder and launch an agent in it",
+		Long: "Creates sessions.root/[slug_]YYYYMMDD_HHMMSS, enters it and launches. With the shell\n" +
+			"layer (`eval \"$(agx shell-init zsh)\"`) your shell also ends up in the new folder.",
+		Example: "  agx new\n  agx new -p work pglite golang     # → pglite_golang_20260924_101500\n  agx new -p auto",
+		Args:    cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := ctxOf(cmd)
+			cfg, err := a.config()
+			if err != nil {
+				return err
+			}
+			p, err := a.resolveProfile(ctx, o)
+			if err != nil {
+				return err
+			}
+			if o.dryRun {
+				dir := filepath.Join(cfg.SessionsRoot, sessions.Name(sessions.Slug(args...), a.Now()))
+				return a.launch(ctx, p, provider.LaunchRequest{Dir: dir}, true, o.login)
+			}
+			dir, err := sessions.Create(cfg.SessionsRoot, sessions.Slug(args...), a.Now())
+			if err != nil {
+				return err
+			}
+			return a.launchOrPlan(ctx, plan{Dir: dir, Profile: p.Name, Login: o.login}, p, provider.LaunchRequest{Dir: dir})
+		},
+	}
+	o.bind(c)
+	return c
+}

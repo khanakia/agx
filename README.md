@@ -11,7 +11,7 @@
   <a href="https://github.com/khanakia/agx/stargazers"><img src="https://img.shields.io/github/stars/khanakia/agx?style=flat&color=2563eb" alt="GitHub stars"></a>
 </p>
 
-**agx** is an open-source command-line toolkit for AI coding agents. If you run [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with more than one account (personal and work logins via `CLAUDE_CONFIG_DIR`), or use Claude Code alongside OpenAI's Codex CLI, agx puts them behind one command: plan usage for every account in one view (the same numbers as claude.ai Settings → Usage and ChatGPT's Codex limits), `agx run -p auto` to start on whichever account has the most room left, `agx resume` to continue a past conversation on the account that actually stores it, and `agx new` / `agx sessions` for throwaway session folders. It is a single Go binary, reads only the logins your agent CLIs already saved, and never refreshes or copies a token.
+**agx** is an open-source command-line toolkit for AI coding agents. If you run [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with more than one account (personal and work logins via `CLAUDE_CONFIG_DIR`), or use Claude Code alongside OpenAI's Codex CLI, agx puts them behind one command: plan usage for every account in one view (the same numbers as claude.ai Settings → Usage and ChatGPT's Codex limits), `agx run -p auto` to start on whichever account has the most room left, `agx resume` to continue a past conversation on the account that actually stores it, and `agx new` / `agx sessions` for throwaway session folders. It is a single Go binary that reads the logins your agent CLIs already saved and never refreshes or copies them; with `agx login` any home can also run on another account's quota.
 
 ```text
 $ agx
@@ -58,8 +58,9 @@ Claude and Codex subscriptions don't give you a token balance. They give you a *
 - **Launch where there is room.** `-p auto` scores each account by its fullest window and picks the emptiest, explaining the choice.
 - **Resume on the right account.** agx knows which home stores each conversation, finds it by folder or title, and resumes it there. Forgot the folder? `agx ws` lists every folder with conversations, then its chats.
 - **Session folders that clean up after themselves.** `agx new` makes a timestamped folder; `agx sessions gc` removes the empty ones that have no history; `agx sessions promote` turns one into a project and moves its Claude history with it.
+- **Any history, any account's quota.** `agx login` hands a long-lived token to Claude Code at launch, so your work folder can spend your personal plan (or the other way round) without moving a single conversation.
 - **Your shell habits, kept.** `agx shell-init` generates your old `cl` / `clw` / `clnew` style aliases from config, and lets `new` / `resume` / `ws` leave your shell in the session folder.
-- **Read-only and quota-free.** One GET per account to the vendor's own usage endpoint; tokens are never refreshed, written or printed.
+- **Read-only and quota-free.** One GET per account to the vendor's own usage endpoint; logins are never refreshed or printed, and the only token agx ever writes is one you add with `agx login add`, into a private 0600 file.
 
 | | **agx** | claude.ai / ChatGPT usage pages | Claude Code `/usage` | Local log analyzers | Hand-written shell aliases |
 |---|---|---|---|---|---|
@@ -103,6 +104,7 @@ agx run -p auto          # start Claude Code on the account with the most headro
 agx new pglite spike     # new session folder pglite_spike_YYYYMMDD_HHMMSS, start there
 agx resume               # pick a conversation from this folder and continue it
 agx ws                   # pick any folder with conversations, then a chat in it
+agx run -p work --login personal   # work history, personal quota (after `agx login add personal`)
 ```
 
 No config is needed: agx discovers `~/.claude` (profile `personal`), every `~/.claude-<name>` (profile `<name>`), and `~/.codex` (profile `codex`). Add a config file when you want named profiles, extra flags, secrets or aliases.
@@ -179,21 +181,21 @@ The next renewal date is **not** shown: the Claude Code login agx reads can see 
 ### See your accounts
 
 ```sh
-agx profiles                         # table: profile, provider, home, account, login, billing, source
+agx profiles                         # table: profile, provider, home, account, state, login, billing, source
 agx who                              # same thing (alias; also `agx accounts`)
 agx profiles --json | jq -r '.data[] | "\(.name)\t\(.login)\t\(.email // "-")"'
 ```
 
 ```text
 $ agx profiles
-PROFILE    PROVIDER  HOME            ACCOUNT                         LOGIN             BILLING  SOURCE
-*personal  claude    ~/.claude       you@example.com · Max (20x)     ok (3 hr 38 min)  plan     config
-work       claude    ~/.claude-work  you@work.example · Max (20x)    ok (6 hr 37 min)  plan     config
-kimi       claude    ~/.claude       you@example.com · Max (20x)     ok (3 hr 38 min)  api      config
-*codex     codex     ~/.codex                                        ok                plan     config
+PROFILE    PROVIDER  HOME            ACCOUNT                         STATE             LOGIN               BILLING  SOURCE
+*personal  claude    ~/.claude       you@example.com · Max (20x)     ok (3 hr 38 min)  home                plan     config
+work       claude    ~/.claude-work  you@work.example · Max (20x)    ok (6 hr 37 min)  personal (profile)  plan     config
+kimi       claude    ~/.claude       you@example.com · Max (20x)     ok (3 hr 38 min)  home                api      config
+*codex     codex     ~/.codex                                        ok                home                plan     config
 ```
 
-`*` marks each provider's default profile — the one `run` / `new` use when you pass no `-p`.
+`*` marks each provider's default profile — the one `run` / `new` use when you pass no `-p`. STATE is the home's own login (ok, expired, none); LOGIN is whose quota a run on that profile spends and which rule chose it (see [Logins](#logins--use-any-accounts-quota-from-any-home)). In `--json`, `login` is still the state and `login_name` / `login_source` are the login.
 
 ### Start an agent here: `agx run`
 
@@ -212,6 +214,7 @@ agx run -p work --dry-run            # print what would run; starts nothing
 ```text
 $ agx run -p work --dry-run
 profile: work (claude, /Users/you/.claude-work)
+login:   home
 dir:     /Users/you/code/app
 env:     CLAUDE_CONFIG_DIR=/Users/you/.claude-work
 exec:    claude --dangerously-skip-permissions
@@ -388,6 +391,106 @@ How it works:
 
 After moving: `agx resume` (or `clr`) in the folder opens the conversations on the new account, and `claude -c` works there under that account.
 
+### Logins — use any account's quota from any home
+
+A Claude home (`~/.claude`, `~/.claude-work`, …) holds two things: the conversation history and a login, so a work folder's history normally spends only work quota. A **login** is a named, long-lived token (from `claude setup-token`) or API key that agx hands to Claude Code when it launches. With it, any home runs on any account's quota, while its history, settings and `resume` stay exactly where they are.
+
+```sh
+# add a login; the token is never a command-line argument (argv shows in ps and shell history)
+agx login add personal                                 # paste the token at a hidden prompt
+pbpaste | agx login add personal --stdin               # or pipe it in
+agx login add personal --setup                         # run `claude setup-token` first, then paste what it prints
+agx login add work --cmd "gopass show -o personal/ai/claude-oauth-work"   # run at each launch, nothing stored
+agx login add ci --env CLAUDE_WORK_TOKEN               # read from another env var at each launch
+agx login add personal --stdin --account you@example.com   # a label, for your eyes
+agx login add key --kind api-key --stdin               # an API key (billed per token) instead of plan quota
+
+# one run
+agx run -p work --login personal                       # work home and history, personal quota
+clw --login personal                                   # every alias passes it through
+agx resume --login personal                            # resume a work conversation on personal quota
+agx run -p work --login home                           # ignore every default: the home's own login
+agx run -p work --login personal --dry-run             # what would change; the token is never printed
+
+# a default
+agx login use personal -p work                         # profile work always spends personal quota
+agx login use personal --provider claude               # every Claude profile
+aglogin personal                                       # this terminal only (shell function from `agx shell-init`)
+aglogin                                                # undo for this terminal
+agx login use home -p work                             # undo the profile default
+agx login use home --provider claude                   # undo the provider default
+
+# look after them
+agx login ls                                           # NAME PROVIDER KIND SOURCE ACCOUNT ADDED EXPIRES USED-BY
+agx login ls --json | jq -r '.data[] | "\(.name)\t\(.expires)"'
+agx login check                                        # resolve every token and report; values are never printed
+agx login add personal --stdin --replace               # rotate a token (kind and account are kept)
+agx login rm personal                                  # refused while a profile uses it; --force clears those too
+```
+
+```text
+$ agx run -p work --login personal --dry-run
+profile: work (claude, /Users/you/.claude-work)
+login:   personal (--login)
+dir:     /Users/you/code/app
+env:     CLAUDE_CODE_OAUTH_TOKEN=<token:stored>
+env:     CLAUDE_CONFIG_DIR=/Users/you/.claude-work
+exec:    claude --dangerously-skip-permissions
+
+$ agx run -p work --login personal
+agx: work · login personal
+
+$ agx login ls
+NAME      PROVIDER  KIND         SOURCE  ACCOUNT          ADDED       EXPIRES      USED-BY
+personal  claude    oauth-token  stored  you@example.com  2026-10-16  2027-10-16   work
+work      claude    oauth-token  cmd     —                2026-10-16  ~2027-10-16  —
+```
+
+**Which login a run uses.** [The first match wins](ds:block?id=app-picklogin-p3tyusqh):
+
+1. `--login NAME` on the command line;
+2. `AGX_LOGIN` in the environment (what `aglogin` sets);
+3. the profile's `login:` in config.yaml;
+4. the provider's `providers.<id>.login:`;
+5. the home's own login.
+
+A login asked for by name (`--login`, or a profile's `login:`) that does not fit the profile is an error: another provider's login, a profile billed per token, or a profile that sets a credential of its own in `env:` / `secrets:`. One that comes from `AGX_LOGIN` is skipped with a one-line note and a provider default is skipped silently, so an exported Claude login never breaks a Codex or Kimi run. `agx profiles` shows the login each profile would use and why (`personal (profile)`, `work (AGX_LOGIN)`, `home`), and every launch on a login prints `agx: <profile> · login <name>`, which is the only record of which account paid: transcripts do not keep it.
+
+**How it launches.** [An `oauth-token` login](ds:block?id=provider-loginenv-n8x9u9rf) sets `CLAUDE_CODE_OAUTH_TOKEN` and removes `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from the agent's environment (either would otherwise win and bill an API key); an `api-key` login sets `ANTHROPIC_API_KEY` and removes the other two. `CLAUDE_CONFIG_DIR` is handled exactly as without a login. A token that is missing, empty or more than one line, a `--cmd` that fails or runs longer than [10 seconds](ds:block?id=cmdtimeout-44pfsqzk), or an unset `--env` variable stops the launch with the reason. agx never falls back to the home's login on its own, because you asked for a specific account.
+
+**Where tokens live.** Pasted and piped tokens go to `~/.agx/tokens.yaml`, beside config.yaml, [mode 0600 in a 0700 folder](ds:block?id=tokenfile-checkperm-4epx2b72), written atomically. config.yaml only says `token: stored`, so it stays safe to sync or share. tokens.yaml must never be synced, backed up to a shared place or committed: agx prints that warning whenever it stores a token, `agx doctor` warns when the file sits inside a git work tree, and agx refuses to read a tokens.yaml that group or others can access, the way ssh treats a private key. `--cmd` and `--env` logins store nothing; their command or variable is read at each launch.
+
+**Expiry.** A setup-token is [believed to last one year](ds:block?id=setuptokenlifetime-nebd9cbt) (not verified yet) and is never refreshed. `agx login ls` shows EXPIRES counted from the login's `added` date, with `~` for `--cmd` and `--env` logins, where agx does not hold the value and `added` is when the login was added rather than when the token was minted. `agx doctor` warns [30 days](ds:block?id=expirywarnwindow-fnenahy6) ahead and fails after, and a run on an expired login is refused with the command that renews it: `agx login add NAME --setup --replace`.
+
+**Good to know.**
+
+- [Removing a login from agx does not revoke the token.](ds:block?id=revokehint-ngx5vax3) Revoke it where it was issued, in your claude.ai account settings.
+- The agent receives the token in its environment, so any process it starts (tools, hooks, MCP servers) can read it. Use a login only with agents and projects you would trust with that account.
+- `--login auto` and usage per login are not available yet. Whether a setup-token may read the usage endpoint is not verified, so agx can neither pick a login by headroom nor show a login's usage: `agx usage` and `agx plan` accept only `--login home`, and `agx login check` resolves the token without any network call.
+- Codex has no logins yet: its plan login exists only as refreshable tokens in `auth.json` (copying them can log the CLI out), and which API-key variable interactive Codex honours is not verified.
+
+What `agx login add` and `agx login use` write to config.yaml (comments and key order are kept):
+
+```yaml
+logins:
+  - name: personal
+    provider: claude              # default claude
+    kind: oauth-token             # default; or api-key
+    token: stored                 # the value is in tokens.yaml; nothing else is accepted here
+    account: you@example.com      # a label
+    added: 2026-10-16             # expiry counts from this
+  - name: work
+    provider: claude
+    token_cmd: gopass show -o personal/ai/claude-oauth-work
+    added: 2026-10-16
+providers:
+  claude:
+    login: work                   # every Claude profile, unless the profile says otherwise
+profiles:
+  - { name: personal, provider: claude, home: ~/.claude, login: home }      # pinned to its own login
+  - { name: work, provider: claude, home: ~/.claude-work, login: personal }
+```
+
 ### Health check: `agx doctor`
 
 ```sh
@@ -402,6 +505,9 @@ agx doctor --json | jq -r '.data[] | select(.level=="warn" or .level=="fail") | 
 ✓ profile work       you@work.example Max (20x)
 ✓ profile kimi       api-billed (secrets: [ANTHROPIC_AUTH_TOKEN])
 ✓ profile codex      logged in
+✓ tokens.yaml        ~/.agx/tokens.yaml (0600)
+✓ login personal     oauth-token (stored), expires 2027-10-16
+✓ login work         oauth-token (cmd), expires approximately 2027-10-16
 ✓ shell              shell layer active (zsh)
 ```
 
@@ -410,7 +516,7 @@ agx doctor --json | jq -r '.data[] | select(.level=="warn" or .level=="fail") | 
 ```sh
 echo 'eval "$(agx shell-init zsh)"' >> ~/.zshrc      # zsh
 echo 'eval "$(agx shell-init bash)"' >> ~/.bashrc    # bash
-agx shell-init zsh                                   # just look at what it defines
+agx shell-init zsh                                   # just look at what it defines (aliases, aglogin)
 
 agx completion zsh > "${fpath[1]}/_agx"              # zsh tab completion (restart the shell)
 agx completion bash > "$(brew --prefix)/etc/bash_completion.d/agx"   # Homebrew bash-completion
@@ -483,7 +589,9 @@ shell:
     clwho: profiles
 ```
 
-Then `clw`, `clanew spike`, `clr pglite`, … work like the commands they stand for, and extra words are passed through (`clw -- --model sonnet`).
+Then `clw`, `clanew spike`, `clr pglite`, … work like the commands they stand for, and extra words are passed through (`clw -- --model sonnet`, `clw --login personal`).
+
+A fixed account-and-quota pair is just an alias: `clwp: run -p work --login personal`.
 
 ## Commands
 
@@ -491,7 +599,7 @@ Then `clw`, `clanew spike`, `clr pglite`, … work like the commands they stand 
 |---|---|
 | `agx` / `agx usage [profile…]` | Plan usage bars for every plan-billed login; `--provider`, `--json`, `--color`, `--timeout` |
 | `agx plan [profile…]` | Plan, subscription status and start date for every account; `--json`, `--timeout` |
-| `agx profiles` | Every profile: provider, home, account, plan, login state, billing, source |
+| `agx profiles` | Every profile: provider, home, account, plan, login state, the login a run spends, billing, source |
 | `agx run [-p profile\|auto] [-- args…]` | Start the agent in the current folder with the profile's flags, env and secrets |
 | `agx new [-p profile\|auto] [slug…]` | Create `sessions.root/[slug_]YYYYMMDD_HHMMSS`, enter it, start the agent |
 | `agx resume [query…]` | Pick a conversation (this folder, or every folder with `--all`) and continue it on its own account; `--last`, `--all`, `--list`, `--json`, `-b/--browse` |
@@ -500,14 +608,15 @@ Then `clw`, `clanew spike`, `clr pglite`, … work like the commands they stand 
 | `agx sessions gc [--yes]` | Remove empty session folders with no history (dry run unless `--yes`) |
 | `agx sessions promote <folder> <name>` | Move a session folder into a project, taking its Claude history along; `--dry-run`, `--git-init` |
 | `agx sessions move [folder] --to <profile>` | Move a folder's conversations to another account of the same provider (e.g. personal → work); `--from`, `--only`, `-i/--pick`, `--all`, `--dry-run`, `--no-backup`, `--json` |
-| `agx doctor` | Local health checks (no network, never resolves secret values) |
+| `agx login add\|ls\|check\|use\|rm` | Named logins: run any home on any account's quota ([Logins](#logins--use-any-accounts-quota-from-any-home)) |
+| `agx doctor` | Local health checks (no network, never resolves secret or token values) |
 | `agx shell-init [zsh\|bash]` | Print the shell layer (see below) |
 | `agx version` | Version, commit and build provenance |
 | `agx completion zsh\|bash\|fish` | Shell tab-completion script |
 
 ### Choosing a profile: `-p`
 
-`run`, `new` and `resume` take `-p` / `--profile`. The value is a profile name from `agx profiles` (e.g. `personal`, `work`, `kimi`, `codex`) or `auto`:
+`run`, `new` and `resume` take `-p` / `--profile`, which picks the home (history, settings); `--login` picks whose quota it spends. The value is a profile name from `agx profiles` (e.g. `personal`, `work`, `kimi`, `codex`) or `auto`:
 
 ```sh
 agx run                   # the default Claude profile (marked * in `agx profiles`)
@@ -523,22 +632,27 @@ agx new -p auto --provider codex my spike   # auto-pick among Codex accounts
 
 | Command | Flags |
 |---|---|
-| `agx` / [`agx usage`](ds:block?id=newusagecmd-r3ert49b) | `--provider claude\|codex` · `--json` · `--color auto\|always\|never` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) |
-| [`agx plan`](ds:block?id=newplancmd-urn3m4qd) | `[profile…]` · `--json` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) (alias: `agx subscription`) |
+| `agx` / [`agx usage`](ds:block?id=newusagecmd-r3ert49b) | `--provider claude\|codex` · `--json` · `--color auto\|always\|never` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) · `--login home` |
+| [`agx plan`](ds:block?id=newplancmd-urn3m4qd) | `[profile…]` · `--json` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) · `--login home` (alias: `agx subscription`) |
 | [`agx profiles`](ds:block?id=newprofilescmd-ndr78yh5) | `--json` (aliases: `agx who`, `agx accounts`) |
-| [`agx run`](ds:block?id=newruncmd-jgrurvce) | `-p/--profile` · `--provider` · `--dry-run` · `-- <args passed to the agent>` |
-| [`agx new`](ds:block?id=newnewcmd-u4uqk853) | `-p/--profile` · `--provider` · `--dry-run` · `[slug words]` |
-| [`agx resume`](ds:block?id=newresumecmd-wp72e3ak) | `[query words]` · `--last` · `--all` · `--list` · `--json` (with `--list`) · [`--limit 50`](ds:block?id=defaultresumelimit-zc5uhvc4) · `-b/--browse` · `-p/--profile` · `--dry-run` |
-| [`agx ws`](ds:block?id=newwscmd-s5rg592z) | `[query words]` · `--list` · `--json` (with `--list`) · `-p/--profile` · `--dry-run` |
+| [`agx run`](ds:block?id=newruncmd-jgrurvce) | `-p/--profile` · `--provider` · `--login NAME\|home` · `--dry-run` · `-- <args passed to the agent>` |
+| [`agx new`](ds:block?id=newnewcmd-u4uqk853) | `-p/--profile` · `--provider` · `--login NAME\|home` · `--dry-run` · `[slug words]` |
+| [`agx resume`](ds:block?id=newresumecmd-wp72e3ak) | `[query words]` · `--last` · `--all` · `--list` · `--json` (with `--list`) · [`--limit 50`](ds:block?id=defaultresumelimit-zc5uhvc4) · `-b/--browse` · `-p/--profile` · `--login NAME\|home` · `--dry-run` |
+| [`agx ws`](ds:block?id=newwscmd-s5rg592z) | `[query words]` · `--list` · `--json` (with `--list`) · `-p/--profile` · `--login NAME\|home` · `--dry-run` |
 | [`agx sessions ls`](ds:block?id=newsessionslscmd-tv2vrc6k) | `--json` |
 | [`agx sessions gc`](ds:block?id=newsessionsgccmd-qhhnyct9) | `--yes` · [`--min-age 24h`](ds:block?id=defaultgcminage-67k288nh) · `--json` |
 | [`agx sessions promote`](ds:block?id=newsessionspromotecmd-tdxnub7p) `<folder> <name>` | `--to <parent>` · `--dry-run` · `--git-init` · `--json` |
 | [`agx sessions move`](ds:block?id=newsessionsmovecmd-hpm92rna) `[folder]` | `--to <profile>` (required unless `-i` picks it) · `-i/--pick` · `--all` (with `-i`) · `--from <profile>` · `--only <ids>` · `--dry-run` · `--no-backup` · `--json` |
+| [`agx login add`](ds:block?id=newlogincmd-zhxdkaat) `NAME` | `--stdin` · `--setup` · `--cmd <command>` · `--env <VAR>` · `--provider` · `--kind oauth-token\|api-key` · `--account <label>` · `--replace` |
+| `agx login ls` | `--json` (alias: `agx login list`) |
+| `agx login check` `[NAME]` | none |
+| `agx login use` `NAME\|home` | `-p/--profile <profile>` or `--provider <id>` |
+| `agx login rm` `NAME` | `--force` (alias: `agx login remove`) |
 | [`agx doctor`](ds:block?id=newdoctorcmd-ndsdf4zg) | `--json` |
 | [`agx shell-init`](ds:block?id=newshellinitcmd-3fw2m4vd) | `zsh` (default) or `bash` |
 | `agx version` / `agx --version` | `--json` (on `version`) |
 
-`run`, `new` and `resume` accept `--dry-run` to print the exact command, working folder and environment changes without starting anything; secret values are shown as `<secret:scheme>`. Every command has `--help` with examples. [Exit status](ds:block?id=exitcodes-35ygnun6): `0` ok, `1` a runtime failure (including "some accounts failed", with the others still printed), `2` a usage error.
+`run`, `new` and `resume` accept `--dry-run` to print the exact command, working folder and environment changes without starting anything; secret values are shown as `<secret:scheme>` and a login's token as `<token:source>`. Every command has `--help` with examples. [Exit status](ds:block?id=exitcodes-35ygnun6): `0` ok, `1` a runtime failure (including "some accounts failed", with the others still printed), `2` a usage error.
 
 ## Configuration
 
@@ -549,9 +663,15 @@ sessions:
   root: ~/work/sessions             # where `agx new` creates folders (default ~/agx-sessions)
   promote_root: ~/work              # default target of `sessions promote`
 
+logins:                             # named credentials; see Logins above
+  - name: personal
+    token: stored                   # the raw token is in ~/.agx/tokens.yaml
+    added: 2026-10-16
+
 providers:
   claude:
     args: [--dangerously-skip-permissions]   # added to every Claude profile
+    # login: personal               # default login for every Claude profile
 
 profiles:                           # order breaks auto-pick ties
   - name: personal
@@ -561,6 +681,7 @@ profiles:                           # order breaks auto-pick ties
   - name: work
     provider: claude
     home: ~/.claude-work
+    login: personal                 # runs here spend personal quota (or `home`)
   - name: kimi                      # Claude Code on another backend, billed per token
     provider: claude
     home: ~/.claude
@@ -584,9 +705,9 @@ shell:
     clr: resume
 ```
 
-The top-level keys are [`sessions`](ds:block?id=sessionsspec-yzshjgvk), `providers`, [`profiles`](ds:block?id=profilespec-jymp7n69) and [`shell`](ds:block?id=shellspec-nagmshhq) ([schema](ds:block?id=file-charr88x)); `sessions.root` defaults to [`~/agx-sessions`](ds:block?id=defaultsessionsdir-xhtaakn6).
+The top-level keys are [`sessions`](ds:block?id=sessionsspec-yzshjgvk), [`logins`](ds:block?id=loginspec-e68nnxxt), `providers`, [`profiles`](ds:block?id=profilespec-jymp7n69) and [`shell`](ds:block?id=shellspec-nagmshhq) ([schema](ds:block?id=file-charr88x)); `sessions.root` defaults to [`~/agx-sessions`](ds:block?id=defaultsessionsdir-xhtaakn6). A login names exactly one of `token: stored`, `token_cmd` or `token_env`, and [`token:` accepts only the word `stored`](ds:block?id=resolvelogin-6dbygptz): a raw token pasted there makes every command refuse the file, without echoing the token. `providers.<id>.login` and a profile's `login:` name a login of the same provider, or `home`; see [Logins](#logins--use-any-accounts-quota-from-any-home).
 
-Secrets use [`gopass:<path>` (runs `gopass show -o`) or `env:<NAME>`](ds:block?id=parse-39f37ayc). When a provider has any configured profile, [discovery for that provider is switched off](ds:block?id=resolve-3amwuw3d), so the config is the complete list.
+Raw login tokens live in `tokens.yaml` beside config.yaml (0600, never synced). Secrets use [`gopass:<path>` (runs `gopass show -o`) or `env:<NAME>`](ds:block?id=parse-39f37ayc). When a provider has any configured profile, [discovery for that provider is switched off](ds:block?id=resolve-3amwuw3d), so the config is the complete list.
 
 ## Shell integration
 
@@ -596,7 +717,7 @@ A program cannot change its parent shell's directory, so add this to `~/.zshrc` 
 eval "$(agx shell-init zsh)"
 ```
 
-It defines an `agx` function: for `new`, `resume` and `ws`, the binary writes a short-lived launch plan (never containing secrets), the function `cd`s into the session folder, reports it to your terminal (OSC 7) so new tabs open there, and then starts the agent. It also defines one function per `shell.aliases` entry, so `cl`, `clw`, `clnew` and friends keep working. Without it, every command still works; your shell just stays where it was.
+It defines an `agx` function: for `new`, `resume` and `ws`, the binary writes a short-lived launch plan (never containing secrets), the function `cd`s into the session folder, reports it to your terminal (OSC 7) so new tabs open there, and then starts the agent. It also defines one function per `shell.aliases` entry, so `cl`, `clw`, `clnew` and friends keep working, and `aglogin NAME`, which exports `AGX_LOGIN=NAME` so every run in that terminal spends that login's quota (it checks the name first; `aglogin` with no argument unsets it). Without it, every command still works; your shell just stays where it was.
 
 ## JSON output
 
@@ -606,7 +727,7 @@ Every listing command has `--json`, emitting a stable envelope:
 { "schema_version": 1, "kind": "usage.list", "count": 3, "data": [ … ] }
 ```
 
-[Kinds](ds:block?id=jsonkinds-gqp2ydfe): `usage.list`, [`plan.list`](ds:block?id=kindplanlist-pkqtaqac), `profile.list`, `conversation.list`, `workspace.list`, `session.list`, `session.gc`, `session.promote`, [`session.move`](ds:block?id=kindsessionmove-kyhtpccm), `doctor.report`, `version.show`.
+[Kinds](ds:block?id=jsonkinds-gqp2ydfe): `usage.list`, [`plan.list`](ds:block?id=kindplanlist-pkqtaqac), `profile.list`, `conversation.list`, `workspace.list`, `session.list`, `session.gc`, `session.promote`, [`session.move`](ds:block?id=kindsessionmove-kyhtpccm), [`login.list`](ds:block?id=kindloginlist-g3cessw2), `doctor.report`, `version.show`. A `login.list` row never carries a token value.
 
 ```sh
 agx usage --json | jq '.data[] | {profile, windows: [.windows[] | {label, percent}]}'
@@ -623,7 +744,7 @@ agx resume --all --list --json | jq -r '.data[] | "\(.updated)  \(.title)"'
 | Conversations | [`<home>/projects/<path with non-alphanumerics as ->/<id>.jsonl`](ds:block?id=encodepath-acf2dnds); titles from `ai-title` / `custom-title` records | [`<home>/sessions/YYYY/MM/DD/rollout-*.jsonl`](ds:block?id=sessionsdir-8yekgwcc) |
 | Resume | `claude --resume <id>` in the conversation's folder | `codex resume <id>` |
 
-agx never refreshes a token: refreshing replaces the saved login and can log the agent CLI out. An expired login is reported with the command that makes the CLI refresh it itself. When launching on the default home, agx [*removes* `CLAUDE_CONFIG_DIR` / `CODEX_HOME`](ds:block?id=homeenv-cd4k5f3z) from the environment, because setting Claude's variable even to `~/.claude` switches it to a different Keychain entry and the account looks logged out. Transcripts are never read whole: the folder comes from the start of each file and the title from its end, so `resume` stays fast even with gigabytes of history.
+agx never refreshes a token: refreshing replaces the saved login and can log the agent CLI out. A [login](#logins--use-any-accounts-quota-from-any-home) is a separate, long-lived token you add yourself; agx passes it to the agent in an environment variable and leaves the home's own login untouched. An expired login is reported with the command that makes the CLI refresh it itself. When launching on the default home, agx [*removes* `CLAUDE_CONFIG_DIR` / `CODEX_HOME`](ds:block?id=homeenv-cd4k5f3z) from the environment, because setting Claude's variable even to `~/.claude` switches it to a different Keychain entry and the account looks logged out. Transcripts are never read whole: the folder comes from the start of each file and the title from its end, so `resume` stays fast even with gigabytes of history.
 
 ## Use it as a library
 
@@ -638,6 +759,7 @@ The building blocks are public, dependency-light packages:
 | `github.com/khanakia/agx/pick` | the auto-pick policy (pure) |
 | `github.com/khanakia/agx/sessions` | session folder naming, listing, safe gc, promote |
 | `github.com/khanakia/agx/secret` | `scheme:ref` secret resolution (gopass, env) |
+| `github.com/khanakia/agx/login` | named logins: resolve a token from a private token file, a command or an env var without ever putting it in an error; the 0600 token file |
 
 A test in `internal/archtest` enforces the layering (the domain model imports only the standard library; libraries never import the CLI framework).
 
@@ -707,6 +829,30 @@ Yes, as a `billing: api` profile with its own `env` and `secrets`. Those launch 
 
 On Linux, logins are read from the credential files, so it works. The Keychain lookup is macOS-only and is skipped elsewhere. It compiles for Windows, where launching runs the agent as a child process; Windows is otherwise untested.
 
+**Can my work folder spend my personal account's quota?**
+
+Yes. Add the personal account as a login (`claude setup-token` while logged in as personal, then `agx login add personal`) and run `agx run -p work --login personal`, or make it the default with `agx login use personal -p work`. The work home keeps its history; only the quota changes. See [Logins](#logins--use-any-accounts-quota-from-any-home).
+
+**Is it safe to keep a token in `~/.agx/tokens.yaml`?**
+
+It is as safe as an ssh private key: a 0600 file in a 0700 folder that agx refuses to read once anyone else can. Never sync, share or commit it. If you would rather keep tokens in a password manager, add the login with `--cmd "gopass show -o …"` (or `op read …`) and nothing is stored.
+
+**agx says "token file is readable by others".**
+
+tokens.yaml has group or other permission bits, for example after a copy or a restore. Run the `chmod 600 …` the message prints. If the file was readable on a shared machine or synced somewhere, treat the tokens in it as exposed: revoke them and add them again.
+
+**agx says "a raw token does not belong in config.yaml".**
+
+A login's `token:` in config.yaml held something other than `stored`. agx cannot load the config until that line is gone, so delete that login's entry from config.yaml by hand, then add it again with `agx login add NAME --stdin`, which puts the value in tokens.yaml. If config.yaml was synced or committed, revoke that token.
+
+**Does `agx login rm` revoke the token?**
+
+No. It removes the login from agx only. Revoke the token in your claude.ai account settings.
+
+**Can agx pick the login with the most headroom, like `-p auto`?**
+
+Not yet. That needs the usage of a setup-token, and whether the usage endpoint answers for one is not verified, so `--login auto` is refused with that reason rather than picking blind.
+
 **Is this an official Anthropic or OpenAI tool?**
 
 No. It is an independent open-source project, not affiliated with Anthropic or OpenAI. The usage endpoints are undocumented and could change; parsing is defensive and never hides a limit it doesn't recognise.
@@ -755,6 +901,18 @@ No. It is an independent open-source project, not affiliated with Anthropic or O
 <!-- ds:def id=plangc-pxge66ab file=sessions/sessions.go pick=symbol:PlanGC owner=@khanakia stability=stable -->
 <!-- ds:def id=removeempty-tndggau3 file=sessions/sessions.go pick=symbol:RemoveEmpty owner=@khanakia stability=stable -->
 <!-- ds:def id=promote-bdf6x7wh file=sessions/sessions.go pick=symbol:Promote owner=@khanakia stability=stable -->
+
+<!-- ds:def id=newlogincmd-zhxdkaat file=internal/cli/login.go pick=symbol:newLoginCmd owner=@khanakia stability=stable -->
+<!-- ds:def id=app-picklogin-p3tyusqh file=internal/cli/login.go pick=symbol:app.pickLogin owner=@khanakia stability=stable -->
+<!-- ds:def id=kindloginlist-g3cessw2 file=internal/cli/login.go pick=symbol:kindLoginList owner=@khanakia stability=stable -->
+<!-- ds:def id=expirywarnwindow-fnenahy6 file=internal/cli/login.go pick=symbol:expiryWarnWindow owner=@khanakia stability=stable -->
+<!-- ds:def id=revokehint-ngx5vax3 file=internal/cli/login.go pick=symbol:revokeHint owner=@khanakia stability=stable -->
+<!-- ds:def id=loginspec-e68nnxxt file=config/config.go pick=symbol:LoginSpec owner=@khanakia stability=stable -->
+<!-- ds:def id=resolvelogin-6dbygptz file=config/logins.go pick=symbol:resolveLogin owner=@khanakia stability=stable -->
+<!-- ds:def id=tokenfile-checkperm-4epx2b72 file=login/tokens.go pick=symbol:TokenFile.CheckPerm owner=@khanakia stability=stable -->
+<!-- ds:def id=cmdtimeout-44pfsqzk file=login/login.go pick=symbol:cmdTimeout owner=@khanakia stability=stable -->
+<!-- ds:def id=provider-loginenv-n8x9u9rf file=provider/claude/login.go pick=symbol:Provider.LoginEnv owner=@khanakia stability=stable -->
+<!-- ds:def id=setuptokenlifetime-nebd9cbt file=provider/claude/login.go pick=symbol:SetupTokenLifetime owner=@khanakia stability=stable -->
 
 ## License
 
