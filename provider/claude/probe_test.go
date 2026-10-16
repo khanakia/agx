@@ -283,6 +283,39 @@ func TestProbe_Errors(t *testing.T) {
 	}
 }
 
+// TestProbe_429AtLimit: an account at its weekly limit answers 429 with the
+// full header set (captured from the real API 2026-10-16); the probe must
+// report the windows (weekly at 100%) instead of a rate-limit error.
+func TestProbe_429AtLimit(t *testing.T) {
+	t.Parallel()
+	h := map[string]string{
+		"anthropic-ratelimit-unified-status":               "rejected",
+		"anthropic-ratelimit-unified-5h-status":            "allowed",
+		"anthropic-ratelimit-unified-5h-utilization":       "0.0",
+		"anthropic-ratelimit-unified-5h-reset":             "1792192800",
+		"anthropic-ratelimit-unified-7d-status":            "rejected",
+		"anthropic-ratelimit-unified-7d-utilization":       "1.0",
+		"anthropic-ratelimit-unified-7d-reset":             "1792562400",
+		"anthropic-ratelimit-unified-representative-claim": "seven_day",
+		"Retry-After": "387252",
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for k, v := range h {
+			w.Header().Set(k, v)
+		}
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = io.WriteString(w, `{"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your account's rate limit."}}`)
+	}))
+	defer srv.Close()
+	u, err := (&ProbeClient{Endpoint: srv.URL}).Probe(context.Background(), probeToken)
+	if err != nil {
+		t.Fatalf("429 with headers: %v", err)
+	}
+	if got := u.MaxPercent(); got != 100 {
+		t.Errorf("max percent = %v, want 100 (weekly window at its limit)", got)
+	}
+}
+
 // TestLoginUsage_APIKeyNeverProbes: an api-key login has no plan windows;
 // it is reported billed per token without a request.
 func TestLoginUsage_APIKeyNeverProbes(t *testing.T) {

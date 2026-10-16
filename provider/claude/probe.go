@@ -164,6 +164,13 @@ func (c *ProbeClient) Probe(ctx context.Context, token string) (provider.Usage, 
 	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
 		return provider.Usage{}, fmt.Errorf("%w (HTTP %d%s)", provider.ErrUnauthorized, resp.StatusCode, apiMessage(body, token))
 	case resp.StatusCode == http.StatusTooManyRequests:
+		// A 429 for an account at its limit still carries the full
+		// anthropic-ratelimit-unified-* set (the window at 100% and its
+		// reset), which is more useful than "rate-limited, retry after
+		// days". Fall back to the rate-limit error only when it does not.
+		if u, perr := ParseProbeHeaders(resp.Header); perr == nil {
+			return u, nil
+		}
 		return provider.Usage{}, provider.RateLimitError(resp.Header)
 	case resp.StatusCode != http.StatusOK:
 		return provider.Usage{}, fmt.Errorf("claude: probe: unexpected HTTP %d: %s", resp.StatusCode, snippet([]byte(redact(string(body), token))))
