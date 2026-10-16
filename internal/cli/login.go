@@ -45,12 +45,14 @@ const maxTokenInput = 64 << 10
 // expiryWarnWindow is how early doctor warns that a login will expire.
 const expiryWarnWindow = 30 * 24 * time.Hour
 
-// checkPending is the outcome of a check until token usage is verified
-// readable (logins spec §12 V2): the token resolves, nothing is called.
-const checkPending = "resolved ok (usage check pending §12 V2)"
+// Outcomes of `agx login check`.
+const (
+	checkResolved = "resolved ok"
+	checkNoProbe  = "resolved ok (not probed)"
+)
 
-// errUsageLogin refuses a token login on usage / plan for the same reason.
-var errUsageLogin = errors.New("usage for token logins is not available yet: token logins cannot be checked for usage until verified (spec §12 V2); use --login home or no --login")
+// flagNoProbe skips the usage probe in `agx login check`.
+const flagNoProbe = "no-probe"
 
 // revokeHint is printed by `login rm`: removing a login does not revoke it.
 const revokeHint = "removing a login from agx does not revoke the token — revoke it in the vendor's token list (claude.ai settings; spec §12 V3)"
@@ -67,7 +69,7 @@ const (
 )
 
 func bindLoginFlag(f *pflag.FlagSet, dst *string) {
-	f.StringVar(dst, flagLogin, "", "run on this login's quota (a name from `agx login ls`, or \"home\" for the home's own login)")
+	f.StringVar(dst, flagLogin, "", "run on this login's quota (a name from `agx login ls`, \"home\" for the home's own login, or \"auto\" for the most headroom — probes each login)")
 }
 
 // loginChoice is the login a launch runs on; Login nil means the home login.
@@ -91,7 +93,10 @@ func (c loginChoice) describe() string {
 // or incompatible login from AGX_LOGIN is skipped with a note (an exported
 // Claude login must not break Codex or kimi runs); from --login or the
 // profile it is an error, because it was asked for explicitly.
-func (a *app) chooseLogin(cfg config.Config, p provider.Profile, flag string) (loginChoice, error) {
+func (a *app) chooseLogin(ctx context.Context, cfg config.Config, p provider.Profile, flag string) (loginChoice, error) {
+	if flag == login.Auto {
+		return a.autoLogin(ctx, cfg, p)
+	}
 	lc, note, err := a.pickLogin(cfg, p, flag)
 	if note != "" {
 		a.warn(note)
@@ -217,11 +222,17 @@ func (a *app) expiry(l login.Login) (time.Time, bool) {
 	return login.ExpiresAt(l, lt.LoginLifetime(l.Kind))
 }
 
-// resolveLoginValue resolves l's token, refusing an expired login. Never
-// falls back to the home login (logins spec §7, D9).
+// resolveLoginValue resolves l's token. Past expiry a stored login is
+// refused; a cmd/env login only warns, because agx knows when it was
+// registered, not when the token behind it was minted — a token rotated in
+// the user's store keeps working (logins spec §14 D13). Never falls back to
+// the home login (logins spec §7, D9).
 func (a *app) resolveLoginValue(ctx context.Context, l login.Login) (string, error) {
 	if at, ok := a.expiry(l); ok && !a.Now().Before(at) {
-		return "", fmt.Errorf("login %s expired on %s; renew: agx login add %s --setup --replace", l.Name, at.Format(time.DateOnly), l.Name)
+		if login.Owned(l) {
+			return "", fmt.Errorf("login %s expired on %s; renew: agx login add %s --setup --replace", l.Name, at.Format(time.DateOnly), l.Name)
+		}
+		a.warn(fmt.Sprintf("login %s is past its approximate expiry (%s, counted from when it was added); running anyway — if the token was not rotated, renew: agx login add %s --replace", l.Name, at.Format(time.DateOnly), l.Name))
 	}
 	r, err := a.resolver()
 	if err != nil {
@@ -411,7 +422,11 @@ func (a *app) runLoginAdd(ctx context.Context, o *loginAddOpts, name string) err
 	if stored {
 		a.warn(syncWarning + " (" + render.ShortenHome(tf.Path, a.UserHome) + ")")
 	}
-	return a.checkOne(ctx, name)
+	if err := a.checkOne(ctx, name, false); err != nil {
+		return err
+	}
+	a.note("see its usage with `agx login check " + name + "` (one probe: a few tokens of its quota)")
+	return nil
 }
 
 // readToken reads a raw token from stdin or a hidden prompt, after running
@@ -553,17 +568,20 @@ func (a *app) runLoginLs(asJSON bool) error {
 }
 
 func newLoginCheckCmd(a *app) *cobra.Command {
-	return &cobra.Command{
+	var noProbe bool
+	c := &cobra.Command{
 		Use:   "check [NAME]",
-		Short: "Resolve a login's token (all logins without NAME) and report the outcome",
-		Long: "Resolves the token from its source and reports whether it is usable. The value is never\n" +
-			"printed. Usage is not fetched yet: whether a setup-token can read usage is unverified (spec §12 V2).",
-		Example: "  agx login check\n  agx login check personal",
+		Short: "Resolve a login's token and show its usage (all logins without NAME)",
+		Long: "Resolves the token from its source, then probes its usage: one minimal request whose\n" +
+			"response headers carry the account's 5-hour and weekly windows. A probe spends a few\n" +
+			"tokens of the login's plan quota and counts toward rate limits; --no-probe only resolves.\n" +
+			"The value is never printed.",
+		Example: "  agx login check\n  agx login check personal\n  agx login check --no-probe",
 		Args:    usageArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := ctxOf(cmd)
 			if len(args) == 1 {
-				return a.checkOne(ctx, args[0])
+				return a.checkOne(ctx, args[0], !noProbe)
 			}
 			cfg, err := a.config()
 			if err != nil {
@@ -571,7 +589,7 @@ func newLoginCheckCmd(a *app) *cobra.Command {
 			}
 			failed := false
 			for _, l := range cfg.Logins {
-				if err := a.checkOne(ctx, l.Name); err != nil {
+				if err := a.checkOne(ctx, l.Name, !noProbe); err != nil {
 					failed = true
 				}
 			}
@@ -581,11 +599,13 @@ func newLoginCheckCmd(a *app) *cobra.Command {
 			return nil
 		},
 	}
+	c.Flags().BoolVar(&noProbe, flagNoProbe, false, "only resolve the token; do not spend a probe on its usage")
+	return c
 }
 
-// checkOne resolves login name and prints one outcome line; the error is
-// already printed, so it is errPartial.
-func (a *app) checkOne(ctx context.Context, name string) error {
+// checkOne resolves login name and prints one outcome line, then (probe)
+// its usage windows; a failure is already printed, so it is errPartial.
+func (a *app) checkOne(ctx context.Context, name string, probe bool) error {
 	cfg, err := a.config()
 	if err != nil {
 		return err
@@ -600,8 +620,22 @@ func (a *app) checkOne(ctx context.Context, name string) error {
 		}
 		return errPartial
 	}
-	_, err = fmt.Fprintf(a.Stdout, "login %s: %s\n", name, checkPending)
-	return err
+	if !probe {
+		_, err = fmt.Fprintf(a.Stdout, "login %s: %s\n", name, checkNoProbe)
+		return err
+	}
+	r := a.probeLogin(ctx, l, defaultUsageTimeout)
+	if _, err := fmt.Fprintf(a.Stdout, "login %s: %s\n", name, checkResolved); err != nil {
+		return err
+	}
+	opt := render.Options{Now: a.Now(), Home: a.UserHome}
+	if err := render.Usage(a.Stdout, []render.UsageReport{r}, opt); err != nil {
+		return err
+	}
+	if r.Err != nil && !errors.Is(r.Err, provider.ErrAPIBilled) {
+		return errPartial
+	}
+	return nil
 }
 
 func newLoginRmCmd(a *app) *cobra.Command {

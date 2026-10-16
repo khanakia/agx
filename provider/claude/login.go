@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"context"
 	"time"
 
 	"github.com/khanakia/agx/provider"
@@ -30,8 +31,9 @@ const SetupTokenLifetime = 365 * 24 * time.Hour
 
 // Compile-time checks that the login upgrades stay implemented.
 var (
-	_ provider.LoginLauncher  = (*Provider)(nil)
-	_ provider.LoginLifetimer = (*Provider)(nil)
+	_ provider.LoginLauncher    = (*Provider)(nil)
+	_ provider.LoginLifetimer   = (*Provider)(nil)
+	_ provider.LoginUsageReader = (*Provider)(nil)
 )
 
 // LoginKinds implements provider.LoginLauncher; oauth-token first, so a
@@ -59,4 +61,25 @@ func (p *Provider) LoginLifetime(kind provider.LoginKind) time.Duration {
 		return SetupTokenLifetime
 	}
 	return 0
+}
+
+// LoginUsage implements provider.LoginUsageReader with one probe (logins
+// spec §14 D14): it spends a few tokens of the login's plan quota, so it
+// runs only when the user asked for a token login's usage. An api-key login
+// has no plan windows and is never probed. Identity is only LoggedIn: the
+// profile endpoint refuses setup-tokens, so the account is not known (D15).
+func (p *Provider) LoginUsage(ctx context.Context, kind provider.LoginKind, value string) (provider.Usage, provider.Identity, error) {
+	if kind != provider.LoginOAuthToken {
+		return provider.Usage{}, provider.Identity{}, provider.ErrAPIBilled
+	}
+	client := p.Probe
+	if client == nil {
+		client = &ProbeClient{}
+	}
+	u, err := client.Probe(ctx, value)
+	if err != nil {
+		return provider.Usage{}, provider.Identity{}, err
+	}
+	u.Identity = provider.Identity{LoggedIn: true}
+	return u, u.Identity, nil
 }

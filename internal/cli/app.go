@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/ubgo/voltkit/appdir"
@@ -144,6 +145,9 @@ type app struct {
 	cfg     config.Config
 	cfgRung string
 	loaded  bool
+	// noteMu serialises stderr lines: probes and usage fetches run
+	// concurrently and may each warn (e.g. an approximate expiry).
+	noteMu sync.Mutex
 }
 
 // config loads the config once per invocation.
@@ -178,6 +182,8 @@ func (a *app) warn(msg string) { a.note(appmeta.Name + ": " + msg) }
 
 // note writes one plain line to stderr (status next to stdout data).
 func (a *app) note(line string) {
+	a.noteMu.Lock()
+	defer a.noteMu.Unlock()
 	// stderr is the channel of last resort: if writing to it fails there is
 	// nowhere left to report that, so the error is deliberately dropped.
 	_, _ = fmt.Fprintln(a.Stderr, line)

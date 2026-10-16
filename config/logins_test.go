@@ -139,14 +139,14 @@ func TestResolve_Logins_Invalid(t *testing.T) {
 		{"added-bad", "logins: [{name: a, token: stored, added: 16/10/2026}]", "added: want YYYY-MM-DD"},
 		// References.
 		{"profile-unknown-login", "logins: [{name: a, token: stored}]\nprofiles: [{name: w, provider: claude, home: ~/.w, login: nosuch}]", `profiles[0] (w): login: unknown login "nosuch"`},
-		{"profile-auto", "profiles: [{name: w, provider: claude, home: ~/.w, login: auto}]", "--login auto is not available yet"},
+		{"profile-auto", "profiles: [{name: w, provider: claude, home: ~/.w, login: auto}]", `"auto" is accepted only as --login`},
 		{"profile-wrong-provider", "logins: [{name: a, token: stored}]\nprofiles: [{name: c, provider: codex, home: ~/.codex, login: a}]", `"a" is a claude login, not codex`},
 		{"profile-api-billed", "logins: [{name: a, token: stored}]\nprofiles: [{name: k, provider: claude, home: ~/.k, billing: api, login: a}]", "billed per token"},
 		{"profile-own-env-set", "logins: [{name: a, token: stored}]\nprofiles: [{name: k, provider: claude, home: ~/.k, env: {CLAUDE_CODE_OAUTH_TOKEN: x}, login: a}]", "sets CLAUDE_CODE_OAUTH_TOKEN in env"},
 		{"profile-own-env-unset", "logins: [{name: a, token: stored}]\nprofiles: [{name: k, provider: claude, home: ~/.k, env: {ANTHROPIC_AUTH_TOKEN: x}, login: a}]", "sets ANTHROPIC_AUTH_TOKEN in env"},
 		{"profile-own-secret", "logins: [{name: a, kind: api-key, token: stored}]\nprofiles: [{name: k, provider: claude, home: ~/.k, secrets: {ANTHROPIC_API_KEY: 'gopass:x'}, login: a}]", "sets ANTHROPIC_API_KEY in secrets"},
 		{"provider-unknown-login", "providers:\n  claude: {login: nosuch}\n", `providers.claude.login: unknown login "nosuch"`},
-		{"provider-auto", "providers:\n  claude: {login: auto}\n", "providers.claude.login: --login auto is not available yet"},
+		{"provider-auto", "providers:\n  claude: {login: auto}\n", `providers.claude.login: "auto" is accepted only as --login`},
 		{"provider-wrong-provider", "logins: [{name: a, token: stored}]\nproviders:\n  codex: {login: a}\n", `providers.codex.login: login "a" is a claude login, not codex`},
 		{"unknown-key", "logins: [{name: a, token: stored, value: x}]", "value"},
 	} {

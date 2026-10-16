@@ -4,7 +4,7 @@
   "assigned_to_actor_id": null,
   "body": "Spec §12 V2. Is a setup-token inference-only? Decides usage per login, --login auto (D7) and account checking. Check: one read-only curl each with the token, no polling. Write the result back into §12.",
   "commitment": "accepted",
-  "completed_at": null,
+  "completed_at": "2026-10-16T18:21:39.457056324Z",
   "created_at": "2026-10-16T13:41:38.068900000Z",
   "created_by_actor_id": "act_afbe7ed1d969752697eebecaac20e9dc",
   "deferred_until": null,
@@ -16,8 +16,8 @@
   "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
   "repo_id": null,
   "started_at": null,
-  "status": "todo",
+  "status": "done",
   "tasklist_id": "tlt_01a144f2253175918d9f1b6ab913f8ec",
   "title": "V2: can a setup-token read /api/oauth/usage and /api/oauth/profile?",
-  "updated_at": "2026-10-16T13:41:38.068900000Z"
+  "updated_at": "2026-10-16T18:21:39.457057343Z"
 }

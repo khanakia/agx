@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -37,6 +39,35 @@ func (loginProv) LoginEnv(k provider.LoginKind, v string) (map[string]string, []
 }
 func (loginProv) LoginLifetime(k provider.LoginKind) time.Duration {
 	return (&claude.Provider{}).LoginLifetime(k)
+}
+
+// LoginUsage answers from probeUsage / probeErrs by token value and counts
+// every probe. Like the real provider, an api-key login is billed per token
+// and never probed.
+func (l loginProv) LoginUsage(_ context.Context, k provider.LoginKind, v string) (provider.Usage, provider.Identity, error) {
+	if k != provider.LoginOAuthToken {
+		return provider.Usage{}, provider.Identity{}, provider.ErrAPIBilled
+	}
+	l.mu.Lock()
+	l.probes++
+	l.mu.Unlock()
+	if err := l.probeErrs[v]; err != nil {
+		return provider.Usage{}, provider.Identity{}, err
+	}
+	u, ok := l.probeUsage[v]
+	if !ok {
+		return provider.Usage{}, provider.Identity{}, errors.New("fake: no probe result for this token")
+	}
+	id := provider.Identity{LoggedIn: true}
+	u.Identity = id
+	return u, id, nil
+}
+
+// probeCount reads the probe counter.
+func (h *harness) probeCount() int {
+	h.claude.mu.Lock()
+	defer h.claude.mu.Unlock()
+	return h.claude.probes
 }
 
 // loginConfig exercises every precedence step: a provider default per
@@ -130,7 +161,7 @@ func TestLogin_Precedence(t *testing.T) {
 		{profile: "cx", flag: "p", code: ExitUsage, note: "is a claude login, not codex"},
 		{profile: "kimi", flag: "p", code: ExitUsage, note: "billed per token"},
 		{profile: "personal", flag: "nosuch", code: ExitUsage, note: `unknown login "nosuch"`},
-		{profile: "personal", flag: "auto", code: ExitUsage, note: "not available yet"},
+		{profile: "personal", flag: "auto", want: "home (--login auto)", note: "login auto → home (max 77%)"}, // p has no stored token, W_TOKEN unset: both ineligible
 		// Step 2 beats the profile and provider defaults.
 		{profile: "work", env: "w", envSet: true, want: "w (AGX_LOGIN)"},
 		{profile: "pinned", env: "w", envSet: true, want: "w (AGX_LOGIN)"},
@@ -142,7 +173,7 @@ func TestLogin_Precedence(t *testing.T) {
 		{profile: "personal", env: "c", envSet: true, want: "w (provider)", note: "skipped for profile personal"},
 		// Step 2 errors: a typo or auto.
 		{profile: "personal", env: "nosuch", envSet: true, code: ExitUsage, note: "AGX_LOGIN=nosuch: unknown login"},
-		{profile: "personal", env: "auto", envSet: true, code: ExitUsage, note: "not available yet"},
+		{profile: "personal", env: "auto", envSet: true, code: ExitUsage, note: `AGX_LOGIN: "auto" is accepted only as --login`},
 	} {
 		name := c.profile + "/flag=" + c.flag + "/env=" + c.env
 		delete(h.env, appmeta.EnvLogin)
@@ -317,7 +348,7 @@ func TestLogin_Commands(t *testing.T) {
 	if code := h.run("login", "add", "p", "--stdin", "--account", "me@example.com"); code != ExitOK {
 		t.Fatalf("add: %d %s", code, h.stderr.String())
 	}
-	if out := h.stdout.String(); !strings.Contains(out, "added login p (claude, oauth-token, stored)") || !strings.Contains(out, "login p: "+checkPending) {
+	if out := h.stdout.String(); !strings.Contains(out, "added login p (claude, oauth-token, stored)") || !strings.Contains(out, "login p: "+checkNoProbe) {
 		t.Errorf("add output: %q", out)
 	}
 	if !strings.Contains(h.stderr.String(), syncWarning) {
@@ -442,11 +473,12 @@ func TestLogin_Commands(t *testing.T) {
 			t.Errorf("use %v: %d", args, code)
 		}
 	}
-	// usage / plan refuse token logins, accept home.
+	// plan refuses token logins (the profile endpoint refuses setup-tokens);
+	// usage shows them by probe (TestLoginUsage_Rows). Neither takes auto.
+	if code := h.run("plan", "--login", "w"); code != ExitUsage || !strings.Contains(h.stderr.String(), "profile endpoint refuses setup-tokens") {
+		t.Errorf("plan --login w: %d %q", code, h.stderr.String())
+	}
 	for _, cmd := range []string{"usage", "plan"} {
-		if code := h.run(cmd, "--login", "w"); code != ExitUsage || !strings.Contains(h.stderr.String(), "not available yet") {
-			t.Errorf("%s --login w: %d %q", cmd, code, h.stderr.String())
-		}
 		if code := h.run(cmd, "--login", "auto"); code != ExitUsage {
 			t.Errorf("%s --login auto: %d", cmd, code)
 		}
@@ -583,6 +615,8 @@ func TestLogin_NoLeak(t *testing.T) {
 		{"run", "-p", "work"}, {"run", "-p", "personal"}, {"run", "-p", "work", "--login", "w"}, {"run", "-p", "work", "--login", "s"},
 		{"run", "-p", "work", "--login", "bad"}, {"run", "-p", "work", "--login", "two"}, {"run", "-p", "cx", "--login", "p"},
 		{"new", "-p", "work", "--login", "q", "--dry-run", "t"}, {"usage", "--login", "p"}, {"plan", "--login", "p"},
+		{"usage", "--logins"}, {"usage", "--logins", "--json"}, {"usage", "--login", "w", "--json"}, {"login", "check", "w"}, {"login", "check", "--no-probe"},
+		{"run", "-p", "work", "--login", "auto", "--dry-run"}, {"run", "-p", "work", "--login", "auto"},
 		{"shell-init", "zsh"},
 	} {
 		step("", args...)

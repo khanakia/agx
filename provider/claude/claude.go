@@ -18,6 +18,9 @@ type Provider struct {
 	Store SecretStore
 	// Usage fetches usage; nil means a default UsageClient.
 	UsageClient *UsageClient
+	// Probe reads a token login's usage (LoginUsage); nil means a default
+	// ProbeClient.
+	Probe *ProbeClient
 	// Now is the clock for expiry checks; nil means time.Now.
 	Now func() time.Time
 }

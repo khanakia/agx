@@ -249,8 +249,12 @@ func (a *app) doctorLogins(cfg config.Config) []finding {
 		switch {
 		case !ok:
 			add(area, levelOK, string(l.Kind)+" ("+string(l.Source)+"), no known expiry")
+		case !now.Before(at) && login.Owned(l):
+			add(area, levelFail, fmt.Sprintf("expired %s; renew: agx login add %s --setup --replace", at.Format(time.DateOnly), l.Name))
 		case !now.Before(at):
-			add(area, levelFail, fmt.Sprintf("expired %s%s; renew: agx login add %s --setup --replace", approx, at.Format(time.DateOnly), l.Name))
+			// D13: agx does not know when a cmd/env token was minted, so
+			// runs go ahead; this is a reminder, not a failure.
+			add(area, levelWarn, fmt.Sprintf("past its approximate expiry %s; runs go ahead — if the token was not rotated, renew: agx login add %s --replace", at.Format(time.DateOnly), l.Name))
 		case at.Sub(now) < expiryWarnWindow:
 			add(area, levelWarn, fmt.Sprintf("expires %s%s (in %s); renew: agx login add %s --setup --replace", approx, at.Format(time.DateOnly), render.FormatUntil(at.Sub(now)), l.Name))
 		default:

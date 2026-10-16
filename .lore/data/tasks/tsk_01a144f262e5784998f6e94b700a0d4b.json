@@ -4,7 +4,7 @@
   "assigned_to_actor_id": null,
   "body": "Spec §12 V3. Decides the expiry column, the doctor warning and the rm hint. Check: claude setup-token output, claude.ai settings. Write the result back into §12.",
   "commitment": "accepted",
-  "completed_at": null,
+  "completed_at": "2026-10-16T18:21:39.528520261Z",
   "created_at": "2026-10-16T13:41:38.149541000Z",
   "created_by_actor_id": "act_afbe7ed1d969752697eebecaac20e9dc",
   "deferred_until": null,
@@ -16,8 +16,8 @@
   "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
   "repo_id": null,
   "started_at": null,
-  "status": "todo",
+  "status": "done",
   "tasklist_id": "tlt_01a144f2253175918d9f1b6ab913f8ec",
   "title": "V3: setup-token lifetime and where tokens are listed and revoked",
-  "updated_at": "2026-10-16T13:41:38.149541000Z"
+  "updated_at": "2026-10-16T18:21:39.528521224Z"
 }

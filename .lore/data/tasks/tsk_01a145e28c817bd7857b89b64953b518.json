@@ -4,7 +4,7 @@
   "assigned_to_actor_id": null,
   "body": "Decided 2026-10-16 (LOGINS_SPEC.md §14 D13): agx only knows when a cmd/env login was registered, not when its token was minted, so a run past the guessed expiry must warn, not refuse. Today all kinds are refused.",
   "commitment": "accepted",
-  "completed_at": null,
+  "completed_at": "2026-10-16T18:21:39.308246601Z",
   "created_at": "2026-10-16T18:03:57.441774000Z",
   "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
   "deferred_until": null,
@@ -16,8 +16,8 @@
   "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
   "repo_id": null,
   "started_at": null,
-  "status": "todo",
+  "status": "done",
   "tasklist_id": "tlt_01a144f2253175918d9f1b6ab913f8ec",
   "title": "Logins D13: refuse only stored logins past expiry, warn for cmd/env",
-  "updated_at": "2026-10-16T18:03:57.441774000Z"
+  "updated_at": "2026-10-16T18:21:39.308247625Z"
 }

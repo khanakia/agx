@@ -48,7 +48,12 @@ type usageOpts struct {
 	timeout  time.Duration
 	provider string
 	login    string
+	// logins adds one probed row per token login (logins spec §14 D14).
+	logins bool
 }
+
+// flagLogins is `agx usage --logins`.
+const flagLogins = "logins"
 
 func newUsageCmd(a *app) *cobra.Command {
 	o := &usageOpts{}
@@ -56,9 +61,13 @@ func newUsageCmd(a *app) *cobra.Command {
 		Use:   "usage [profile...]",
 		Short: "Plan usage for every account (5-hour, weekly, per model)",
 		Long: "Shows how much of each plan window is used and when it resets, for every plan-billed\n" +
-			"login on this machine (one row set per provider home, even when several profiles share it).",
+			"login on this machine (one row set per provider home, even when several profiles share it).\n" +
+			"Token logins are shown only when asked (--logins, --login NAME): their usage is read by a\n" +
+			"probe, one minimal request that spends a few tokens of that login's quota.",
 		Example: "  agx                      # same as agx usage\n" +
 			"  agx usage work           # one profile\n" +
+			"  agx usage --logins       # homes, then one probed row per token login\n" +
+			"  agx usage --login personal\n" +
 			"  agx usage --provider codex\n" +
 			"  agx usage --json | jq '.data[] | {profile, windows: [.windows[] | {label, percent}]}'",
 		Args: cobra.ArbitraryArgs,
@@ -69,15 +78,16 @@ func newUsageCmd(a *app) *cobra.Command {
 	f.StringVar(&o.color, flagColor, colorAuto, "colour: auto | always | never")
 	f.DurationVar(&o.timeout, flagTimeout, defaultUsageTimeout, "per-account fetch timeout")
 	f.StringVar(&o.provider, flagProvider, "", "only this provider (claude, codex)")
-	bindLoginFlag(f, &o.login)
+	f.StringVar(&o.login, flagLogin, "", "show this token login's usage (probe) instead of the homes; \"home\" = the default")
+	f.BoolVar(&o.logins, flagLogins, false, "add one probed row per token login (each probe spends a few tokens)")
 	return c
 }
 
 // usageJSON is one entry of the usage.list payload.
 type usageJSON struct {
-	Profile      string            `json:"profile"`
+	Profile      string            `json:"profile,omitempty"`
 	Provider     provider.ID       `json:"provider"`
-	Home         string            `json:"home"`
+	Home         string            `json:"home,omitempty"`
 	Billing      provider.Billing  `json:"billing"`
 	Email        string            `json:"email,omitempty"`
 	Organization string            `json:"organization,omitempty"`
@@ -85,6 +95,12 @@ type usageJSON struct {
 	Windows      []provider.Window `json:"windows,omitempty"`
 	Extra        json.RawMessage   `json:"extra,omitempty"`
 	Error        string            `json:"error,omitempty"`
+	// Login, Account and Source are set only on a token-login row:
+	// Source is "probe" (it cost a few tokens), Account the unverified
+	// label from config. Profile and Home are empty on such a row.
+	Login   string `json:"login,omitempty"`
+	Account string `json:"account,omitempty"`
+	Source  string `json:"source,omitempty"`
 }
 
 func (a *app) runUsage(ctx context.Context, o *usageOpts, names []string) error {
@@ -94,10 +110,11 @@ func (a *app) runUsage(ctx context.Context, o *usageOpts, names []string) error 
 	if o.timeout <= 0 {
 		return usageErr(errors.New("--timeout must be positive"))
 	}
-	if err := checkUsageLogin(o.login); err != nil {
+	cfg, err := a.config()
+	if err != nil {
 		return err
 	}
-	cfg, err := a.config()
+	only, err := usageLogin(cfg, o, names)
 	if err != nil {
 		return err
 	}
@@ -118,11 +135,23 @@ func (a *app) runUsage(ctx context.Context, o *usageOpts, names []string) error 
 			}
 		}
 	}
-	if len(targets) == 0 {
+	var probes []login.Login
+	switch {
+	case only != nil:
+		targets, probes = nil, []login.Login{*only}
+	case o.logins:
+		for _, l := range cfg.Logins {
+			if o.provider == "" || string(l.Provider) == o.provider {
+				probes = append(probes, l)
+			}
+		}
+	}
+	if len(targets) == 0 && len(probes) == 0 {
 		return usageErr(errors.New("no profiles to show (run `agx doctor`)"))
 	}
 
 	reports := a.fetchUsage(ctx, targets, o.timeout)
+	reports = append(reports, a.probeLogins(ctx, probes, o.timeout)...)
 
 	if o.json {
 		out := make([]usageJSON, 0, len(reports))
@@ -186,6 +215,10 @@ func toUsageJSON(r render.UsageReport) usageJSON {
 		Profile: r.Profile.Name, Provider: r.Profile.Provider, Home: r.Profile.Home, Billing: r.Profile.Billing,
 		Email: r.Usage.Identity.Email, Organization: r.Usage.Identity.Organization, Plan: r.Usage.Identity.Plan,
 	}
+	if r.Login != "" {
+		j.Profile, j.Home = "", ""
+		j.Login, j.Account, j.Source = r.Login, r.Account, usageSourceProbe
+	}
 	if r.Err != nil {
 		j.Error = r.Err.Error()
 		return j
@@ -219,14 +252,22 @@ func (a *app) wantColor(mode string) bool {
 	return a.IsTerminal(a.Stdout)
 }
 
-// checkUsageLogin accepts --login only as "home" (today's behaviour) until
-// token usage is verified readable (logins spec §8, §12 V2).
-func checkUsageLogin(name string) error {
-	switch name {
+// usageLogin validates --login / --logins and returns the one login to show
+// for `--login NAME` (nil otherwise: no flag, or "home", which is the plain
+// home view).
+func usageLogin(cfg config.Config, o *usageOpts, names []string) (*login.Login, error) {
+	switch o.login {
 	case "", login.Home:
-		return nil
+		return nil, nil
 	case login.Auto:
-		return usageErr(config.ErrAutoLogin)
+		return nil, usageErr(errors.New("--login auto chooses a login for a launch; to compare every login use `agx usage --logins`"))
 	}
-	return usageErr(errUsageLogin)
+	if o.logins || len(names) > 0 {
+		return nil, usageErr(fmt.Errorf("--login %s shows one login; it cannot be combined with --logins or profile names", o.login))
+	}
+	l, ok := cfg.LoginByName(o.login)
+	if !ok {
+		return nil, usageErr(fmt.Errorf("unknown login %q (see `agx login ls`)", o.login))
+	}
+	return &l, nil
 }

@@ -34,6 +34,11 @@ type fakeProv struct {
 	history map[string]map[string]bool
 	// subs are subscriptions by home (nil map = zero subscription).
 	subs map[string]provider.Subscription
+	// probeUsage / probeErrs answer LoginUsage by token value (loginProv);
+	// probes counts the probes, which cost real quota in the real provider.
+	probeUsage map[string]provider.Usage
+	probeErrs  map[string]error
+	probes     int
 }
 
 func (f *fakeProv) ID() provider.ID                             { return f.id }

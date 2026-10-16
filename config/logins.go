@@ -10,9 +10,11 @@ import (
 	"github.com/khanakia/agx/provider"
 )
 
-// ErrAutoLogin refuses `--login auto` / `login: auto` until token usage is
-// verified readable; picking blind would spend the wrong account.
-var ErrAutoLogin = errors.New("--login auto is not available yet: token logins cannot be checked for usage until verified (spec §12 V2)")
+// ErrAutoLogin refuses "auto" everywhere except the --login flag of a
+// launch: auto probes every login, which spends a few tokens of each
+// account's quota (logins spec §14 D14), so it must never become a silent
+// default in config.yaml, AGX_LOGIN or a provider default.
+var ErrAutoLogin = errors.New(`"auto" is accepted only as --login on run, new, resume and ws (it probes every login, spending a few tokens of each account's quota)`)
 
 // NoLoginsReason explains why a provider without provider.LoginLauncher
 // cannot have logins. Codex is the case today (logins spec §10).

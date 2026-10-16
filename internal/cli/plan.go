@@ -12,7 +12,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/ubgo/voltkit/output"
 
+	"github.com/khanakia/agx/config"
 	"github.com/khanakia/agx/internal/render"
+	"github.com/khanakia/agx/login"
 	"github.com/khanakia/agx/provider"
 )
 
@@ -35,7 +37,7 @@ func newPlanCmd(a *app) *cobra.Command {
 		Example: "  agx plan\n  agx plan personal\n  agx plan --json | jq '.data[] | {profile, plan: .subscription.plan, status: .subscription.status}'",
 		Args:    cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := checkUsageLogin(loginName); err != nil {
+			if err := checkPlanLogin(loginName); err != nil {
 				return err
 			}
 			return a.runPlan(ctxOf(cmd), args, asJSON, timeout)
@@ -177,4 +179,20 @@ func orCell(s string) string {
 		return cellNo
 	}
 	return s
+}
+
+// errPlanLogin refuses a token login on `agx plan`: the plan comes from
+// the profile endpoint, which refuses setup-tokens (logins spec §12.1 V2),
+// and the usage probe carries no plan.
+var errPlanLogin = errors.New("plan cannot show a token login: the profile endpoint refuses setup-tokens; use --login home or no --login (see a login's usage with `agx usage --login NAME`)")
+
+// checkPlanLogin accepts --login only as "home" (today's behaviour).
+func checkPlanLogin(name string) error {
+	switch name {
+	case "", login.Home:
+		return nil
+	case login.Auto:
+		return usageErr(config.ErrAutoLogin)
+	}
+	return usageErr(errPlanLogin)
 }

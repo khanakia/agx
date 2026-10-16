@@ -2,12 +2,12 @@
   "_table": "tasks",
   "_v": 1,
   "assigned_to_actor_id": null,
-  "body": "Spec §12 V5. Decides the Codex api-key login kind. Check: Codex docs + one --dry-run + one real run. Write the result back into §12; adjust §7/§8 if V1-V5 disagree with the design (§13 step 1).",
+  "body": "not run: needs metered OpenAI spend; build Codex api-key logins when wanted",
   "commitment": "accepted",
   "completed_at": null,
   "created_at": "2026-10-16T13:41:38.309603000Z",
   "created_by_actor_id": "act_afbe7ed1d969752697eebecaac20e9dc",
-  "deferred_until": null,
+  "deferred_until": "2027-01-16T00:00:00.000000000Z",
   "due_at": null,
   "id": "tsk_01a144f26385793b983145890a226c68",
   "mission_id": "msn_01a144f224e9762e8890991e9860f127",
@@ -19,5 +19,5 @@
   "status": "todo",
   "tasklist_id": "tlt_01a144f2253175918d9f1b6ab913f8ec",
   "title": "V5: Codex env var for an API key in interactive mode",
-  "updated_at": "2026-10-16T13:41:38.309603000Z"
+  "updated_at": "2026-10-16T18:21:39.666403371Z"
 }

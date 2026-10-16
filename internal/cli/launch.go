@@ -446,7 +446,7 @@ func (a *app) launch(ctx context.Context, p provider.Profile, req provider.Launc
 	if err != nil {
 		return err
 	}
-	lc, err := a.chooseLogin(cfg, p, loginFlag)
+	lc, err := a.chooseLogin(ctx, cfg, p, loginFlag)
 	if err != nil {
 		return err
 	}
