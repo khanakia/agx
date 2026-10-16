@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-10-16
+
 ### Added
 
 - Logins: run any home on any account's quota. A login is a named, long-lived Claude token (`claude setup-token`) or API key that agx passes to Claude Code at launch, so a home keeps its history, settings and `resume` while the run spends another account's plan. `agx login add NAME` takes the token at a hidden prompt, from `--stdin`, after `--setup` (runs `claude setup-token` first), or as a source read at each launch: `--cmd "<command>"` or `--env VAR`. `--kind api-key` adds an API key instead; `--account` is a label; `--replace` rotates a token and keeps the kind and account.
@@ -122,7 +124,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/khanakia/agx/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/khanakia/agx/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/khanakia/agx/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/khanakia/agx/compare/v0.2.1...v0.3.0
