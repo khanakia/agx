@@ -33,7 +33,8 @@ func NewRoot(d Deps) *cobra.Command {
 		Short: "One CLI for your AI coding agents and all their accounts",
 		Long: appmeta.Name + " drives your AI coding agents (Claude Code, Codex) across every account on this machine:\n" +
 			"plan usage for all accounts at once, launching on the account with the most headroom,\n" +
-			"resuming a conversation on the account that holds it, and managing session folders.\n\n" +
+			"resuming a conversation on the account that holds it, running any home on another\n" +
+			"account's quota (logins), and managing session folders.\n\n" +
 			"Run with no command to show usage for every account.",
 		Version:       versioncmd.Collect(appmeta.Name).Version,
 		Args:          usageArgs(cobra.NoArgs),

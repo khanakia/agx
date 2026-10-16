@@ -338,15 +338,28 @@ func (a *app) runLoginAdd(ctx context.Context, o *loginAddOpts, name string) err
 	if err != nil {
 		return usageErr(err)
 	}
-	kind, err := config.KindFor(ll, o.kind)
-	if err != nil {
-		return usageErr(err)
-	}
-	_, exists := cfg.LoginByName(name)
+	old, exists := cfg.LoginByName(name)
 	if exists && !o.replace {
 		return usageErr(fmt.Errorf("login %q already exists (use --replace to rotate its token)", name))
 	}
-	spec := config.LoginSpec{Name: name, Provider: string(id), Account: o.account, Added: a.Now().Format(time.DateOnly)}
+	// Rotation (--replace) changes the token, not what the login is: a kind
+	// or account not given again is kept, so rotating an api-key login does
+	// not silently turn it into an oauth-token one. `added` is reset, since
+	// expiry counts from the new token.
+	rawKind, account := o.kind, o.account
+	if exists && old.Provider == id {
+		if rawKind == "" {
+			rawKind = string(old.Kind)
+		}
+		if account == "" {
+			account = old.Account
+		}
+	}
+	kind, err := config.KindFor(ll, rawKind)
+	if err != nil {
+		return usageErr(err)
+	}
+	spec := config.LoginSpec{Name: name, Provider: string(id), Account: account, Added: a.Now().Format(time.DateOnly)}
 	if kind != ll.LoginKinds()[0] {
 		spec.Kind = string(kind)
 	}

@@ -7,8 +7,9 @@
 // are resolved only at launch, for the one login actually used, and never
 // appear in an error message.
 //
-// Invariant: this package imports only the standard library and provider,
-// so any tool can reuse it without agx's CLI stack.
+// Invariant: this package imports only the standard library, provider and
+// yaml.v3 (tokens.yaml is YAML), never agx's CLI stack, so any tool can
+// reuse it; internal/archtest enforces that.
 package login
 
 import (
@@ -81,6 +82,12 @@ var (
 // cmdTimeout bounds a token command: a store prompting for a passphrase
 // nobody answers must not hang a launch forever.
 const cmdTimeout = 10 * time.Second
+
+// cmdWaitDelay bounds how long agx waits for a token command's output pipes
+// after the command was killed. Without it a grandchild that inherited
+// stdout (sh forks for `sleep 30; echo x`) keeps the launch hanging until
+// that grandchild exits, defeating cmdTimeout.
+const cmdWaitDelay = time.Second
 
 // shell runs token commands, so the user's own syntax (pipes) works.
 const shell = "sh"
@@ -173,18 +180,40 @@ func (r Resolver) runCmd(ctx context.Context, command string) (string, error) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, shell, "-c", command)
 	cmd.Dir = r.Dir
+	cmd.WaitDelay = cmdWaitDelay
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
 		if ctx.Err() != nil {
 			return "", fmt.Errorf("timed out after %s", cmdTimeout)
 		}
-		if msg := strings.TrimSpace(stderr.String()); msg != "" {
+		if msg := redact(strings.TrimSpace(stderr.String()), stdout.String()); msg != "" {
 			return "", fmt.Errorf("%w: %s", err, msg)
 		}
 		return "", err
 	}
 	return stdout.String(), nil
+}
+
+// minRedactLen is the shortest stdout line redact hides: shorter lines are
+// not tokens, and replacing them would garble the message.
+const minRedactLen = 8
+
+// redactedMark replaces a stdout line found in stderr.
+const redactedMark = "<redacted>"
+
+// redact hides every non-empty stdout line of a failed token command that
+// also appears in its stderr. A command traced with `set -x`, or one that
+// echoes what it printed before failing, would otherwise put the token in
+// agx's error message. stderr is still shown: it is how the user learns why
+// the store failed.
+func redact(stderr, stdout string) string {
+	for line := range strings.SplitSeq(stdout, "\n") {
+		if line = strings.TrimSpace(line); len(line) >= minRedactLen {
+			stderr = strings.ReplaceAll(stderr, line, redactedMark)
+		}
+	}
+	return stderr
 }
 
 // ExpiresAt returns when l stops working given a credential lifetime, and

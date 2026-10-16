@@ -17,13 +17,15 @@ const (
 	APIKeyEnv = "ANTHROPIC_API_KEY"
 	// AuthTokenEnv is the bearer token third-party backends use (kimi).
 	AuthTokenEnv = "ANTHROPIC_AUTH_TOKEN"
-	// SetupTokenBin is the subcommand that mints an oauth-token login.
+	// SetupTokenSubcommand is the `claude` subcommand that mints an
+	// oauth-token login (`agx login add --setup` runs it).
 	SetupTokenSubcommand = "setup-token"
 )
 
-// SetupTokenLifetime is how long a setup-token is believed to stay valid.
-// Unverified (logins spec §12 V3); used only for expiry warnings, never to
-// refuse a token that still works.
+// SetupTokenLifetime is how long a setup-token is believed to stay valid,
+// counted from the login's `added` date. Unverified (logins spec §12 V3).
+// agx shows it as EXPIRES, `agx doctor` warns 30 days before it, and a run
+// on the login is refused after it (logins spec §9) with the renew command.
 const SetupTokenLifetime = 365 * 24 * time.Hour
 
 // Compile-time checks that the login upgrades stay implemented.

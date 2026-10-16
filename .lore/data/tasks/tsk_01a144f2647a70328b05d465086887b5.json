@@ -4,7 +4,7 @@
   "assigned_to_actor_id": null,
   "body": "Spec §13 step 4; schema §6. logins: and login: on profiles and provider defaults, validation, raw-token rejection in config.yaml (D4), in-place YAML edit for login use.",
   "commitment": "accepted",
-  "completed_at": null,
+  "completed_at": "2026-10-16T17:34:06.311316595Z",
   "created_at": "2026-10-16T13:41:38.554011000Z",
   "created_by_actor_id": "act_afbe7ed1d969752697eebecaac20e9dc",
   "deferred_until": null,
@@ -16,8 +16,8 @@
   "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
   "repo_id": null,
   "started_at": "2026-10-16T13:49:43.939391000Z",
-  "status": "in_progress",
+  "status": "done",
   "tasklist_id": "tlt_01a144f2253175918d9f1b6ab913f8ec",
   "title": "Build 4: config — logins:, login: on profiles and provider defaults",
-  "updated_at": "2026-10-16T13:49:43.939393000Z"
+  "updated_at": "2026-10-16T17:34:06.311317636Z"
 }

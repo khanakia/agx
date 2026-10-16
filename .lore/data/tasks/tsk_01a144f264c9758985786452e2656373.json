@@ -4,7 +4,7 @@
   "assigned_to_actor_id": null,
   "body": "Spec §13 step 5; commands §5, launch §7, safety §11. login add|ls|check|rm|use, --login on run/new/resume/usage/plan, LOGIN column in profiles, launch line, aglogin in shell-init, doctor checks (expiry, permissions, git work tree).",
   "commitment": "accepted",
-  "completed_at": null,
+  "completed_at": "2026-10-16T17:34:06.378281719Z",
   "created_at": "2026-10-16T13:41:38.633354000Z",
   "created_by_actor_id": "act_afbe7ed1d969752697eebecaac20e9dc",
   "deferred_until": null,
@@ -16,8 +16,8 @@
   "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
   "repo_id": null,
   "started_at": "2026-10-16T13:49:44.004815000Z",
-  "status": "in_progress",
+  "status": "done",
   "tasklist_id": "tlt_01a144f2253175918d9f1b6ab913f8ec",
   "title": "Build 5: CLI — agx login add|ls|check|rm|use, --login, doctor checks",
-  "updated_at": "2026-10-16T13:49:44.004817000Z"
+  "updated_at": "2026-10-16T17:34:06.378282733Z"
 }

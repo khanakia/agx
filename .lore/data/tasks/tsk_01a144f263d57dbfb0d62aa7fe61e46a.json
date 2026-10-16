@@ -4,7 +4,7 @@
   "assigned_to_actor_id": null,
   "body": "Spec §13 step 2 (seam described in §10). provider gets LoginKind, LoginLauncher, LoginUsageReader; provider/claude implements them.",
   "commitment": "accepted",
-  "completed_at": null,
+  "completed_at": "2026-10-16T17:34:06.154865354Z",
   "created_at": "2026-10-16T13:41:38.389900000Z",
   "created_by_actor_id": "act_afbe7ed1d969752697eebecaac20e9dc",
   "deferred_until": null,
@@ -16,8 +16,8 @@
   "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
   "repo_id": null,
   "started_at": "2026-10-16T13:49:43.804933000Z",
-  "status": "in_progress",
+  "status": "done",
   "tasklist_id": "tlt_01a144f2253175918d9f1b6ab913f8ec",
   "title": "Build 2: provider seam — LoginKind, LoginLauncher, LoginUsageReader",
-  "updated_at": "2026-10-16T13:49:43.804935000Z"
+  "updated_at": "2026-10-16T17:34:06.154866854Z"
 }
