@@ -1,0 +1,23 @@
+{
+  "_table": "tasks",
+  "_v": 1,
+  "assigned_to_actor_id": null,
+  "body": "Spec §12 V4. Identity cache, /status, status line: is going back to the home login clean? Check: compare ~/.claude-work before and after one run. Write the result back into §12.",
+  "commitment": "accepted",
+  "completed_at": null,
+  "created_at": "2026-10-16T13:41:38.230236000Z",
+  "created_by_actor_id": "act_afbe7ed1d969752697eebecaac20e9dc",
+  "deferred_until": null,
+  "due_at": null,
+  "id": "tsk_01a144f26336739d84af23f35966e91c",
+  "mission_id": "msn_01a144f224e9762e8890991e9860f127",
+  "plan_id": null,
+  "priority": "medium",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "started_at": null,
+  "status": "todo",
+  "tasklist_id": "tlt_01a144f2253175918d9f1b6ab913f8ec",
+  "title": "V4: does an env-token run change anything stored in the home?",
+  "updated_at": "2026-10-16T13:41:38.230236000Z"
+}

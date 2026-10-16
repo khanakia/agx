@@ -1,0 +1,23 @@
+{
+  "_table": "tasks",
+  "_v": 1,
+  "assigned_to_actor_id": null,
+  "body": "Spec §12 V1. With CLAUDE_CODE_OAUTH_TOKEN set, does Claude Code in a home with its own keychain login use the env token, with no prompt and without overwriting the stored login? Which env vars beat it? Decides whether home-B-on-quota-A works at all and the unset list in §7. Check: run claude in ~/.claude-work with the env set, /status, see which account's usage moves. Read-only, one throwaway token; write the result back into §12.",
+  "commitment": "accepted",
+  "completed_at": null,
+  "created_at": "2026-10-16T13:41:37.985212000Z",
+  "created_by_actor_id": "act_afbe7ed1d969752697eebecaac20e9dc",
+  "deferred_until": null,
+  "due_at": null,
+  "id": "tsk_01a144f262417343868ced1447b79590",
+  "mission_id": "msn_01a144f224e9762e8890991e9860f127",
+  "plan_id": null,
+  "priority": "high",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "started_at": null,
+  "status": "todo",
+  "tasklist_id": "tlt_01a144f2253175918d9f1b6ab913f8ec",
+  "title": "V1: does CLAUDE_CODE_OAUTH_TOKEN beat a home's own keychain login?",
+  "updated_at": "2026-10-16T13:41:37.985212000Z"
+}

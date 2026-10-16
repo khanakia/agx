@@ -304,12 +304,12 @@ would move ~/work/sessions/20260923_175923 → ~/work/my-tool
 
 1. Finds the folder: a bare name is looked up under `sessions.root`; `.` is the folder you are in; anything else is a path.
 2. Checks every account's history (Claude and Codex, all homes) for conversations started in that folder.
-3. Moves the folder to `<promote_root>/pglite-go` with a single rename, refusing if the destination exists.
+3. Moves the folder to `<promote_root>/pglite-go` with [a single rename, refusing if the destination exists](ds:block?id=promote-bdf6x7wh).
 4. **Claude:** Claude Code files each folder's conversations under `~/.claude*/projects/<folder path with punctuation as ->`. Promote renames that history folder to match the new path in whichever account holds it, so **starting Claude in the new folder continues the same chats**: `claude -c`, `claude --resume`, `agx resume`, `clr`.
 5. **Codex:** Codex files conversations by date, not by folder, so there is nothing to move. The conversation stays resumable by id (`agx resume --all <words>`), but it still names the old folder, so after promoting a folder with Codex chats, `cd` into the new folder and start a new Codex session or resume by id from there.
 6. Optionally runs `git init` (`--git-init`).
 
-The destination must be on the same disk as the session folder — the move is one atomic rename, so it never leaves a half-copied project. Across disks promote stops with "destination is on a different disk" and changes nothing; use `mv` yourself in that case.
+The destination must be on the same disk as the session folder — the move is one atomic rename, so it never leaves a half-copied project. Across disks promote [stops with "destination is on a different disk"](ds:block?id=promote-bdf6x7wh) and changes nothing; use `mv` yourself in that case.
 
 ```sh
 # after promoting:
@@ -376,11 +376,11 @@ agx: can't move conversations from personal (claude) to codex (codex): providers
 How it works:
 
 - The **target profile decides the provider** (`work` is a Claude profile, so Claude conversations move). Sources are every other account of that provider, or just `--from`.
-- **Same provider only.** `--from personal --to codex` is refused — Claude and Codex store conversations in different formats. `personal → kimi` is refused too: they share `~/.claude`, so there is nothing to move.
+- **Same provider only.** `--from personal --to codex` is [refused](ds:block?id=app-runmove-gs5yg4x2) — Claude and Codex store conversations in different formats. `personal → kimi` is refused too: they share `~/.claude`, so there is nothing to move.
 - **Picking (`-i` / `--pick`):** lists this folder's conversations (provider, profile, title, id); mark one or more with Tab (Enter alone takes the highlighted one). Without `--to`, a second list offers the profiles of the same provider and marks the ones that hold the chosen chats now. The chosen chats become `--only`, and every check below still applies. In a folder with no conversations it stops with "use --all"; only `--all` opens the workspace list first. Without fzf, type numbers such as `1 3` or `1,3`. `-i` cannot be combined with a folder argument or `--only`.
 - **Which folder:** no argument = the current folder. A bare name is looked up under `sessions.root`, then in the current folder, then matched against the current folder's own name (so `agx sessions move docker_setup_mac …` works from inside it too). Anything with a `/` is a path.
 - **What moves (Claude):** each conversation's transcript and tool results, its file checkpoints (`file-history/`) and environment snapshot (`session-env/`), plus the folder's project memory. It merges into whatever the target already has; after a full move the now-empty history folder in the old account is removed (anything the move doesn't recognise is left in place and listed).
-- **Safe by default:** it stops before changing anything if Claude is running in that folder (in either account) or a conversation already exists in the target; it copies the sources to `<home>/backups/agx-move-<folder>-<time>/` first (`--no-backup` to skip); and if a move fails half-way, everything already moved is put back. Running it twice is harmless — the second run finds nothing to move.
+- **Safe by default:** it stops before changing anything if Claude is running in that folder (in either account) or a conversation already exists in the target; it copies the sources to `<home>/backups/agx-move-<folder>-<time>/` first (`--no-backup` to skip); and if a move fails half-way, [everything already moved is put back](ds:block?id=applymoveplan-j9u9m6j7). Running it twice is harmless — the second run finds nothing to move.
 - **Exit status:** `0` moved (or nothing to move), `1` blocked or failed (nothing changed), `2` a wrong request (unknown profile, different providers, same home, missing folder).
 - **Undo:** `agx sessions move --to personal --from work` moves them back; the backup folder holds the untouched originals.
 - **Not moved:** Claude's global up-arrow prompt history and the folder's trust / allowed-tools settings — Claude asks to trust the folder once on the new account.
@@ -523,26 +523,26 @@ agx new -p auto --provider codex my spike   # auto-pick among Codex accounts
 
 | Command | Flags |
 |---|---|
-| `agx` / `agx usage` | `--provider claude\|codex` · `--json` · `--color auto\|always\|never` · `--timeout 15s` |
-| `agx plan` | `[profile…]` · `--json` · `--timeout 15s` (alias: `agx subscription`) |
-| `agx profiles` | `--json` (aliases: `agx who`, `agx accounts`) |
-| `agx run` | `-p/--profile` · `--provider` · `--dry-run` · `-- <args passed to the agent>` |
-| `agx new` | `-p/--profile` · `--provider` · `--dry-run` · `[slug words]` |
-| `agx resume` | `[query words]` · `--last` · `--all` · `--list` · `--json` (with `--list`) · `--limit 50` · `-b/--browse` · `-p/--profile` · `--dry-run` |
-| `agx ws` | `[query words]` · `--list` · `--json` (with `--list`) · `-p/--profile` · `--dry-run` |
-| `agx sessions ls` | `--json` |
-| `agx sessions gc` | `--yes` · `--min-age 24h` · `--json` |
-| `agx sessions promote <folder> <name>` | `--to <parent>` · `--dry-run` · `--git-init` · `--json` |
-| `agx sessions move [folder]` | `--to <profile>` (required unless `-i` picks it) · `-i/--pick` · `--all` (with `-i`) · `--from <profile>` · `--only <ids>` · `--dry-run` · `--no-backup` · `--json` |
-| `agx doctor` | `--json` |
-| `agx shell-init` | `zsh` (default) or `bash` |
+| `agx` / [`agx usage`](ds:block?id=newusagecmd-r3ert49b) | `--provider claude\|codex` · `--json` · `--color auto\|always\|never` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) |
+| [`agx plan`](ds:block?id=newplancmd-urn3m4qd) | `[profile…]` · `--json` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) (alias: `agx subscription`) |
+| [`agx profiles`](ds:block?id=newprofilescmd-ndr78yh5) | `--json` (aliases: `agx who`, `agx accounts`) |
+| [`agx run`](ds:block?id=newruncmd-jgrurvce) | `-p/--profile` · `--provider` · `--dry-run` · `-- <args passed to the agent>` |
+| [`agx new`](ds:block?id=newnewcmd-u4uqk853) | `-p/--profile` · `--provider` · `--dry-run` · `[slug words]` |
+| [`agx resume`](ds:block?id=newresumecmd-wp72e3ak) | `[query words]` · `--last` · `--all` · `--list` · `--json` (with `--list`) · [`--limit 50`](ds:block?id=defaultresumelimit-zc5uhvc4) · `-b/--browse` · `-p/--profile` · `--dry-run` |
+| [`agx ws`](ds:block?id=newwscmd-s5rg592z) | `[query words]` · `--list` · `--json` (with `--list`) · `-p/--profile` · `--dry-run` |
+| [`agx sessions ls`](ds:block?id=newsessionslscmd-tv2vrc6k) | `--json` |
+| [`agx sessions gc`](ds:block?id=newsessionsgccmd-qhhnyct9) | `--yes` · [`--min-age 24h`](ds:block?id=defaultgcminage-67k288nh) · `--json` |
+| [`agx sessions promote`](ds:block?id=newsessionspromotecmd-tdxnub7p) `<folder> <name>` | `--to <parent>` · `--dry-run` · `--git-init` · `--json` |
+| [`agx sessions move`](ds:block?id=newsessionsmovecmd-hpm92rna) `[folder]` | `--to <profile>` (required unless `-i` picks it) · `-i/--pick` · `--all` (with `-i`) · `--from <profile>` · `--only <ids>` · `--dry-run` · `--no-backup` · `--json` |
+| [`agx doctor`](ds:block?id=newdoctorcmd-ndsdf4zg) | `--json` |
+| [`agx shell-init`](ds:block?id=newshellinitcmd-3fw2m4vd) | `zsh` (default) or `bash` |
 | `agx version` / `agx --version` | `--json` (on `version`) |
 
-`run`, `new` and `resume` accept `--dry-run` to print the exact command, working folder and environment changes without starting anything; secret values are shown as `<secret:scheme>`. Every command has `--help` with examples. Exit status: `0` ok, `1` a runtime failure (including "some accounts failed", with the others still printed), `2` a usage error.
+`run`, `new` and `resume` accept `--dry-run` to print the exact command, working folder and environment changes without starting anything; secret values are shown as `<secret:scheme>`. Every command has `--help` with examples. [Exit status](ds:block?id=exitcodes-35ygnun6): `0` ok, `1` a runtime failure (including "some accounts failed", with the others still printed), `2` a usage error.
 
 ## Configuration
 
-Optional, at `~/.agx/config.yaml` (override the directory with `AGX_CONFIG_DIR` or `AGX_HOME`; `agx doctor` shows which one decided). Unknown keys are an error, so typos are caught.
+Optional, at `~/.agx/config.yaml` (override the directory with [`AGX_CONFIG_DIR` or `AGX_HOME`](ds:block?id=appidentity-65c6dy83); `agx doctor` shows which one decided). [Unknown keys are an error](ds:block?id=decode-qymvq95s), so typos are caught.
 
 ```yaml
 sessions:
@@ -584,7 +584,9 @@ shell:
     clr: resume
 ```
 
-Secrets use `gopass:<path>` (runs `gopass show -o`) or `env:<NAME>`. When a provider has any configured profile, discovery for that provider is switched off, so the config is the complete list.
+The top-level keys are [`sessions`](ds:block?id=sessionsspec-yzshjgvk), `providers`, [`profiles`](ds:block?id=profilespec-jymp7n69) and [`shell`](ds:block?id=shellspec-nagmshhq) ([schema](ds:block?id=file-charr88x)); `sessions.root` defaults to [`~/agx-sessions`](ds:block?id=defaultsessionsdir-xhtaakn6).
+
+Secrets use [`gopass:<path>` (runs `gopass show -o`) or `env:<NAME>`](ds:block?id=parse-39f37ayc). When a provider has any configured profile, [discovery for that provider is switched off](ds:block?id=resolve-3amwuw3d), so the config is the complete list.
 
 ## Shell integration
 
@@ -604,7 +606,7 @@ Every listing command has `--json`, emitting a stable envelope:
 { "schema_version": 1, "kind": "usage.list", "count": 3, "data": [ … ] }
 ```
 
-Kinds: `usage.list`, `plan.list`, `profile.list`, `conversation.list`, `workspace.list`, `session.list`, `session.gc`, `session.promote`, `session.move`, `doctor.report`, `version.show`.
+[Kinds](ds:block?id=jsonkinds-gqp2ydfe): `usage.list`, [`plan.list`](ds:block?id=kindplanlist-pkqtaqac), `profile.list`, `conversation.list`, `workspace.list`, `session.list`, `session.gc`, `session.promote`, [`session.move`](ds:block?id=kindsessionmove-kyhtpccm), `doctor.report`, `version.show`.
 
 ```sh
 agx usage --json | jq '.data[] | {profile, windows: [.windows[] | {label, percent}]}'
@@ -616,12 +618,12 @@ agx resume --all --list --json | jq -r '.data[] | "\(.updated)  \(.title)"'
 | | Claude Code | Codex |
 |---|---|---|
 | Accounts | one per config dir: `~/.claude`, or `CLAUDE_CONFIG_DIR` (`~/.claude-work`, …) | one per `CODEX_HOME` (default `~/.codex`) |
-| Login read from | `<home>/.credentials.json` and the macOS Keychain entry `Claude Code-credentials-<sha256(home)[:8]>` (freshest wins) | `<home>/auth.json` |
-| Usage from | `GET api.anthropic.com/api/oauth/usage` (what `/usage` calls) | `GET chatgpt.com/backend-api/wham/usage` |
-| Conversations | `<home>/projects/<path with non-alphanumerics as ->/<id>.jsonl`; titles from `ai-title` / `custom-title` records | `<home>/sessions/YYYY/MM/DD/rollout-*.jsonl` |
+| Login read from | `<home>/.credentials.json` and the [macOS Keychain entry `Claude Code-credentials-<sha256(home)[:8]>`](ds:block?id=claudekeychain-58cn2d6s) (freshest wins) | `<home>/auth.json` |
+| Usage from | [`GET api.anthropic.com/api/oauth/usage`](ds:block?id=claudeendpoints-hm4t7ueg) (what `/usage` calls) | [`GET chatgpt.com/backend-api/wham/usage`](ds:block?id=defaultendpoint-tvt3cj6w) |
+| Conversations | [`<home>/projects/<path with non-alphanumerics as ->/<id>.jsonl`](ds:block?id=encodepath-acf2dnds); titles from `ai-title` / `custom-title` records | [`<home>/sessions/YYYY/MM/DD/rollout-*.jsonl`](ds:block?id=sessionsdir-8yekgwcc) |
 | Resume | `claude --resume <id>` in the conversation's folder | `codex resume <id>` |
 
-agx never refreshes a token: refreshing replaces the saved login and can log the agent CLI out. An expired login is reported with the command that makes the CLI refresh it itself. When launching on the default home, agx *removes* `CLAUDE_CONFIG_DIR` / `CODEX_HOME` from the environment, because setting Claude's variable even to `~/.claude` switches it to a different Keychain entry and the account looks logged out. Transcripts are never read whole: the folder comes from the start of each file and the title from its end, so `resume` stays fast even with gigabytes of history.
+agx never refreshes a token: refreshing replaces the saved login and can log the agent CLI out. An expired login is reported with the command that makes the CLI refresh it itself. When launching on the default home, agx [*removes* `CLAUDE_CONFIG_DIR` / `CODEX_HOME`](ds:block?id=homeenv-cd4k5f3z) from the environment, because setting Claude's variable even to `~/.claude` switches it to a different Keychain entry and the account looks logged out. Transcripts are never read whole: the folder comes from the start of each file and the title from its end, so `resume` stays fast even with gigabytes of history.
 
 ## Use it as a library
 
@@ -675,7 +677,7 @@ Start Claude Code with `CLAUDE_CONFIG_DIR=~/.claude-work claude`, log in once, a
 
 **How does `-p auto` choose?**
 
-It fetches usage for each plan-billed account of the provider, scores each by its fullest window (because any one window at 100% blocks you), and picks the lowest score; ties go to config order. API-billed profiles are never picked.
+It fetches usage for each plan-billed account of the provider, scores each by its fullest window (because any one window at 100% blocks you), and [picks the lowest score; ties go to config order](ds:block?id=best-3rrnjnxk). API-billed profiles are never picked.
 
 **After `agx sessions promote`, does Claude still have my conversation in the new folder?**
 
@@ -691,11 +693,11 @@ agx can't tell you: the login it reads doesn't have access to billing details. `
 
 **Can I run `agx` on every shell prompt or in a tight loop?**
 
-Don't: the vendors rate-limit their usage endpoints, and polling many times a minute gets an account answered with HTTP 429. agx then shows "usage endpoint rate-limited this account; try again shortly (retry after …)" for that account and keeps showing the others. Every few minutes (for example `watch -n 300 agx`) is fine.
+Don't: the vendors rate-limit their usage endpoints, and polling many times a minute gets an account answered with HTTP 429. agx then shows ["usage endpoint rate-limited this account; try again shortly](ds:block?id=errratelimited-d974fprh) [(retry after …)"](ds:block?id=ratelimiterror-69hqnbfz) for that account and keeps showing the others. Every few minutes (for example `watch -n 300 agx`) is fine.
 
 **Is it safe to run `agx sessions gc --yes`?**
 
-It only removes folders that contain no files, have no conversation history in any provider, and are older than `--min-age` (24h by default), and deletion uses a call that cannot remove a non-empty directory.
+It [only removes folders that contain no files, have no conversation history in any provider, and are older than `--min-age`](ds:block?id=plangc-pxge66ab) ([24h by default](ds:block?id=defaultgcminage-67k288nh)), and [deletion uses a call that cannot remove a non-empty directory](ds:block?id=removeempty-tndggau3).
 
 **Does it work with API-key or third-party backends like Kimi?**
 
@@ -708,6 +710,51 @@ On Linux, logins are read from the credential files, so it works. The Keychain l
 **Is this an official Anthropic or OpenAI tool?**
 
 No. It is an independent open-source project, not affiliated with Anthropic or OpenAI. The usage endpoints are undocumented and could change; parsing is defensive and never hides a limit it doesn't recognise.
+
+<!-- docsync: the code blocks this README cites (remote defs, so no directive lives in the Go source). Run `task docs:check`. -->
+<!-- ds:def id=newusagecmd-r3ert49b file=internal/cli/usage.go pick=symbol:newUsageCmd owner=@khanakia stability=stable -->
+<!-- ds:def id=newplancmd-urn3m4qd file=internal/cli/plan.go pick=symbol:newPlanCmd owner=@khanakia stability=stable -->
+<!-- ds:def id=newprofilescmd-ndr78yh5 file=internal/cli/profiles.go pick=symbol:newProfilesCmd owner=@khanakia stability=stable -->
+<!-- ds:def id=newruncmd-jgrurvce file=internal/cli/launch.go pick=symbol:newRunCmd owner=@khanakia stability=stable -->
+<!-- ds:def id=newnewcmd-u4uqk853 file=internal/cli/launch.go pick=symbol:newNewCmd owner=@khanakia stability=stable -->
+<!-- ds:def id=newresumecmd-wp72e3ak file=internal/cli/launch.go pick=symbol:newResumeCmd owner=@khanakia stability=stable -->
+<!-- ds:def id=newwscmd-s5rg592z file=internal/cli/browse.go pick=symbol:newWsCmd owner=@khanakia stability=stable -->
+<!-- ds:def id=newsessionslscmd-tv2vrc6k file=internal/cli/sessions.go pick=symbol:newSessionsLsCmd owner=@khanakia stability=stable -->
+<!-- ds:def id=newsessionsgccmd-qhhnyct9 file=internal/cli/sessions.go pick=symbol:newSessionsGCCmd owner=@khanakia stability=stable -->
+<!-- ds:def id=newsessionspromotecmd-tdxnub7p file=internal/cli/sessions.go pick=symbol:newSessionsPromoteCmd owner=@khanakia stability=stable -->
+<!-- ds:def id=newsessionsmovecmd-hpm92rna file=internal/cli/move.go pick=symbol:newSessionsMoveCmd owner=@khanakia stability=stable -->
+<!-- ds:def id=newdoctorcmd-ndsdf4zg file=internal/cli/doctor.go pick=symbol:newDoctorCmd owner=@khanakia stability=stable -->
+<!-- ds:def id=newshellinitcmd-3fw2m4vd file=internal/cli/shellinit.go pick=symbol:newShellInitCmd owner=@khanakia stability=stable -->
+<!-- ds:def id=jsonkinds-gqp2ydfe file=internal/cli/usage.go pick=symbol:kindUsageList owner=@khanakia stability=stable -->
+<!-- ds:def id=kindplanlist-pkqtaqac file=internal/cli/plan.go pick=symbol:kindPlanList owner=@khanakia stability=stable -->
+<!-- ds:def id=kindsessionmove-kyhtpccm file=internal/cli/move.go pick=symbol:kindSessionMove owner=@khanakia stability=stable -->
+<!-- ds:def id=exitcodes-35ygnun6 file=internal/cli/app.go pick=symbol:ExitUsage owner=@khanakia stability=stable -->
+<!-- ds:def id=defaultusagetimeout-sz3xwdbj file=internal/cli/usage.go pick=symbol:defaultUsageTimeout owner=@khanakia stability=stable -->
+<!-- ds:def id=defaultresumelimit-zc5uhvc4 file=internal/cli/launch.go pick=symbol:defaultResumeLimit owner=@khanakia stability=stable -->
+<!-- ds:def id=defaultgcminage-67k288nh file=internal/cli/sessions.go pick=symbol:defaultGCMinAge owner=@khanakia stability=stable -->
+<!-- ds:def id=app-runmove-gs5yg4x2 file=internal/cli/move.go pick=symbol:app.runMove owner=@khanakia stability=stable -->
+<!-- ds:def id=file-charr88x file=config/config.go pick=symbol:File owner=@khanakia stability=stable -->
+<!-- ds:def id=sessionsspec-yzshjgvk file=config/config.go pick=symbol:SessionsSpec owner=@khanakia stability=stable -->
+<!-- ds:def id=profilespec-jymp7n69 file=config/config.go pick=symbol:ProfileSpec owner=@khanakia stability=stable -->
+<!-- ds:def id=shellspec-nagmshhq file=config/config.go pick=symbol:ShellSpec owner=@khanakia stability=stable -->
+<!-- ds:def id=decode-qymvq95s file=config/config.go pick=symbol:Decode owner=@khanakia stability=stable -->
+<!-- ds:def id=resolve-3amwuw3d file=config/config.go pick=symbol:Resolve owner=@khanakia stability=stable -->
+<!-- ds:def id=defaultsessionsdir-xhtaakn6 file=config/config.go pick=symbol:defaultSessionsDirName owner=@khanakia stability=stable -->
+<!-- ds:def id=appidentity-65c6dy83 file=internal/appmeta/appmeta.go pick=symbol:EnvPrefix owner=@khanakia stability=stable -->
+<!-- ds:def id=parse-39f37ayc file=secret/secret.go pick=symbol:Parse owner=@khanakia stability=stable -->
+<!-- ds:def id=encodepath-acf2dnds file=provider/claude/conversations.go pick=symbol:EncodePath owner=@khanakia stability=stable -->
+<!-- ds:def id=claudekeychain-58cn2d6s file=provider/claude/constants.go pick=symbol:keychainService owner=@khanakia stability=stable -->
+<!-- ds:def id=claudeendpoints-hm4t7ueg file=provider/claude/constants.go pick=symbol:DefaultEndpoint owner=@khanakia stability=stable -->
+<!-- ds:def id=defaultendpoint-tvt3cj6w file=provider/codex/codex.go pick=symbol:DefaultEndpoint owner=@khanakia stability=stable -->
+<!-- ds:def id=sessionsdir-8yekgwcc file=provider/codex/codex.go pick=symbol:sessionsDir owner=@khanakia stability=stable -->
+<!-- ds:def id=homeenv-cd4k5f3z file=provider/env.go pick=symbol:HomeEnv owner=@khanakia stability=stable -->
+<!-- ds:def id=ratelimiterror-69hqnbfz file=provider/ratelimit.go pick=symbol:RateLimitError owner=@khanakia stability=stable -->
+<!-- ds:def id=errratelimited-d974fprh file=provider/provider.go pick=symbol:ErrRateLimited owner=@khanakia stability=stable -->
+<!-- ds:def id=applymoveplan-j9u9m6j7 file=provider/move.go pick=symbol:ApplyMovePlan owner=@khanakia stability=stable -->
+<!-- ds:def id=best-3rrnjnxk file=pick/pick.go pick=symbol:Best owner=@khanakia stability=stable -->
+<!-- ds:def id=plangc-pxge66ab file=sessions/sessions.go pick=symbol:PlanGC owner=@khanakia stability=stable -->
+<!-- ds:def id=removeempty-tndggau3 file=sessions/sessions.go pick=symbol:RemoveEmpty owner=@khanakia stability=stable -->
+<!-- ds:def id=promote-bdf6x7wh file=sessions/sessions.go pick=symbol:Promote owner=@khanakia stability=stable -->
 
 ## License
 

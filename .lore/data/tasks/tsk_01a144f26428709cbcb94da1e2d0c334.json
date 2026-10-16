@@ -1,0 +1,23 @@
+{
+  "_table": "tasks",
+  "_v": 1,
+  "assigned_to_actor_id": null,
+  "body": "Spec §13 step 3; token sources §4, decisions D3, D4, D10, D12. New public package login (provider-only imports): resolve stored / token_cmd / token_env; ~/.agx/tokens.yaml read/write, 0600, permission checks.",
+  "commitment": "accepted",
+  "completed_at": null,
+  "created_at": "2026-10-16T13:41:38.472038000Z",
+  "created_by_actor_id": "act_afbe7ed1d969752697eebecaac20e9dc",
+  "deferred_until": null,
+  "due_at": null,
+  "id": "tsk_01a144f26428709cbcb94da1e2d0c334",
+  "mission_id": "msn_01a144f224e9762e8890991e9860f127",
+  "plan_id": null,
+  "priority": "medium",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "started_at": "2026-10-16T13:49:43.872615000Z",
+  "status": "in_progress",
+  "tasklist_id": "tlt_01a144f2253175918d9f1b6ab913f8ec",
+  "title": "Build 3: login package — resolve stored/cmd/env, tokens.yaml with permission checks",
+  "updated_at": "2026-10-16T13:49:43.872617000Z"
+}

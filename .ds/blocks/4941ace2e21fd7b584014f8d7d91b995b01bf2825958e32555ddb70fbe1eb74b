@@ -1,0 +1,12 @@
+func Decode(raw []byte) (File, error) {
+	var f File
+	if len(bytes.TrimSpace(raw)) == 0 {
+		return f, nil
+	}
+	dec := yaml.NewDecoder(bytes.NewReader(raw))
+	dec.KnownFields(true)
+	if err := dec.Decode(&f); err != nil && !errors.Is(err, io.EOF) {
+		return File{}, fmt.Errorf("%w: %w", ErrInvalid, err)
+	}
+	return f, nil
+}

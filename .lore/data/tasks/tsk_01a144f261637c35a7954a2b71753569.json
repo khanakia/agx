@@ -1,0 +1,23 @@
+{
+  "_table": "tasks",
+  "_v": 1,
+  "assigned_to_actor_id": null,
+  "body": "Owner (Aman Bansal) reviews docsi/LOGINS_SPEC.md before any check or build starts. Blocked on the owner. Decisions already taken are in §14 (D1-D12).",
+  "commitment": "accepted",
+  "completed_at": "2026-10-16T13:49:44.071369000Z",
+  "created_at": "2026-10-16T13:41:37.763799000Z",
+  "created_by_actor_id": "act_afbe7ed1d969752697eebecaac20e9dc",
+  "deferred_until": null,
+  "due_at": null,
+  "id": "tsk_01a144f261637c35a7954a2b71753569",
+  "mission_id": "msn_01a144f224e9762e8890991e9860f127",
+  "plan_id": null,
+  "priority": "high",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "started_at": "2026-10-16T13:41:37.833500000Z",
+  "status": "done",
+  "tasklist_id": "tlt_01a144f2253175918d9f1b6ab913f8ec",
+  "title": "Owner review of LOGINS_SPEC.md",
+  "updated_at": "2026-10-16T13:49:44.071370000Z"
+}

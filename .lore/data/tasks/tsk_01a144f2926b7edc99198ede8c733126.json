@@ -1,0 +1,23 @@
+{
+  "_table": "tasks",
+  "_v": 1,
+  "assigned_to_actor_id": null,
+  "body": "HANDOFF §9. Codex resume was verified at the process level only (headless PTY limit); check it renders in a real terminal.",
+  "commitment": "accepted",
+  "completed_at": null,
+  "created_at": "2026-10-16T13:41:50.315973000Z",
+  "created_by_actor_id": "act_afbe7ed1d969752697eebecaac20e9dc",
+  "deferred_until": "2026-11-16T00:00:00.000000000Z",
+  "due_at": null,
+  "id": "tsk_01a144f2926b7edc99198ede8c733126",
+  "mission_id": null,
+  "plan_id": null,
+  "priority": "low",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "started_at": null,
+  "status": "todo",
+  "tasklist_id": "tlt_01a144f291777c9e99fcbd18a8e76d14",
+  "title": "Codex resume: verify on screen in a real terminal",
+  "updated_at": "2026-10-16T13:41:50.315973000Z"
+}

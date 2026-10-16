@@ -1,0 +1,14 @@
+func Promote(src, dst string) error {
+	if _, err := os.Stat(dst); err == nil {
+		return fmt.Errorf("%w: %s", ErrExists, dst)
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("sessions: stat %s: %w", dst, err)
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), dirPerm); err != nil {
+		return fmt.Errorf("sessions: create parent of %s: %w", dst, err)
+	}
+	if err := os.Rename(src, dst); err != nil {
+		return renameError(src, dst, err)
+	}
+	return nil
+}

@@ -1,0 +1,4 @@
+type SessionsSpec struct {
+	Root        string `yaml:"root"`
+	PromoteRoot string `yaml:"promote_root"`
+}

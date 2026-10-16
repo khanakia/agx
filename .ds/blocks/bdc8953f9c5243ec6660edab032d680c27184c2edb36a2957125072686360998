@@ -1,0 +1,15 @@
+type ProfileSpec struct {
+	Name     string `yaml:"name"`
+	Provider string `yaml:"provider"`
+	// Home defaults to the provider's default home.
+	Home string `yaml:"home"`
+	// Billing is "plan" (default) or "api".
+	Billing string   `yaml:"billing"`
+	Default bool     `yaml:"default"`
+	Args    []string `yaml:"args"`
+	// ArgsReplace makes Args replace, not extend, the provider defaults.
+	ArgsReplace bool              `yaml:"args_replace"`
+	Env         map[string]string `yaml:"env"`
+	// Secrets maps env var name → "scheme:ref" (package secret).
+	Secrets map[string]string `yaml:"secrets"`
+}

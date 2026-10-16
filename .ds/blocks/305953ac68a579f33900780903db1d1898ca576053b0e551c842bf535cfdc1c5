@@ -1,0 +1,27 @@
+func newSessionsPromoteCmd(a *app) *cobra.Command {
+	var (
+		to      string
+		dryRun  bool
+		gitInit bool
+		asJSON  bool
+	)
+	c := &cobra.Command{
+		Use:   "promote <folder> <name>",
+		Short: "Move a session folder into a project, taking its Claude history along",
+		Long: "Moves <folder> (a name under sessions.root, or a path) to <promote_root>/<name>.\n" +
+			"Conversation history keyed by the folder's path (Claude Code) is moved too, so\n" +
+			"`agx resume` keeps working from the new location. Never overwrites.",
+		Example: "  agx sessions promote pglite_golang_20260831_123205 pglite-go\n" +
+			"  agx sessions promote . my-tool --git-init",
+		Args: usageArgs(cobra.ExactArgs(2)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return a.runPromote(ctxOf(cmd), args[0], args[1], to, dryRun, gitInit, asJSON)
+		},
+	}
+	f := c.Flags()
+	f.StringVar(&to, "to", "", "destination parent (default: sessions.promote_root)")
+	f.BoolVar(&dryRun, flagDryRun, false, "print the plan and change nothing")
+	f.BoolVar(&gitInit, "git-init", false, "run `git init` in the new location")
+	f.BoolVar(&asJSON, flagJSON, false, "print the JSON envelope")
+	return c
+}

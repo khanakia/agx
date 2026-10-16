@@ -1,0 +1,23 @@
+{
+  "_table": "tasks",
+  "_v": 1,
+  "assigned_to_actor_id": null,
+  "body": "Spec §13 step 6; §8 and D7. Usage per account; --login auto only if V2 shows a setup-token can read usage, otherwise defer it.",
+  "commitment": "accepted",
+  "completed_at": null,
+  "created_at": "2026-10-16T13:41:38.714453000Z",
+  "created_by_actor_id": "act_afbe7ed1d969752697eebecaac20e9dc",
+  "deferred_until": null,
+  "due_at": null,
+  "id": "tsk_01a144f2651a76f1b7053b0d742c5b38",
+  "mission_id": "msn_01a144f224e9762e8890991e9860f127",
+  "plan_id": null,
+  "priority": "medium",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "started_at": null,
+  "status": "todo",
+  "tasklist_id": "tlt_01a144f2253175918d9f1b6ab913f8ec",
+  "title": "Build 6: usage per login and --login auto (only if V2 passes)",
+  "updated_at": "2026-10-16T13:41:38.714453000Z"
+}

@@ -1,0 +1,25 @@
+func RemoveEmpty(path string) error {
+	var dirs []string
+	err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			dirs = append(dirs, p)
+			return nil
+		}
+		if !ignoredFiles[d.Name()] {
+			return fmt.Errorf("sessions: %s is not empty (%s)", path, p)
+		}
+		return os.Remove(p)
+	})
+	if err != nil {
+		return err
+	}
+	for i := len(dirs) - 1; i >= 0; i-- {
+		if err := os.Remove(dirs[i]); err != nil {
+			return fmt.Errorf("sessions: remove %s: %w", dirs[i], err)
+		}
+	}
+	return nil
+}

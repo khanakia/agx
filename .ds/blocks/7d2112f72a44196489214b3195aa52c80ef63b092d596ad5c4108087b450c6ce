@@ -1,0 +1,13 @@
+func Parse(s string) (Ref, error) {
+	scheme, path, ok := strings.Cut(s, ":")
+	if !ok || scheme == "" || path == "" {
+		return Ref{}, fmt.Errorf("%w: %q", ErrBadRef, s)
+	}
+	r := Ref{Scheme: Scheme(scheme), Path: path}
+	for _, known := range Schemes {
+		if r.Scheme == known {
+			return r, nil
+		}
+	}
+	return Ref{}, fmt.Errorf("%w %q (want one of %v)", ErrUnknownScheme, scheme, Schemes)
+}
