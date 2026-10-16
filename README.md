@@ -411,6 +411,7 @@ clw --login personal                                   # every alias passes it t
 agx resume --login personal                            # resume a work conversation on personal quota
 agx run -p work --login home                           # ignore every default: the home's own login
 agx run -p work --login personal --dry-run             # what would change; the token is never printed
+agx run -p work --login auto                           # the login (or the home's own) with the most headroom
 
 # a default
 agx login use personal -p work                         # profile work always spends personal quota
@@ -423,7 +424,10 @@ agx login use home --provider claude                   # undo the provider defau
 # look after them
 agx login ls                                           # NAME PROVIDER KIND SOURCE ACCOUNT ADDED EXPIRES USED-BY
 agx login ls --json | jq -r '.data[] | "\(.name)\t\(.expires)"'
-agx login check                                        # resolve every token and report; values are never printed
+agx login check                                        # resolve every token and show its usage (one probe each)
+agx login check --no-probe                             # only resolve; no request, no quota spent
+agx usage --logins                                     # every home, then one probed row per login
+agx usage --login personal                             # one login's 5-hour and weekly windows
 agx login add personal --stdin --replace               # rotate a token (kind and account are kept)
 agx login rm personal                                  # refused while a profile uses it; --force clears those too
 ```
@@ -440,6 +444,10 @@ exec:    claude --dangerously-skip-permissions
 $ agx run -p work --login personal
 agx: work · login personal
 
+$ agx run -p work --login auto
+agx: login auto → personal (max 12%) over home (max 64%), spare (max 80%)
+agx: work · login personal
+
 $ agx login ls
 NAME      PROVIDER  KIND         SOURCE  ACCOUNT          ADDED       EXPIRES      USED-BY
 personal  claude    oauth-token  stored  you@example.com  2026-10-16  2027-10-16   work
@@ -448,7 +456,7 @@ work      claude    oauth-token  cmd     —                2026-10-16  ~2027-10
 
 **Which login a run uses.** [The first match wins](ds:block?id=app-picklogin-p3tyusqh):
 
-1. `--login NAME` on the command line;
+1. `--login NAME` on the command line (or `--login auto`, below);
 2. `AGX_LOGIN` in the environment (what `aglogin` sets);
 3. the profile's `login:` in config.yaml;
 4. the provider's `providers.<id>.login:`;
@@ -460,13 +468,15 @@ A login asked for by name (`--login`, or a profile's `login:`) that does not fit
 
 **Where tokens live.** Pasted and piped tokens go to `~/.agx/tokens.yaml`, beside config.yaml, [mode 0600 in a 0700 folder](ds:block?id=tokenfile-checkperm-4epx2b72), written atomically. config.yaml only says `token: stored`, so it stays safe to sync or share. tokens.yaml must never be synced, backed up to a shared place or committed: agx prints that warning whenever it stores a token, `agx doctor` warns when the file sits inside a git work tree, and agx refuses to read a tokens.yaml that group or others can access, the way ssh treats a private key. `--cmd` and `--env` logins store nothing; their command or variable is read at each launch.
 
-**Expiry.** A setup-token is [believed to last one year](ds:block?id=setuptokenlifetime-nebd9cbt) (not verified yet) and is never refreshed. `agx login ls` shows EXPIRES counted from the login's `added` date, with `~` for `--cmd` and `--env` logins, where agx does not hold the value and `added` is when the login was added rather than when the token was minted. `agx doctor` warns [30 days](ds:block?id=expirywarnwindow-fnenahy6) ahead and fails after, and a run on an expired login is refused with the command that renews it: `agx login add NAME --setup --replace`.
+**Usage of a login, and `--login auto`.** A setup-token cannot read the usage endpoint `agx usage` uses (it answers 403), so agx reads a login's usage with [a probe](ds:block?id=probeclient-probe-i9609s2l): one minimal request to the Messages API ([the smallest model](ds:block?id=defaultprobemodel-g7o7rdkd), one output token) whose response headers carry the account's 5-hour and weekly windows, the same numbers `agx usage` shows for a home. A probe spends a few tokens of that login's plan quota and counts toward its rate limits, so agx runs one only when you ask: `agx usage --logins` (one row per login after the homes; in `--json` those rows carry `login`, `account` and `"source": "probe"` instead of `profile` and `home`), `agx usage --login NAME` (that login only), `agx login check` (`--no-probe` only resolves the token) and `--login auto`. A plain `agx` or `agx usage` never probes. [`--login auto`](ds:block?id=app-autologin-a4w0xz3h) on `run`, `new`, `resume` and `ws` compares the home's own login with every login that fits the profile, using the same rule as `-p auto` (lowest fullest window wins; ties go to the home, then config order); a login whose token does not resolve or whose probe fails is left out with its reason, and if nothing is left the run stops. `auto` is accepted only as that flag: in config.yaml, `AGX_LOGIN` or `agx login use` it is refused, so probing never becomes a silent default. An api-key login has no plan windows and is never probed. `agx plan --login NAME` is refused: the plan comes from the profile endpoint, which also refuses setup-tokens.
+
+**Expiry.** A setup-token is [believed to last one year](ds:block?id=setuptokenlifetime-nebd9cbt) (not verified yet) and is never refreshed. `agx login ls` shows EXPIRES counted from the login's `added` date, with `~` for `--cmd` and `--env` logins, where agx does not hold the value and `added` is when the login was added rather than when the token was minted. `agx doctor` warns [30 days](ds:block?id=expirywarnwindow-fnenahy6) ahead. Past that date [a stored login is refused](ds:block?id=app-resolveloginvalue-10wd6ob4) (doctor fails) with the command that renews it: `agx login add NAME --setup --replace`. A `--cmd` or `--env` login only warns and runs, and doctor warns instead of failing, because the token behind it may have been rotated in your store since the login was added.
 
 **Good to know.**
 
 - [Removing a login from agx does not revoke the token.](ds:block?id=revokehint-ngx5vax3) Revoke it where it was issued, in your claude.ai account settings.
 - The agent receives the token in its environment, so any process it starts (tools, hooks, MCP servers) can read it. Use a login only with agents and projects you would trust with that account.
-- `--login auto` and usage per login are not available yet. Whether a setup-token may read the usage endpoint is not verified, so agx can neither pick a login by headroom nor show a login's usage: `agx usage` and `agx plan` accept only `--login home`, and `agx login check` resolves the token without any network call.
+- Every probe (`agx usage --logins`, `--login NAME`, `--login auto`, `agx login check`) is a real, if tiny, request on that account: a few tokens of plan quota and one request toward its rate limits. Checking every few seconds in a loop would add up; `agx login add` does not probe.
 - Codex has no logins yet: its plan login exists only as refreshable tokens in `auth.json` (copying them can log the CLI out), and which API-key variable interactive Codex honours is not verified.
 
 What `agx login add` and `agx login use` write to config.yaml (comments and key order are kept):
@@ -632,20 +642,20 @@ agx new -p auto --provider codex my spike   # auto-pick among Codex accounts
 
 | Command | Flags |
 |---|---|
-| `agx` / [`agx usage`](ds:block?id=newusagecmd-r3ert49b) | `--provider claude\|codex` · `--json` · `--color auto\|always\|never` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) · `--login home` |
+| `agx` / [`agx usage`](ds:block?id=newusagecmd-r3ert49b) | `--provider claude\|codex` · `--json` · `--color auto\|always\|never` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) · `--logins` · `--login NAME\|home` (both probe) |
 | [`agx plan`](ds:block?id=newplancmd-urn3m4qd) | `[profile…]` · `--json` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) · `--login home` (alias: `agx subscription`) |
 | [`agx profiles`](ds:block?id=newprofilescmd-ndr78yh5) | `--json` (aliases: `agx who`, `agx accounts`) |
-| [`agx run`](ds:block?id=newruncmd-jgrurvce) | `-p/--profile` · `--provider` · `--login NAME\|home` · `--dry-run` · `-- <args passed to the agent>` |
-| [`agx new`](ds:block?id=newnewcmd-u4uqk853) | `-p/--profile` · `--provider` · `--login NAME\|home` · `--dry-run` · `[slug words]` |
-| [`agx resume`](ds:block?id=newresumecmd-wp72e3ak) | `[query words]` · `--last` · `--all` · `--list` · `--json` (with `--list`) · [`--limit 50`](ds:block?id=defaultresumelimit-zc5uhvc4) · `-b/--browse` · `-p/--profile` · `--login NAME\|home` · `--dry-run` |
-| [`agx ws`](ds:block?id=newwscmd-s5rg592z) | `[query words]` · `--list` · `--json` (with `--list`) · `-p/--profile` · `--login NAME\|home` · `--dry-run` |
+| [`agx run`](ds:block?id=newruncmd-jgrurvce) | `-p/--profile` · `--provider` · `--login NAME\|home\|auto` · `--dry-run` · `-- <args passed to the agent>` |
+| [`agx new`](ds:block?id=newnewcmd-u4uqk853) | `-p/--profile` · `--provider` · `--login NAME\|home\|auto` · `--dry-run` · `[slug words]` |
+| [`agx resume`](ds:block?id=newresumecmd-wp72e3ak) | `[query words]` · `--last` · `--all` · `--list` · `--json` (with `--list`) · [`--limit 50`](ds:block?id=defaultresumelimit-zc5uhvc4) · `-b/--browse` · `-p/--profile` · `--login NAME\|home\|auto` · `--dry-run` |
+| [`agx ws`](ds:block?id=newwscmd-s5rg592z) | `[query words]` · `--list` · `--json` (with `--list`) · `-p/--profile` · `--login NAME\|home\|auto` · `--dry-run` |
 | [`agx sessions ls`](ds:block?id=newsessionslscmd-tv2vrc6k) | `--json` |
 | [`agx sessions gc`](ds:block?id=newsessionsgccmd-qhhnyct9) | `--yes` · [`--min-age 24h`](ds:block?id=defaultgcminage-67k288nh) · `--json` |
 | [`agx sessions promote`](ds:block?id=newsessionspromotecmd-tdxnub7p) `<folder> <name>` | `--to <parent>` · `--dry-run` · `--git-init` · `--json` |
 | [`agx sessions move`](ds:block?id=newsessionsmovecmd-hpm92rna) `[folder]` | `--to <profile>` (required unless `-i` picks it) · `-i/--pick` · `--all` (with `-i`) · `--from <profile>` · `--only <ids>` · `--dry-run` · `--no-backup` · `--json` |
 | [`agx login add`](ds:block?id=newlogincmd-zhxdkaat) `NAME` | `--stdin` · `--setup` · `--cmd <command>` · `--env <VAR>` · `--provider` · `--kind oauth-token\|api-key` · `--account <label>` · `--replace` |
 | `agx login ls` | `--json` (alias: `agx login list`) |
-| `agx login check` `[NAME]` | none |
+| `agx login check` `[NAME]` | `--no-probe` |
 | `agx login use` `NAME\|home` | `-p/--profile <profile>` or `--provider <id>` |
 | `agx login rm` `NAME` | `--force` (alias: `agx login remove`) |
 | [`agx doctor`](ds:block?id=newdoctorcmd-ndsdf4zg) | `--json` |
@@ -705,7 +715,7 @@ shell:
     clr: resume
 ```
 
-The top-level keys are [`sessions`](ds:block?id=sessionsspec-yzshjgvk), [`logins`](ds:block?id=loginspec-e68nnxxt), `providers`, [`profiles`](ds:block?id=profilespec-jymp7n69) and [`shell`](ds:block?id=shellspec-nagmshhq) ([schema](ds:block?id=file-charr88x)); `sessions.root` defaults to [`~/agx-sessions`](ds:block?id=defaultsessionsdir-xhtaakn6). A login names exactly one of `token: stored`, `token_cmd` or `token_env`, and [`token:` accepts only the word `stored`](ds:block?id=resolvelogin-6dbygptz): a raw token pasted there makes every command refuse the file, without echoing the token. `providers.<id>.login` and a profile's `login:` name a login of the same provider, or `home`; see [Logins](#logins--use-any-accounts-quota-from-any-home).
+The top-level keys are [`sessions`](ds:block?id=sessionsspec-yzshjgvk), [`logins`](ds:block?id=loginspec-e68nnxxt), `providers`, [`profiles`](ds:block?id=profilespec-jymp7n69) and [`shell`](ds:block?id=shellspec-nagmshhq) ([schema](ds:block?id=file-charr88x)); `sessions.root` defaults to [`~/agx-sessions`](ds:block?id=defaultsessionsdir-xhtaakn6). A login names exactly one of `token: stored`, `token_cmd` or `token_env`, and [`token:` accepts only the word `stored`](ds:block?id=resolvelogin-6dbygptz): a raw token pasted there makes every command refuse the file, without echoing the token. `providers.<id>.login` and a profile's `login:` name a login of the same provider, or `home` (never `auto`, which is only a flag); see [Logins](#logins--use-any-accounts-quota-from-any-home).
 
 Raw login tokens live in `tokens.yaml` beside config.yaml (0600, never synced). Secrets use [`gopass:<path>` (runs `gopass show -o`) or `env:<NAME>`](ds:block?id=parse-39f37ayc). When a provider has any configured profile, [discovery for that provider is switched off](ds:block?id=resolve-3amwuw3d), so the config is the complete list.
 
@@ -783,7 +793,7 @@ No tool can. Subscription plans have no fixed token budget, and the servers only
 
 **Does checking usage use up my quota?**
 
-No. It makes one read-only GET per account and never calls a model.
+No. `agx` / `agx usage` make one read-only GET per account and never call a model. The exception is a token login, which cannot read that endpoint: `agx usage --logins`, `--login NAME`, `--login auto` and `agx login check` send it one minimal model request (a probe), which spends a few tokens of that login's quota. Nothing probes unless you pass one of those.
 
 **Does it send my token or data anywhere?**
 
@@ -851,7 +861,7 @@ No. It removes the login from agx only. Revoke the token in your claude.ai accou
 
 **Can agx pick the login with the most headroom, like `-p auto`?**
 
-Not yet. That needs the usage of a setup-token, and whether the usage endpoint answers for one is not verified, so `--login auto` is refused with that reason rather than picking blind.
+Yes, with `--login auto` on `run`, `new`, `resume` or `ws`. It compares the home's own login with every login that fits the profile and runs on the one with the most room, saying which and why. A setup-token cannot read the usage endpoint, so each login is checked with a probe that spends a few tokens of its quota; that is why `auto` is only ever a flag you type, never a default.
 
 **Is this an official Anthropic or OpenAI tool?**
 
@@ -913,6 +923,10 @@ No. It is an independent open-source project, not affiliated with Anthropic or O
 <!-- ds:def id=cmdtimeout-44pfsqzk file=login/login.go pick=symbol:cmdTimeout owner=@khanakia stability=stable -->
 <!-- ds:def id=provider-loginenv-n8x9u9rf file=provider/claude/login.go pick=symbol:Provider.LoginEnv owner=@khanakia stability=stable -->
 <!-- ds:def id=setuptokenlifetime-nebd9cbt file=provider/claude/login.go pick=symbol:SetupTokenLifetime owner=@khanakia stability=stable -->
+<!-- ds:def id=probeclient-probe-i9609s2l file=provider/claude/probe.go pick=symbol:ProbeClient.Probe owner=@khanakia stability=stable -->
+<!-- ds:def id=defaultprobemodel-g7o7rdkd file=provider/claude/probe.go pick=symbol:DefaultProbeModel owner=@khanakia stability=stable -->
+<!-- ds:def id=app-autologin-a4w0xz3h file=internal/cli/loginusage.go pick=symbol:app.autoLogin owner=@khanakia stability=stable -->
+<!-- ds:def id=app-resolveloginvalue-10wd6ob4 file=internal/cli/login.go pick=symbol:app.resolveLoginValue owner=@khanakia stability=stable -->
 
 ## License
 
