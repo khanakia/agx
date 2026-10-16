@@ -1,0 +1,752 @@
+package cli
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"path/filepath"
+	"slices"
+	"strings"
+	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"github.com/ubgo/voltkit/output"
+
+	"github.com/khanakia/agx/config"
+	"github.com/khanakia/agx/internal/appmeta"
+	"github.com/khanakia/agx/internal/render"
+	"github.com/khanakia/agx/login"
+	"github.com/khanakia/agx/provider"
+	"github.com/khanakia/agx/provider/claude"
+)
+
+// flagLogin is --login on run / new / resume / ws / usage / plan.
+const flagLogin = "login"
+
+// kindLoginList is the JSON envelope kind of `agx login ls --json`.
+const kindLoginList = "login.list"
+
+// Where a login choice came from (logins spec §5.4), shown by `agx
+// profiles`, --dry-run and in notes.
+const (
+	loginSrcFlag     = "--login"
+	loginSrcEnv      = appmeta.EnvLogin
+	loginSrcProfile  = "profile"
+	loginSrcProvider = "provider"
+	loginSrcHome     = "home"
+)
+
+// maxTokenInput bounds what `login add --stdin` reads: a token is a few
+// hundred bytes, so anything near this is a mistake (a piped file).
+const maxTokenInput = 64 << 10
+
+// expiryWarnWindow is how early doctor warns that a login will expire.
+const expiryWarnWindow = 30 * 24 * time.Hour
+
+// checkPending is the outcome of a check until token usage is verified
+// readable (logins spec §12 V2): the token resolves, nothing is called.
+const checkPending = "resolved ok (usage check pending §12 V2)"
+
+// errUsageLogin refuses a token login on usage / plan for the same reason.
+var errUsageLogin = errors.New("usage for token logins is not available yet: token logins cannot be checked for usage until verified (spec §12 V2); use --login home or no --login")
+
+// revokeHint is printed by `login rm`: removing a login does not revoke it.
+const revokeHint = "removing a login from agx does not revoke the token — revoke it in the vendor's token list (claude.ai settings; spec §12 V3)"
+
+// syncWarning is printed whenever a raw token is stored.
+const syncWarning = "tokens.yaml holds raw tokens: never sync, share or commit it"
+
+// Display placeholders.
+const (
+	cellNever   = "never"
+	cellMissing = " (missing)"
+	cellRefused = " (unreadable)"
+	approxMark  = "~"
+)
+
+func bindLoginFlag(f *pflag.FlagSet, dst *string) {
+	f.StringVar(dst, flagLogin, "", "run on this login's quota (a name from `agx login ls`, or \"home\" for the home's own login)")
+}
+
+// loginChoice is the login a launch runs on; Login nil means the home login.
+type loginChoice struct {
+	Login  *login.Login
+	Source string
+}
+
+// describe renders the choice for --dry-run and `agx profiles`.
+func (c loginChoice) describe() string {
+	if c.Login == nil {
+		if c.Source == loginSrcHome {
+			return login.Home
+		}
+		return login.Home + " (" + c.Source + ")"
+	}
+	return c.Login.Name + " (" + c.Source + ")"
+}
+
+// chooseLogin applies the precedence of logins spec §5.4. A wrong-provider
+// or incompatible login from AGX_LOGIN is skipped with a note (an exported
+// Claude login must not break Codex or kimi runs); from --login or the
+// profile it is an error, because it was asked for explicitly.
+func (a *app) chooseLogin(cfg config.Config, p provider.Profile, flag string) (loginChoice, error) {
+	lc, note, err := a.pickLogin(cfg, p, flag)
+	if note != "" {
+		a.warn(note)
+	}
+	return lc, err
+}
+
+// pickLogin is chooseLogin without side effects: the note is returned.
+func (a *app) pickLogin(cfg config.Config, p provider.Profile, flag string) (loginChoice, string, error) {
+	explicit := func(name, src string) (loginChoice, error) {
+		switch name {
+		case login.Home:
+			return loginChoice{Source: src}, nil
+		case login.Auto:
+			return loginChoice{}, usageErr(config.ErrAutoLogin)
+		}
+		l, ok := cfg.LoginByName(name)
+		if !ok {
+			return loginChoice{}, usageErr(fmt.Errorf("unknown login %q (see `agx login ls`)", name))
+		}
+		if err := a.loginFits(p, l); err != nil {
+			return loginChoice{}, usageErr(err)
+		}
+		return loginChoice{Login: &l, Source: src}, nil
+	}
+	if flag != "" {
+		lc, err := explicit(flag, loginSrcFlag)
+		return lc, "", err
+	}
+	if name, ok := a.LookupEnv(appmeta.EnvLogin); ok && name != "" {
+		switch name {
+		case login.Home:
+			return loginChoice{Source: loginSrcEnv}, "", nil
+		case login.Auto:
+			return loginChoice{}, "", usageErr(fmt.Errorf("%s: %w", appmeta.EnvLogin, config.ErrAutoLogin))
+		}
+		l, ok := cfg.LoginByName(name)
+		if !ok {
+			return loginChoice{}, "", usageErr(fmt.Errorf("%s=%s: unknown login (see `agx login ls`; `aglogin` with no argument unsets it)", appmeta.EnvLogin, name))
+		}
+		if err := a.loginFits(p, l); err != nil {
+			return a.defaultLogin(cfg, p), fmt.Sprintf("%s=%s skipped for profile %s: %v", appmeta.EnvLogin, name, p.Name, err), nil
+		}
+		return loginChoice{Login: &l, Source: loginSrcEnv}, "", nil
+	}
+	return a.defaultLogin(cfg, p), "", nil
+}
+
+// defaultLogin covers steps 3–5: the profile's login (validated at load),
+// then the provider default when the profile can take it, then home.
+func (a *app) defaultLogin(cfg config.Config, p provider.Profile) loginChoice {
+	switch p.Login {
+	case login.Home:
+		return loginChoice{Source: loginSrcProfile}
+	case "":
+	default:
+		if l, ok := cfg.LoginByName(p.Login); ok {
+			return loginChoice{Login: &l, Source: loginSrcProfile}
+		}
+	}
+	if name, ok := cfg.ProviderLogins[p.Provider]; ok {
+		if l, ok := cfg.LoginByName(name); ok && a.loginFits(p, l) == nil {
+			return loginChoice{Login: &l, Source: loginSrcProvider}
+		}
+	}
+	return loginChoice{Source: loginSrcHome}
+}
+
+// loginFits reports whether profile p can run on login l.
+func (a *app) loginFits(p provider.Profile, l login.Login) error {
+	if l.Provider != p.Provider {
+		return fmt.Errorf("login %s is a %s login, not %s", l.Name, l.Provider, p.Provider)
+	}
+	ll, err := a.loginLauncher(p.Provider)
+	if err != nil {
+		return err
+	}
+	return login.Compatible(p, ll, l.Kind)
+}
+
+// loginLauncher returns provider id's login upgrade, or the reason it has
+// none.
+func (a *app) loginLauncher(id provider.ID) (provider.LoginLauncher, error) {
+	prov, err := a.providerFor(id)
+	if err != nil {
+		return nil, err
+	}
+	ll, ok := prov.(provider.LoginLauncher)
+	if !ok {
+		return nil, errors.New(config.NoLoginsReason(id))
+	}
+	return ll, nil
+}
+
+// tokenFile is tokens.yaml beside the config file.
+func (a *app) tokenFile() (login.TokenFile, error) {
+	path, _, err := a.ConfigPath()
+	if err != nil {
+		return login.TokenFile{}, fmt.Errorf("locate config: %w", err)
+	}
+	return login.TokenFile{Path: filepath.Join(filepath.Dir(path), login.TokenFileName)}, nil
+}
+
+// resolver resolves login values on this machine.
+func (a *app) resolver() (login.Resolver, error) {
+	tf, err := a.tokenFile()
+	if err != nil {
+		return login.Resolver{}, err
+	}
+	return login.Resolver{Tokens: tf, LookupEnv: a.LookupEnv, Dir: a.UserHome}, nil
+}
+
+// expiry returns when l stops working and whether that is known.
+func (a *app) expiry(l login.Login) (time.Time, bool) {
+	prov, err := a.providerFor(l.Provider)
+	if err != nil {
+		return time.Time{}, false
+	}
+	lt, ok := prov.(provider.LoginLifetimer)
+	if !ok {
+		return time.Time{}, false
+	}
+	return login.ExpiresAt(l, lt.LoginLifetime(l.Kind))
+}
+
+// resolveLoginValue resolves l's token, refusing an expired login. Never
+// falls back to the home login (logins spec §7, D9).
+func (a *app) resolveLoginValue(ctx context.Context, l login.Login) (string, error) {
+	if at, ok := a.expiry(l); ok && !a.Now().Before(at) {
+		return "", fmt.Errorf("login %s expired on %s; renew: agx login add %s --setup --replace", l.Name, at.Format(time.DateOnly), l.Name)
+	}
+	r, err := a.resolver()
+	if err != nil {
+		return "", err
+	}
+	return r.Resolve(ctx, l)
+}
+
+// applyLogin resolves lc's token and applies its env to env.
+func (a *app) applyLogin(ctx context.Context, env []string, lc loginChoice) ([]string, error) {
+	ll, err := a.loginLauncher(lc.Login.Provider)
+	if err != nil {
+		return nil, err
+	}
+	val, err := a.resolveLoginValue(ctx, *lc.Login)
+	if err != nil {
+		return nil, err
+	}
+	set, unset := ll.LoginEnv(lc.Login.Kind, val)
+	return provider.ApplyLoginEnv(env, set, unset), nil
+}
+
+// dryRunLoginEnv applies only the removals and returns NAME=<token:source>
+// lines for the variables a real run would set; the token is not resolved.
+func (a *app) dryRunLoginEnv(env []string, lc loginChoice) ([]string, []string) {
+	ll, err := a.loginLauncher(lc.Login.Provider)
+	if err != nil {
+		return env, nil
+	}
+	set, unset := ll.LoginEnv(lc.Login.Kind, "")
+	lines := make([]string, 0, len(set))
+	for k := range set {
+		lines = append(lines, k+"=<token:"+string(lc.Login.Source)+">")
+	}
+	return provider.ApplyLoginEnv(env, nil, unset), lines
+}
+
+func newLoginCmd(a *app) *cobra.Command {
+	c := &cobra.Command{
+		Use:   "login",
+		Short: "Named logins: run any home on any account's quota",
+		Long: "A login is a named credential (a long-lived `claude setup-token` token or an API key)\n" +
+			"that decides whose quota a run spends, independent of the home that holds the history.\n" +
+			"Raw tokens live in ~/.agx/tokens.yaml (0600), never in config.yaml.",
+		Example: "  pbpaste | agx login add personal --stdin\n" +
+			"  agx login add work --cmd \"gopass show -o personal/ai/claude-oauth-work\"\n" +
+			"  agx login use personal -p work      # clw now spends personal quota\n" +
+			"  agx run -p work --login home        # this run only: the home's own login",
+		Args: usageArgs(cobra.NoArgs),
+	}
+	c.AddCommand(newLoginAddCmd(a), newLoginLsCmd(a), newLoginCheckCmd(a), newLoginRmCmd(a), newLoginUseCmd(a), newLoginExistsCmd(a))
+	return c
+}
+
+// loginAddOpts configure `agx login add`.
+type loginAddOpts struct {
+	stdin, setup, replace bool
+	cmd, env              string
+	provider, kind        string
+	account               string
+}
+
+func newLoginAddCmd(a *app) *cobra.Command {
+	o := &loginAddOpts{}
+	c := &cobra.Command{
+		Use:   "add NAME",
+		Short: "Add a login (default: paste the token at a hidden prompt)",
+		Long: "Registers a login. The token source is one of: a hidden paste (default) or --stdin, both\n" +
+			"stored in tokens.yaml; --cmd, a command printing the token at launch; --env, another env var.\n" +
+			"There is deliberately no --token flag: argv is visible in ps and shell history.",
+		Example: "  agx login add personal                       # hidden paste\n" +
+			"  pbpaste | agx login add personal --stdin\n" +
+			"  agx login add personal --setup               # run `claude setup-token` first\n" +
+			"  agx login add work --cmd \"op read op://Private/claude-work/token\"\n" +
+			"  agx login add ci --env CLAUDE_WORK_TOKEN\n" +
+			"  agx login add personal --stdin --replace     # rotate",
+		Args: usageArgs(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error { return a.runLoginAdd(ctxOf(cmd), o, args[0]) },
+	}
+	f := c.Flags()
+	f.BoolVar(&o.stdin, "stdin", false, "read the token from stdin")
+	f.BoolVar(&o.setup, "setup", false, "run `claude setup-token` first, then ask for the paste")
+	f.StringVar(&o.cmd, "cmd", "", "command that prints the token at launch (run with sh -c)")
+	f.StringVar(&o.env, "env", "", "env var that holds the token at launch")
+	f.StringVar(&o.provider, flagProvider, string(provider.Claude), "provider the login is for")
+	f.StringVar(&o.kind, "kind", "", "credential kind: oauth-token (plan quota, default) or api-key")
+	f.StringVar(&o.account, "account", "", "account label (e.g. the email), for your eyes")
+	f.BoolVar(&o.replace, "replace", false, "replace an existing login of the same name (token rotation)")
+	return c
+}
+
+func (a *app) runLoginAdd(ctx context.Context, o *loginAddOpts, name string) error {
+	if err := config.ValidLoginName(name); err != nil {
+		return usageErr(err)
+	}
+	sources := 0
+	for _, on := range []bool{o.cmd != "", o.env != "", o.stdin || o.setup} {
+		if on {
+			sources++
+		}
+	}
+	if sources > 1 {
+		return usageErr(errors.New("give one token source: --cmd, --env, or a paste (--stdin / --setup / the prompt)"))
+	}
+	if o.stdin && o.setup {
+		return usageErr(errors.New("--setup asks for the paste at a prompt; it cannot be combined with --stdin"))
+	}
+	cfg, err := a.config()
+	if err != nil {
+		return err
+	}
+	id := provider.ID(o.provider)
+	ll, err := a.loginLauncher(id)
+	if err != nil {
+		return usageErr(err)
+	}
+	kind, err := config.KindFor(ll, o.kind)
+	if err != nil {
+		return usageErr(err)
+	}
+	_, exists := cfg.LoginByName(name)
+	if exists && !o.replace {
+		return usageErr(fmt.Errorf("login %q already exists (use --replace to rotate its token)", name))
+	}
+	spec := config.LoginSpec{Name: name, Provider: string(id), Account: o.account, Added: a.Now().Format(time.DateOnly)}
+	if kind != ll.LoginKinds()[0] {
+		spec.Kind = string(kind)
+	}
+	tf, err := a.tokenFile()
+	if err != nil {
+		return err
+	}
+	stored := false
+	switch {
+	case o.cmd != "":
+		spec.TokenCmd = o.cmd
+	case o.env != "":
+		spec.TokenEnv = o.env
+	default:
+		val, err := a.readToken(o, id)
+		if err != nil {
+			return err
+		}
+		if err := tf.Set(name, val); err != nil {
+			return err
+		}
+		spec.Token, stored = login.StoredMarker, true
+	}
+	ed := config.Editor{Path: cfg.Path, UserHome: a.UserHome, Providers: a.Providers}
+	if err := ed.AddLogin(spec, o.replace); err != nil {
+		if stored && !exists {
+			// Roll back so tokens.yaml never holds a login config lacks.
+			if _, rmErr := tf.Remove(name); rmErr != nil {
+				a.warn("could not remove the token again: " + rmErr.Error())
+			}
+		}
+		return err
+	}
+	a.loaded = false
+	verb := "added"
+	if exists {
+		verb = "replaced"
+	}
+	source := login.SourceStored
+	switch {
+	case spec.TokenCmd != "":
+		source = login.SourceCmd
+	case spec.TokenEnv != "":
+		source = login.SourceEnv
+	}
+	if _, err := fmt.Fprintf(a.Stdout, "%s login %s (%s, %s, %s)\n", verb, name, id, kind, source); err != nil {
+		return err
+	}
+	if stored {
+		a.warn(syncWarning + " (" + render.ShortenHome(tf.Path, a.UserHome) + ")")
+	}
+	return a.checkOne(ctx, name)
+}
+
+// readToken reads a raw token from stdin or a hidden prompt, after running
+// the vendor's setup command when asked.
+func (a *app) readToken(o *loginAddOpts, id provider.ID) (string, error) {
+	if o.setup {
+		if id != provider.Claude {
+			return "", usageErr(fmt.Errorf("--setup is only known for %s", provider.Claude))
+		}
+		a.note("running `" + claude.Binary + " " + claude.SetupTokenSubcommand + "` — copy the token it prints, then paste it below")
+		if err := a.RunInteractive(provider.Command{Path: claude.Binary, Args: []string{claude.SetupTokenSubcommand}, Env: a.Environ()}); err != nil {
+			return "", fmt.Errorf("%s %s: %w", claude.Binary, claude.SetupTokenSubcommand, err)
+		}
+	}
+	var raw string
+	if o.stdin {
+		b, err := io.ReadAll(io.LimitReader(a.Stdin, maxTokenInput))
+		if err != nil {
+			return "", fmt.Errorf("read stdin: %w", err)
+		}
+		raw = string(b)
+	} else {
+		v, err := a.PromptSecret("paste the token (input hidden): ")
+		if err != nil {
+			return "", err
+		}
+		raw = v
+	}
+	val, err := login.Clean(raw)
+	if err != nil {
+		return "", usageErr(err)
+	}
+	return val, nil
+}
+
+// loginRow is one entry of `agx login ls`; it never carries a value.
+type loginRow struct {
+	Name     string             `json:"name"`
+	Provider provider.ID        `json:"provider"`
+	Kind     provider.LoginKind `json:"kind"`
+	Source   login.Source       `json:"source"`
+	// State is "ok", "missing" (stored, no entry) or "unreadable".
+	State   string     `json:"state"`
+	Account string     `json:"account,omitempty"`
+	Added   string     `json:"added,omitempty"`
+	Expires *time.Time `json:"expires,omitempty"`
+	// ExpiresApprox is true when agx does not own the value (cmd / env).
+	ExpiresApprox bool     `json:"expires_approx,omitempty"`
+	UsedBy        []string `json:"used_by,omitempty"`
+}
+
+// Login row states.
+const (
+	stateOK         = "ok"
+	stateMissing    = "missing"
+	stateUnreadable = "unreadable"
+)
+
+func newLoginLsCmd(a *app) *cobra.Command {
+	var asJSON bool
+	c := &cobra.Command{
+		Use:     "ls",
+		Aliases: []string{"list"},
+		Short:   "List logins (never their values)",
+		Example: "  agx login ls\n  agx login ls --json | jq '.data[].name'",
+		Args:    usageArgs(cobra.NoArgs),
+		RunE:    func(cmd *cobra.Command, _ []string) error { return a.runLoginLs(asJSON) },
+	}
+	c.Flags().BoolVar(&asJSON, flagJSON, false, "print the JSON envelope")
+	return c
+}
+
+func (a *app) loginRows(cfg config.Config) ([]loginRow, error) {
+	tf, err := a.tokenFile()
+	if err != nil {
+		return nil, err
+	}
+	stored, loadErr := tf.Load()
+	rows := make([]loginRow, 0, len(cfg.Logins))
+	for _, l := range cfg.Logins {
+		r := loginRow{Name: l.Name, Provider: l.Provider, Kind: l.Kind, Source: l.Source, State: stateOK, Account: l.Account, UsedBy: cfg.UsedBy(l.Name)}
+		if !l.Added.IsZero() {
+			r.Added = l.Added.Format(time.DateOnly)
+		}
+		if at, ok := a.expiry(l); ok {
+			r.Expires, r.ExpiresApprox = &at, !login.Owned(l)
+		}
+		if l.Source == login.SourceStored {
+			switch _, ok := stored[l.Name]; {
+			case loadErr != nil:
+				r.State = stateUnreadable
+			case !ok:
+				r.State = stateMissing
+			}
+		}
+		rows = append(rows, r)
+	}
+	if loadErr != nil {
+		a.warn(loadErr.Error())
+	}
+	return rows, nil
+}
+
+func (a *app) runLoginLs(asJSON bool) error {
+	cfg, err := a.config()
+	if err != nil {
+		return err
+	}
+	rows, err := a.loginRows(cfg)
+	if err != nil {
+		return err
+	}
+	if asJSON {
+		return output.JSON(a.Stdout, kindLoginList, rows, len(rows))
+	}
+	if len(rows) == 0 {
+		_, err := fmt.Fprintln(a.Stdout, "no logins — add one with `agx login add NAME` (see `agx login add --help`)")
+		return err
+	}
+	table := make([][]string, 0, len(rows))
+	for _, r := range rows {
+		src := string(r.Source)
+		switch r.State {
+		case stateMissing:
+			src += cellMissing
+		case stateUnreadable:
+			src += cellRefused
+		}
+		expires := cellNever
+		if r.Expires != nil {
+			expires = r.Expires.Format(time.DateOnly)
+			if r.ExpiresApprox {
+				expires = approxMark + expires
+			}
+		}
+		table = append(table, []string{r.Name, string(r.Provider), string(r.Kind), src, orCell(r.Account), orCell(r.Added), expires, orCell(strings.Join(r.UsedBy, ", "))})
+	}
+	return render.Table(a.Stdout, []string{"NAME", "PROVIDER", "KIND", "SOURCE", "ACCOUNT", "ADDED", "EXPIRES", "USED-BY"}, table)
+}
+
+func newLoginCheckCmd(a *app) *cobra.Command {
+	return &cobra.Command{
+		Use:   "check [NAME]",
+		Short: "Resolve a login's token (all logins without NAME) and report the outcome",
+		Long: "Resolves the token from its source and reports whether it is usable. The value is never\n" +
+			"printed. Usage is not fetched yet: whether a setup-token can read usage is unverified (spec §12 V2).",
+		Example: "  agx login check\n  agx login check personal",
+		Args:    usageArgs(cobra.MaximumNArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := ctxOf(cmd)
+			if len(args) == 1 {
+				return a.checkOne(ctx, args[0])
+			}
+			cfg, err := a.config()
+			if err != nil {
+				return err
+			}
+			failed := false
+			for _, l := range cfg.Logins {
+				if err := a.checkOne(ctx, l.Name); err != nil {
+					failed = true
+				}
+			}
+			if failed {
+				return errPartial
+			}
+			return nil
+		},
+	}
+}
+
+// checkOne resolves login name and prints one outcome line; the error is
+// already printed, so it is errPartial.
+func (a *app) checkOne(ctx context.Context, name string) error {
+	cfg, err := a.config()
+	if err != nil {
+		return err
+	}
+	l, ok := cfg.LoginByName(name)
+	if !ok {
+		return usageErr(fmt.Errorf("unknown login %q (see `agx login ls`)", name))
+	}
+	if _, err := a.resolveLoginValue(ctx, l); err != nil {
+		if _, werr := fmt.Fprintf(a.Stdout, "login %s: failed: %v\n", name, err); werr != nil {
+			return werr
+		}
+		return errPartial
+	}
+	_, err = fmt.Fprintf(a.Stdout, "login %s: %s\n", name, checkPending)
+	return err
+}
+
+func newLoginRmCmd(a *app) *cobra.Command {
+	var force bool
+	c := &cobra.Command{
+		Use:     "rm NAME",
+		Aliases: []string{"remove"},
+		Short:   "Remove a login from config.yaml and tokens.yaml",
+		Long: "Refuses while a profile or provider default uses the login, unless --force, which also\n" +
+			"clears those references. Removing a login does not revoke the token.",
+		Example: "  agx login rm personal\n  agx login rm personal --force",
+		Args:    usageArgs(cobra.ExactArgs(1)),
+		RunE:    func(cmd *cobra.Command, args []string) error { return a.runLoginRm(args[0], force) },
+	}
+	c.Flags().BoolVar(&force, "force", false, "remove even when profiles use it, clearing their login:")
+	return c
+}
+
+func (a *app) runLoginRm(name string, force bool) error {
+	cfg, err := a.config()
+	if err != nil {
+		return err
+	}
+	l, ok := cfg.LoginByName(name)
+	if !ok {
+		return usageErr(fmt.Errorf("unknown login %q (see `agx login ls`)", name))
+	}
+	if used := cfg.UsedBy(name); len(used) > 0 && !force {
+		return fmt.Errorf("login %s is used by %s — point them elsewhere (`agx login use home -p NAME`) or pass --force", name, strings.Join(used, ", "))
+	}
+	ed := config.Editor{Path: cfg.Path, UserHome: a.UserHome, Providers: a.Providers}
+	cleared, err := ed.RemoveLogin(name)
+	if err != nil {
+		return err
+	}
+	a.loaded = false
+	var b strings.Builder
+	for _, c := range cleared {
+		fmt.Fprintf(&b, "cleared %s\n", c)
+	}
+	if l.Source == login.SourceStored {
+		tf, err := a.tokenFile()
+		if err != nil {
+			return err
+		}
+		if _, err := tf.Remove(name); err != nil {
+			return fmt.Errorf("removed from config, but tokens.yaml: %w", err)
+		}
+	}
+	fmt.Fprintf(&b, "removed login %s\n", name)
+	if _, err := io.WriteString(a.Stdout, b.String()); err != nil {
+		return err
+	}
+	a.warn(revokeHint)
+	return nil
+}
+
+func newLoginUseCmd(a *app) *cobra.Command {
+	var profile, prov string
+	c := &cobra.Command{
+		Use:   "use NAME|home (-p PROFILE | --provider ID)",
+		Short: "Set the default login of a profile or a whole provider",
+		Long: "Edits config.yaml in place (comments kept) and prints the changed key before and after.\n" +
+			"For this terminal only, use the `aglogin NAME` shell function from `agx shell-init`.",
+		Example: "  agx login use personal -p work          # clw spends personal quota\n" +
+			"  agx login use home -p work              # back to the work home's own login\n" +
+			"  agx login use personal --provider claude\n" +
+			"  agx login use home --provider claude",
+		Args: usageArgs(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error { return a.runLoginUse(args[0], profile, prov) },
+	}
+	c.Flags().StringVarP(&profile, flagProfile, "p", "", "profile whose default login to set")
+	c.Flags().StringVar(&prov, flagProvider, "", "provider whose default login to set (every profile of it)")
+	return c
+}
+
+func (a *app) runLoginUse(name, profile, prov string) error {
+	if (profile == "") == (prov == "") {
+		return usageErr(errors.New("give exactly one of -p PROFILE or --provider ID"))
+	}
+	if name == login.Auto {
+		return usageErr(config.ErrAutoLogin)
+	}
+	cfg, err := a.config()
+	if err != nil {
+		return err
+	}
+	var l login.Login
+	if name != login.Home {
+		var ok bool
+		if l, ok = cfg.LoginByName(name); !ok {
+			return usageErr(fmt.Errorf("unknown login %q (see `agx login ls`)", name))
+		}
+	}
+	ed := config.Editor{Path: cfg.Path, UserHome: a.UserHome, Providers: a.Providers}
+	var ch config.Change
+	if profile != "" {
+		p, ok := cfg.ByName(profile)
+		if !ok {
+			return usageErr(fmt.Errorf("unknown profile %q (see `agx profiles`)", profile))
+		}
+		if name != login.Home {
+			if err := a.loginFits(p, l); err != nil {
+				return usageErr(err)
+			}
+		}
+		ch, err = ed.SetProfileLogin(cfg, p, name)
+	} else {
+		id := provider.ID(prov)
+		if _, err := a.loginLauncher(id); err != nil {
+			return usageErr(err)
+		}
+		if name != login.Home && l.Provider != id {
+			return usageErr(fmt.Errorf("login %s is a %s login, not %s", name, l.Provider, id))
+		}
+		ch, err = ed.SetProviderLogin(id, name)
+	}
+	if err != nil {
+		return err
+	}
+	a.loaded = false
+	var b strings.Builder
+	for _, n := range ch.Notes {
+		fmt.Fprintf(&b, "note: %s\n", n)
+	}
+	fmt.Fprintf(&b, "%s: %s\n- %s: %s\n+ %s: %s\n", render.ShortenHome(cfg.Path, a.UserHome), ch.Where, flagLogin, ch.Before, flagLogin, ch.After)
+	_, err = io.WriteString(a.Stdout, b.String())
+	return err
+}
+
+// newLoginExistsCmd backs the `aglogin` shell function: exit 0 when NAME
+// can be exported as AGX_LOGIN, so a typo fails now, not on the next run.
+func newLoginExistsCmd(a *app) *cobra.Command {
+	return &cobra.Command{
+		Use:    "exists NAME",
+		Short:  "Exit 0 when NAME is a login or \"home\" (used by aglogin)",
+		Hidden: true,
+		Args:   usageArgs(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			switch args[0] {
+			case login.Home:
+				return nil
+			case login.Auto:
+				return usageErr(config.ErrAutoLogin)
+			}
+			cfg, err := a.config()
+			if err != nil {
+				return err
+			}
+			if _, ok := cfg.LoginByName(args[0]); !ok {
+				names := make([]string, 0, len(cfg.Logins))
+				for _, l := range cfg.Logins {
+					names = append(names, l.Name)
+				}
+				slices.Sort(names)
+				return fmt.Errorf("unknown login %q (known: %s, home)", args[0], strings.Join(names, ", "))
+			}
+			return nil
+		},
+	}
+}

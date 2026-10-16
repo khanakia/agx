@@ -62,7 +62,7 @@ func NewRoot(d Deps) *cobra.Command {
 	}
 	add(groupAgents, usage, newPlanCmd(a), newProfilesCmd(a), newRunCmd(a), newNewCmd(a), newResumeCmd(a), newWsCmd(a))
 	add(groupSessions, newSessionsCmd(a))
-	add(groupSetup, newDoctorCmd(a), newShellInitCmd(a),
+	add(groupSetup, newLoginCmd(a), newDoctorCmd(a), newShellInitCmd(a),
 		versioncmd.New(versioncmd.WithBinaryName(appmeta.Name)))
 	root.AddCommand(newExecCmd(a)) // hidden plumbing for the shell layer
 	return root

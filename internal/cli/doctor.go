@@ -6,13 +6,16 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/ubgo/voltkit/output"
 
+	"github.com/khanakia/agx/config"
 	"github.com/khanakia/agx/internal/appmeta"
 	"github.com/khanakia/agx/internal/render"
 	"github.com/khanakia/agx/internal/shellinit"
+	"github.com/khanakia/agx/login"
 	"github.com/khanakia/agx/secret"
 )
 
@@ -163,6 +166,8 @@ func (a *app) doctor() []finding {
 		}
 	}
 
+	out = append(out, a.doctorLogins(cfg)...)
+
 	if v, ok := a.LookupEnv(appmeta.EnvShellInit); ok && v != "" {
 		add("shell", levelOK, "shell layer active ("+v+")")
 	} else {
@@ -182,3 +187,82 @@ func enclosingRepo(dir string) string {
 		}
 	}
 }
+
+// doctorLogins checks every login without resolving any value: token file
+// permissions and location, stored entries present, env sources set, and
+// expiry (warn within expiryWarnWindow, fail after).
+func (a *app) doctorLogins(cfg config.Config) []finding {
+	var out []finding
+	add := func(area string, l level, detail string) { out = append(out, finding{area, l, detail}) }
+	tf, err := a.tokenFile()
+	if err != nil {
+		add(areaTokens, levelFail, err.Error())
+		return out
+	}
+	shown := render.ShortenHome(tf.Path, a.UserHome)
+	var stored map[string]string
+	refused := false
+	if _, statErr := os.Stat(tf.Path); statErr == nil {
+		if err := tf.CheckPerm(); err != nil {
+			add(areaTokens, levelFail, err.Error())
+			refused = true
+		} else {
+			add(areaTokens, levelOK, shown+" (0600)")
+		}
+		if info, err := os.Stat(filepath.Dir(tf.Path)); err == nil && info.Mode().Perm()&tokenDirOtherBits != 0 {
+			add(areaTokens, levelWarn, fmt.Sprintf("%s is mode %04o; keep it private: chmod 700 %s", filepath.Dir(tf.Path), info.Mode().Perm(), filepath.Dir(tf.Path)))
+		}
+		if repo := enclosingRepo(filepath.Dir(tf.Path)); repo != "" {
+			add(areaTokens, levelWarn, "inside git work tree "+repo+" — raw tokens must never be committed")
+		}
+		if !refused {
+			if stored, err = tf.Load(); err != nil {
+				add(areaTokens, levelFail, err.Error())
+				refused = true
+			}
+		}
+	}
+	now := a.Now()
+	for _, l := range cfg.Logins {
+		area := "login " + l.Name
+		switch l.Source {
+		case login.SourceStored:
+			if refused {
+				add(area, levelFail, "token unreadable: "+shown+" was refused (see above)")
+				continue
+			}
+			if _, ok := stored[l.Name]; !ok {
+				add(area, levelFail, "no token in "+shown+" — run `agx login add "+l.Name+" --stdin --replace`")
+				continue
+			}
+		case login.SourceEnv:
+			if _, ok := a.LookupEnv(l.Env); !ok {
+				add(area, levelWarn, l.Env+" is not set in this shell")
+			}
+		case login.SourceCmd:
+		}
+		at, ok := a.expiry(l)
+		approx := ""
+		if !login.Owned(l) {
+			approx = "approximately "
+		}
+		switch {
+		case !ok:
+			add(area, levelOK, string(l.Kind)+" ("+string(l.Source)+"), no known expiry")
+		case !now.Before(at):
+			add(area, levelFail, fmt.Sprintf("expired %s%s; renew: agx login add %s --setup --replace", approx, at.Format(time.DateOnly), l.Name))
+		case at.Sub(now) < expiryWarnWindow:
+			add(area, levelWarn, fmt.Sprintf("expires %s%s (in %s); renew: agx login add %s --setup --replace", approx, at.Format(time.DateOnly), render.FormatUntil(at.Sub(now)), l.Name))
+		default:
+			add(area, levelOK, fmt.Sprintf("%s (%s), expires %s%s", l.Kind, l.Source, approx, at.Format(time.DateOnly)))
+		}
+	}
+	return out
+}
+
+// areaTokens is the doctor area for tokens.yaml.
+const areaTokens = "tokens.yaml"
+
+// tokenDirOtherBits are the group/other bits that should be clear on the
+// dir holding tokens.yaml (agx's config dir, 0700 by the logins spec §4.1).
+const tokenDirOtherBits os.FileMode = 0o077

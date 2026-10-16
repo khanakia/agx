@@ -26,3 +26,7 @@ const (
 	// can tell whether it is active.
 	EnvShellInit = EnvPrefix + "_SHELL_INIT"
 )
+
+// EnvLogin chooses the login for every run in one terminal (logins spec
+// §5.3); set by the `aglogin` shell function.
+const EnvLogin = EnvPrefix + "_LOGIN"

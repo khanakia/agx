@@ -89,6 +89,11 @@ type Deps struct {
 	IsTerminal func(w io.Writer) bool
 	// LookPath finds a binary on PATH (doctor).
 	LookPath func(string) (string, error)
+	// RunInteractive runs cmd attached to the terminal and waits (`claude
+	// setup-token` for `login add --setup`).
+	RunInteractive func(cmd provider.Command) error
+	// PromptSecret shows prompt and reads one line without echo.
+	PromptSecret func(prompt string) (string, error)
 }
 
 // SystemDeps wires the real machine.
@@ -127,6 +132,9 @@ func SystemDeps() (Deps, error) {
 		Picker:     TerminalPicker{},
 		IsTerminal: isTerminal,
 		LookPath:   lookPath,
+
+		RunInteractive: runInteractive,
+		PromptSecret:   promptSecret,
 	}, nil
 }
 

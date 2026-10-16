@@ -21,8 +21,9 @@ const kindPlanList = "plan.list"
 
 func newPlanCmd(a *app) *cobra.Command {
 	var (
-		asJSON  bool
-		timeout time.Duration
+		asJSON    bool
+		timeout   time.Duration
+		loginName string
 	)
 	c := &cobra.Command{
 		Use:     "plan [profile...]",
@@ -34,11 +35,15 @@ func newPlanCmd(a *app) *cobra.Command {
 		Example: "  agx plan\n  agx plan personal\n  agx plan --json | jq '.data[] | {profile, plan: .subscription.plan, status: .subscription.status}'",
 		Args:    cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := checkUsageLogin(loginName); err != nil {
+				return err
+			}
 			return a.runPlan(ctxOf(cmd), args, asJSON, timeout)
 		},
 	}
 	c.Flags().BoolVar(&asJSON, flagJSON, false, "print the JSON envelope")
 	c.Flags().DurationVar(&timeout, flagTimeout, defaultUsageTimeout, "per-account fetch timeout")
+	bindLoginFlag(c.Flags(), &loginName)
 	return c
 }
 

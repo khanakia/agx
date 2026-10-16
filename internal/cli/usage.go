@@ -11,7 +11,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/ubgo/voltkit/output"
 
+	"github.com/khanakia/agx/config"
 	"github.com/khanakia/agx/internal/render"
+	"github.com/khanakia/agx/login"
 	"github.com/khanakia/agx/provider"
 )
 
@@ -45,6 +47,7 @@ type usageOpts struct {
 	color    string
 	timeout  time.Duration
 	provider string
+	login    string
 }
 
 func newUsageCmd(a *app) *cobra.Command {
@@ -66,6 +69,7 @@ func newUsageCmd(a *app) *cobra.Command {
 	f.StringVar(&o.color, flagColor, colorAuto, "colour: auto | always | never")
 	f.DurationVar(&o.timeout, flagTimeout, defaultUsageTimeout, "per-account fetch timeout")
 	f.StringVar(&o.provider, flagProvider, "", "only this provider (claude, codex)")
+	bindLoginFlag(f, &o.login)
 	return c
 }
 
@@ -89,6 +93,9 @@ func (a *app) runUsage(ctx context.Context, o *usageOpts, names []string) error 
 	}
 	if o.timeout <= 0 {
 		return usageErr(errors.New("--timeout must be positive"))
+	}
+	if err := checkUsageLogin(o.login); err != nil {
+		return err
 	}
 	cfg, err := a.config()
 	if err != nil {
@@ -210,4 +217,16 @@ func (a *app) wantColor(mode string) bool {
 		return false
 	}
 	return a.IsTerminal(a.Stdout)
+}
+
+// checkUsageLogin accepts --login only as "home" (today's behaviour) until
+// token usage is verified readable (logins spec §8, §12 V2).
+func checkUsageLogin(name string) error {
+	switch name {
+	case "", login.Home:
+		return nil
+	case login.Auto:
+		return usageErr(config.ErrAutoLogin)
+	}
+	return usageErr(errUsageLogin)
 }
