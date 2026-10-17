@@ -699,3 +699,135 @@ func TestLogin_ReplaceStoredDropsToken(t *testing.T) {
 		}
 	}
 }
+
+// TestNew_BadLoginCreatesNothing: a login that cannot be used is refused
+// before the session folder exists, in direct and shell-layer (plan) mode.
+func TestNew_BadLoginCreatesNothing(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name  string
+		login string
+		plan  bool
+	}{
+		{"unknown", "nope", false},
+		{"unknown, plan mode", "nope", true},
+		{"wrong provider", "c", false},
+		{"auto is not a name here", "", false},
+	} {
+		h := loginHarness(t, loginConfig)
+		if c.plan {
+			h.env[appmeta.EnvPlanFile] = filepath.Join(h.root, "plan.json")
+		}
+		args := []string{"new", "-p", "work", "--login", c.login, "x"}
+		if c.login == "" {
+			// AGX_LOGIN=auto is refused (auto only works as --login).
+			h.env[appmeta.EnvLogin] = login.Auto
+			args = []string{"new", "-p", "work", "x"}
+		}
+		if code := h.run(args...); code != ExitUsage {
+			t.Errorf("%s: exit %d, want %d: %s", c.name, code, ExitUsage, h.stderr.String())
+		}
+		if entries, _ := os.ReadDir(h.sessions); len(entries) != 0 {
+			t.Errorf("%s: session folder created: %v", c.name, entries)
+		}
+		if _, err := os.Stat(filepath.Join(h.root, "plan.json")); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("%s: plan written", c.name)
+		}
+	}
+}
+
+// TestLoginFlagHelp: the --login help shows a plain value name; pflag
+// takes the first back-quoted word of a usage string as the value name.
+func TestLoginFlagHelp(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t, "")
+	for _, cmd := range []string{"run", "new", "resume", "ws"} {
+		if code := h.run(cmd, "--help"); code != ExitOK {
+			t.Fatalf("%s --help: %d", cmd, code)
+		}
+		if out := h.stdout.String(); !strings.Contains(out, "--login string") {
+			t.Errorf("%s --help: --login line wrong:\n%s", cmd, out)
+		}
+	}
+}
+
+// TestLoginReplace_ConfigFailureKeepsOldToken: when the config edit of a
+// --replace is refused, tokens.yaml still holds the previous token.
+func TestLoginReplace_ConfigFailureKeepsOldToken(t *testing.T) {
+	t.Parallel()
+	h := loginHarness(t, loginConfig)
+	h.storeToken("p", tokStored)
+	h.storeToken("c", tokStored)
+	// Turning the codex login c into a claude one would leave the codex
+	// provider default pointing at a claude login, so the edit is refused.
+	h.stdin = tokRaw
+	if code := h.run("login", "add", "c", "--stdin", "--replace", "--provider", "claude"); code == ExitOK {
+		t.Fatalf("replace accepted: %s", h.stdout.String())
+	}
+	got, err := (login.TokenFile{Path: h.tokensPath()}).Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["c"] != tokStored || got["p"] != tokStored {
+		t.Errorf("tokens after a refused replace: c kept=%v, p kept=%v", got["c"] == tokStored, got["p"] == tokStored)
+	}
+}
+
+// TestDoctor_EnvLoginUnsetOneRow: an env login whose variable is unset
+// gets one warning row, not a warning plus an ok row.
+func TestDoctor_EnvLoginUnsetOneRow(t *testing.T) {
+	t.Parallel()
+	h := loginHarness(t, loginConfig)
+	h.storeToken("p", tokStored)
+	h.storeToken("c", tokStored)
+	h.run("doctor")
+	var rows []string
+	for _, line := range strings.Split(h.stdout.String(), "\n") {
+		if f := strings.Fields(line); len(f) > 2 && f[1] == "login" && f[2] == "w" {
+			rows = append(rows, line)
+		}
+	}
+	if len(rows) != 1 || !strings.HasPrefix(rows[0], "!") || !strings.Contains(rows[0], "W_TOKEN is not set") {
+		t.Errorf("login w rows = %q", rows)
+	}
+}
+
+// TestDoctor_APIKeyEnvWarning: ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN in
+// the shell make Claude Code bill the API, so doctor warns for every
+// plan-billed Claude profile that runs on its home login — and only those
+// (a token login strips the variables; api-billed and Codex profiles are
+// unaffected; an empty variable is ignored).
+func TestDoctor_APIKeyEnvWarning(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name, env, val string
+		warned         []string
+	}{
+		{"api key", claude.APIKeyEnv, "sk-x", []string{"pinned"}},
+		{"auth token", claude.AuthTokenEnv, "tok", []string{"pinned"}},
+		{"empty", claude.APIKeyEnv, "", nil},
+		{"unset", "", "", nil},
+	} {
+		h := loginHarness(t, loginConfig)
+		h.storeToken("p", tokStored)
+		h.storeToken("c", tokStored)
+		h.env["W_TOKEN"] = tokEnv
+		if c.env != "" {
+			h.env[c.env] = c.val
+		}
+		h.run("doctor")
+		var warned []string
+		for _, line := range strings.Split(h.stdout.String(), "\n") {
+			f := strings.Fields(line)
+			if len(f) > 2 && f[1] == "profile" && strings.Contains(line, "bills the API") {
+				if !strings.Contains(line, c.env) {
+					t.Errorf("%s: warning does not name %s: %q", c.name, c.env, line)
+				}
+				warned = append(warned, f[2])
+			}
+		}
+		if !slices.Equal(warned, c.warned) {
+			t.Errorf("%s: warned %v, want %v\n%s", c.name, warned, c.warned, h.stdout.String())
+		}
+	}
+}

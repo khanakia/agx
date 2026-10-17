@@ -196,3 +196,38 @@ func TestSessionsMove_BlockedAndJSON(t *testing.T) {
 		t.Errorf("json = %+v", e)
 	}
 }
+
+// TestSessionsMove_BackupNamesUnique: moves in the same second (the clock
+// is fixed) each get their own backup folder.
+func TestSessionsMove_BackupNamesUnique(t *testing.T) {
+	t.Parallel()
+	h, d, project := moveHarness(t)
+	personal := filepath.Join(h.home, ".claude")
+	for _, args := range [][]string{
+		{"sessions", "move", "--to", "work"},
+		{"sessions", "move", "--to", "personal", "--from", "work", "--no-backup"},
+		{"sessions", "move", "--to", "work"},
+	} {
+		if code := runWith(h, d, project, args...); code != ExitOK {
+			t.Fatalf("%v: %d %s", args, code, h.stderr.String())
+		}
+	}
+	backups, _ := filepath.Glob(filepath.Join(personal, "backups", "agx-move-docker_setup_mac-*"))
+	if len(backups) != 2 {
+		t.Errorf("backups = %v, want two distinct folders", backups)
+	}
+}
+
+func TestUniqueBackupDir(t *testing.T) {
+	t.Parallel()
+	base := filepath.Join(t.TempDir(), "agx-move-x-20260924-120000")
+	for i, want := range []string{base, base + "-2", base + "-3"} {
+		got, err := uniqueBackupDir(base)
+		if err != nil || got != want {
+			t.Fatalf("call %d: %q, %v; want %q", i, got, err, want)
+		}
+		if err := os.MkdirAll(got, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+}

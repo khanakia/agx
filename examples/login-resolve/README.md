@@ -24,7 +24,7 @@ team     source=cmd    resolved 19 chars, owned by agx=false
 personal expires 2027-10-01
 work has no added date: expiry unknown
 missing stored: true
-multi-line cmd: login file (cmd): login: token command printed more than one line
+multi-line cmd: login file (cmd): login: token has more than one line
 compatible: login: profile already has its own credential: profile kimi sets ANTHROPIC_API_KEY in env
 world-readable token file: insecure=true
 ```

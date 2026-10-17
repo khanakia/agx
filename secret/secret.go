@@ -17,8 +17,10 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"time"
 )
@@ -148,11 +150,14 @@ func (s System) gopass(ctx context.Context, path string) (string, error) {
 }
 
 // ResolveAll resolves every reference in refs (env var name → "scheme:ref")
-// and returns env var name → value. It stops at the first failure and names
-// the variable, never the value.
+// and returns env var name → value. It resolves in sorted name order and
+// stops at the first failure, naming the variable, never the value.
 func ResolveAll(ctx context.Context, r Resolver, refs map[string]string) (map[string]string, error) {
 	out := make(map[string]string, len(refs))
-	for name, raw := range refs {
+	// Sorted, not map order: with several bad refs the reported one (and
+	// which secret stores get asked before it) is the same on every run.
+	for _, name := range slices.Sorted(maps.Keys(refs)) {
+		raw := refs[name]
 		ref, err := Parse(raw)
 		if err != nil {
 			return nil, fmt.Errorf("secret for %s: %w", name, err)

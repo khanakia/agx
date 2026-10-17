@@ -41,7 +41,10 @@ agx ws --list --json
 ```sh
 agx ws --dry-run
 agx ws invoice --dry-run
+agx ws invoice -- --model opus
 ```
+
+Words after `--` are passed to the agent when the chosen chat resumes; the words before it narrow the folders.
 
 ## Try it
 

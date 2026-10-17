@@ -69,9 +69,12 @@ func (p *Provider) PlanMove(_ context.Context, req provider.MoveRequest) (provid
 	if len(req.OnlyIDs) > 0 {
 		var picked []string
 		for _, want := range req.OnlyIDs {
-			id, ok := matchID(ids, want)
-			if !ok {
+			id, n := matchID(ids, want)
+			switch {
+			case n == 0:
 				return plan, fmt.Errorf("claude: no conversation %q for %s in %s", want, plan.Dir, req.FromHome)
+			case n > 1:
+				return plan, fmt.Errorf("%w %q matches %d conversations for %s in %s; give more of the id", ErrAmbiguousID, want, n, plan.Dir, req.FromHome)
 			}
 			picked = append(picked, id)
 		}
@@ -142,21 +145,31 @@ func conversationIDs(entries []os.DirEntry) []string {
 	return ids
 }
 
-// matchID accepts a full id or a unique prefix (ids are long UUIDs).
-func matchID(ids []string, want string) (string, bool) {
+// ErrAmbiguousID means a MoveRequest.OnlyIDs prefix matches more than one
+// conversation. It is distinct from "no conversation" so the user learns to
+// type more of the id rather than that the id is wrong.
+var ErrAmbiguousID = errors.New("claude: ambiguous conversation prefix")
+
+// matchID accepts a full id or a unique prefix (ids are long UUIDs). It
+// returns the match and how many ids matched: 1 is a hit, 0 is no such
+// conversation, more than 1 is an ambiguous prefix (id is then ""). An exact
+// id always wins, even when it is also a prefix of a longer id.
+func matchID(ids []string, want string) (string, int) {
 	var found string
+	n := 0
 	for _, id := range ids {
 		if id == want {
-			return id, true
+			return id, 1
 		}
 		if strings.HasPrefix(id, want) {
-			if found != "" {
-				return "", false // ambiguous prefix
-			}
 			found = id
+			n++
 		}
 	}
-	return found, found != ""
+	if n != 1 {
+		return "", n
+	}
+	return found, n
 }
 
 // liveSessions returns registry entries whose process is still alive.

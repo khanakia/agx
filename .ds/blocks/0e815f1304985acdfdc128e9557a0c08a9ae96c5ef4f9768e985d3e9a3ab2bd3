@@ -1,0 +1,30 @@
+func newResumeCmd(a *app) *cobra.Command {
+	o := &resumeOpts{}
+	c := &cobra.Command{
+		Use:   "resume [query...] [-- agent-args...]",
+		Short: "Continue a conversation on the account that holds it",
+		Long: "Lists conversations started in this folder (or every folder with --all) across\n" +
+			"every provider home, lets you pick one, and continues it in its folder on the\n" +
+			"profile whose home stores it — so a work conversation resumes on work.\n" +
+			"Words before `--` filter the list; words after it are passed to the agent.",
+		Example: "  agx resume                 # pick from this folder's conversations\n" +
+			"  agx resume pglite          # filter by title / folder / id\n" +
+			"  agx resume --last          # newest, no picker\n" +
+			"  agx resume --all --list    # print, don't launch\n" +
+			"  agx resume -b              # pick a workspace, then a chat (same as agx ws)\n" +
+			"  agx resume --last -- --model opus",
+		Args: cobra.ArbitraryArgs,
+		RunE: a.runResumeArgs(o),
+	}
+	f := c.Flags()
+	f.BoolVarP(&o.browse, flagBrowse, "b", false, "pick a workspace (any folder with conversations), then a chat in it")
+	f.BoolVar(&o.list, "list", false, "print matching conversations instead of launching")
+	f.BoolVar(&o.all, "all", false, "search every folder, not just this one")
+	f.BoolVar(&o.last, "last", false, "take the newest match without a picker")
+	f.BoolVar(&o.json, flagJSON, false, "with --list: print the JSON envelope")
+	f.IntVar(&o.limit, "limit", defaultResumeLimit, "maximum conversations to consider")
+	f.BoolVar(&o.dryRun, flagDryRun, false, "print what would run and exit")
+	f.StringVarP(&o.profile, flagProfile, "p", "", "resume on this profile instead of the home's own (advanced)")
+	bindLoginFlag(f, &o.login)
+	return c
+}

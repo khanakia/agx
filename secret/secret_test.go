@@ -129,3 +129,19 @@ func TestSystemResolveGopass(t *testing.T) {
 		t.Error("hung gopass should time out")
 	}
 }
+
+// With several bad refs the first in sorted name order is reported, every
+// time; map iteration alone would pick a different one between runs.
+func TestResolveAll_DeterministicError(t *testing.T) {
+	t.Parallel()
+	refs := map[string]string{}
+	for _, n := range []string{"H", "C", "F", "A", "G", "D", "B", "E"} {
+		refs["BAD_"+n] = "gopass:missing-" + n
+	}
+	for range 50 {
+		_, err := ResolveAll(context.Background(), mapResolver{}, refs)
+		if err == nil || !strings.HasPrefix(err.Error(), "secret for BAD_A:") {
+			t.Fatalf("err = %v, want the BAD_A failure", err)
+		}
+	}
+}
