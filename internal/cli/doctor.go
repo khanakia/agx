@@ -3,8 +3,10 @@ package cli
 import (
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -133,8 +135,9 @@ func (a *app) doctor() []finding {
 		// Config-only checks first (secrets): they do not depend on the
 		// binary or home, and must be reported even when those are broken —
 		// the later checks `continue` on the first failure.
-		for name, raw := range p.Secrets {
-			ref, err := secret.Parse(raw)
+		// Sorted: map order would shuffle the report (and its JSON) run to run.
+		for _, name := range slices.Sorted(maps.Keys(p.Secrets)) {
+			ref, err := secret.Parse(p.Secrets[name])
 			if err != nil {
 				add(area, levelFail, name+": "+err.Error())
 				continue

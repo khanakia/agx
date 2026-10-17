@@ -674,3 +674,28 @@ func TestLogin_NoLeak(t *testing.T) {
 		t.Logf("transcript:\n%s", transcript.String())
 	}
 }
+
+// TestLogin_ReplaceStoredDropsToken: replacing a stored login with a --cmd
+// or --env source removes its raw token from tokens.yaml; it used to stay
+// there, a live credential nothing referenced any more.
+func TestLogin_ReplaceStoredDropsToken(t *testing.T) {
+	t.Parallel()
+	for _, src := range [][]string{{"--cmd", "printf " + tokCmd}, {"--env", "P_TOKEN"}} {
+		h := loginHarness(t, "profiles:\n  - {name: personal, provider: claude, home: HOME/.claude}\n")
+		h.env["P_TOKEN"] = tokEnv
+		h.stdin = tokStored + "\n"
+		if code := h.run("login", "add", "p", "--stdin"); code != ExitOK {
+			t.Fatalf("add: %d %s", code, h.stderr.String())
+		}
+		if code := h.run(append([]string{"login", "add", "p", "--replace"}, src...)...); code != ExitOK {
+			t.Fatalf("replace %v: %d %s", src, code, h.stderr.String())
+		}
+		stored, err := (login.TokenFile{Path: h.tokensPath()}).Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := stored["p"]; ok {
+			t.Errorf("replace %v kept the old raw token in tokens.yaml", src)
+		}
+	}
+}

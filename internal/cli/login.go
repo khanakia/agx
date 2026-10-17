@@ -412,6 +412,13 @@ func (a *app) runLoginAdd(ctx context.Context, o *loginAddOpts, name string) err
 		return err
 	}
 	a.loaded = false
+	if exists && old.Source == login.SourceStored && !stored {
+		// The login no longer reads tokens.yaml, so its old raw token must
+		// not stay there with nothing using it (rotated away, still valid).
+		if _, err := tf.Remove(name); err != nil {
+			a.warn("could not remove the old stored token: " + err.Error())
+		}
+	}
 	verb := "added"
 	if exists {
 		verb = "replaced"
