@@ -742,3 +742,53 @@ profiles:
 		t.Errorf("dry run:\n%s", h.stdout.String())
 	}
 }
+
+// TestAgentArgsAfterDash: words before `--` name the folder (new) or filter
+// (resume); words after it reach the agent, directly and through the shell
+// layer's plan, and never end up in the folder name.
+func TestAgentArgsAfterDash(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t, "")
+	work := filepath.Join(h.home, ".claude-work")
+	h.claude.convs[work] = []provider.Conversation{{Provider: provider.Claude, Home: work, ID: "w-1", Title: "pglite", Dir: h.cwd, Updated: h.now}}
+	for _, c := range []struct {
+		name     string
+		args     []string
+		wantDir  string // "" = the cwd (resume)
+		wantArgs []string
+	}{
+		{"new slug and agent args", []string{"new", "-p", "work", "a", "b", "--", "--model", "x"}, "a_b_20260924_120000", []string{"--model", "x"}},
+		{"new agent args only", []string{"new", "-p", "work", "--", "--model", "x"}, "20260924_120000", []string{"--model", "x"}},
+		{"new no dash", []string{"new", "-p", "work", "c", "d"}, "c_d_20260924_120000", nil},
+		{"resume agent args", []string{"resume", "--last", "--", "--model", "x"}, "", []string{"--resume", "w-1", "--model", "x"}},
+		{"resume query and agent args", []string{"resume", "--last", "pglite", "--", "-v"}, "", []string{"--resume", "w-1", "-v"}},
+		{"resume no dash", []string{"resume", "--last", "pglite"}, "", []string{"--resume", "w-1"}},
+	} {
+		if code := h.run(c.args...); code != ExitOK {
+			t.Errorf("%s: exit %d: %s", c.name, code, h.stderr.String())
+			continue
+		}
+		got := h.lastExec()
+		wantDir := h.cwd
+		if c.wantDir != "" {
+			wantDir = filepath.Join(h.sessions, c.wantDir)
+		}
+		if got.Dir != wantDir || !slices.Equal(got.Args, c.wantArgs) {
+			t.Errorf("%s: ran %v in %s, want %v in %s", c.name, got.Args, got.Dir, c.wantArgs, wantDir)
+		}
+	}
+
+	// The shell layer's plan carries the agent args to exec.
+	planPath := filepath.Join(h.root, "plan.json")
+	h.env[appmeta.EnvPlanFile] = planPath
+	if code := h.run("new", "-p", "work", "planned", "--", "--model", "x"); code != ExitOK {
+		t.Fatalf("plan: %d %s", code, h.stderr.String())
+	}
+	delete(h.env, appmeta.EnvPlanFile)
+	if code := h.run("exec", "--plan", planPath); code != ExitOK {
+		t.Fatalf("exec: %d %s", code, h.stderr.String())
+	}
+	if got := h.lastExec(); filepath.Base(got.Dir) != "planned_20260924_120000" || !slices.Equal(got.Args, []string{"--model", "x"}) {
+		t.Errorf("plan exec = %v in %s", got.Args, got.Dir)
+	}
+}

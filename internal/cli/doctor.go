@@ -18,6 +18,8 @@ import (
 	"github.com/khanakia/agx/internal/render"
 	"github.com/khanakia/agx/internal/shellinit"
 	"github.com/khanakia/agx/login"
+	"github.com/khanakia/agx/provider"
+	"github.com/khanakia/agx/provider/claude"
 	"github.com/khanakia/agx/secret"
 )
 
@@ -148,6 +150,9 @@ func (a *app) doctor() []finding {
 				}
 			}
 		}
+		for _, w := range a.apiBillingEnvWarnings(cfg, p) {
+			add(area, levelWarn, w)
+		}
 		prov, err := a.providerFor(p.Provider)
 		if err != nil {
 			add(area, levelFail, err.Error())
@@ -202,6 +207,34 @@ func enclosingRepo(dir string) string {
 	}
 }
 
+// apiBillingEnv are the variables that make Claude Code bill the API instead
+// of the account's plan when they are present in its environment.
+var apiBillingEnv = []string{claude.APIKeyEnv, claude.AuthTokenEnv}
+
+// apiBillingEnvWarnings warns when the shell exports an API credential that
+// a plan-billed Claude profile on its home login would inherit: Claude Code
+// then bills the API, not the plan. agx removes these variables only for
+// token logins (they set their own); a launch on the home login passes the
+// environment through on purpose, so this is a warning, not a fix. A
+// variable the profile sets itself (env / secrets) is the user's choice.
+func (a *app) apiBillingEnvWarnings(cfg config.Config, p provider.Profile) []string {
+	if p.Provider != provider.Claude || p.Billing != provider.BillingPlan {
+		return nil
+	}
+	if lc, _, err := a.pickLogin(cfg, p, ""); err != nil || lc.Login != nil {
+		return nil
+	}
+	var out []string
+	for _, name := range apiBillingEnv {
+		_, ownEnv := p.Env[name]
+		_, ownSecret := p.Secrets[name]
+		if v, ok := a.LookupEnv(name); ok && v != "" && !ownEnv && !ownSecret {
+			out = append(out, name+" is set in this shell, so Claude Code bills the API instead of this plan — unset it, or give the profile a login (`agx login use`)")
+		}
+	}
+	return out
+}
+
 // doctorLogins checks every login without resolving any value: token file
 // permissions and location, stored entries present, env sources set, and
 // expiry (warn within expiryWarnWindow, fail after).
@@ -251,7 +284,10 @@ func (a *app) doctorLogins(cfg config.Config) []finding {
 			}
 		case login.SourceEnv:
 			if _, ok := a.LookupEnv(l.Env); !ok {
+				// One row per login: an unset variable is the finding; an
+				// expiry row after it would contradict it.
 				add(area, levelWarn, l.Env+" is not set in this shell")
+				continue
 			}
 		case login.SourceCmd:
 		}

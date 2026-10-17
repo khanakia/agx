@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -19,12 +21,17 @@ import (
 
 // Backups of moved conversations go under <source home>/backups/ — the
 // folder Claude Code itself uses for backups — named after the folder and
-// the time of the move, so repeated moves never collide.
+// the time of the move (one-second resolution). Moves in the same second
+// get a numeric suffix (uniqueBackupDir), so they never share a backup.
 const (
 	backupsDir         = "backups"
 	moveBackupPrefix   = "agx-move-"
 	moveBackupStampFmt = "20060102-150405"
 	kindSessionMove    = "session.move"
+	// firstBackupSuffix is the first suffix tried after the bare name (-2,
+	// like a second copy); maxBackupSuffix bounds the search.
+	firstBackupSuffix = 2
+	maxBackupSuffix   = 1000
 )
 
 // Errors surfaced as usage errors (exit 2): the request itself is wrong.
@@ -292,8 +299,13 @@ func (a *app) runMove(ctx context.Context, folder string, o *moveOpts) error {
 	if !blocked && !o.dryRun {
 		for i := range results {
 			if !o.noBackup {
-				results[i].Backup = filepath.Join(results[i].FromHome, backupsDir,
+				base := filepath.Join(results[i].FromHome, backupsDir,
 					moveBackupPrefix+sessions.Slug(filepath.Base(dir))+"-"+a.Now().Format(moveBackupStampFmt))
+				backup, err := uniqueBackupDir(base)
+				if err != nil {
+					return err
+				}
+				results[i].Backup = backup
 			}
 			if err := provider.ApplyMovePlan(results[i].MovePlan, results[i].Backup); err != nil {
 				return err
@@ -409,4 +421,23 @@ func (a *app) printMove(results []moveResult, to provider.Profile) error {
 	}
 	_, err := io.WriteString(a.Stdout, b.String())
 	return err
+}
+
+// uniqueBackupDir returns base, or base-2, base-3 … when a folder of that
+// name already exists. The stamp has one-second resolution, so two moves of
+// the same folder within a second would otherwise share a backup folder and
+// the second would fail on files the first already copied there.
+func uniqueBackupDir(base string) (string, error) {
+	dir := base
+	for n := firstBackupSuffix; n <= maxBackupSuffix; n++ {
+		_, err := os.Lstat(dir)
+		if errors.Is(err, fs.ErrNotExist) {
+			return dir, nil
+		}
+		if err != nil {
+			return "", fmt.Errorf("backup folder %s: %w", dir, err)
+		}
+		dir = fmt.Sprintf("%s-%d", base, n)
+	}
+	return "", fmt.Errorf("backup folder %s: %d folders of that name already exist", base, maxBackupSuffix)
 }

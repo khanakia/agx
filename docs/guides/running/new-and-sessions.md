@@ -17,13 +17,14 @@ sessions:
 
 ## Step 1 — Start in a new folder
 
-`agx new` takes the same `-p`, `--provider`, `--login` and `--dry-run` flags as `agx run`. Any other words become the folder's slug:
+`agx new` takes the same `-p`, `--provider`, `--login` and `--dry-run` flags as `agx run`. Any other words become the folder's slug; words after `--` are passed to the agent instead:
 
 ```sh
 agx new
 agx new pglite spike
 agx new -p work "Fix: Login/Redirect!"
 agx new -p auto
+agx new -p work pglite -- --model opus
 ```
 
 The folder is named `[slug_]YYYYMMDD_HHMMSS` in local time. The slug is your words lowercased, with every run of characters other than `a-z` and `0-9` turned into one `_` and leading or trailing `_` trimmed, so `Fix: Login/Redirect!` becomes `fix_login_redirect`. Two folders created in the same second get `_2`, `_3` and so on instead of sharing one.
@@ -144,7 +145,7 @@ The folder list goes to stdout and the summary line to stderr, so `agx sessions 
 
 ## Pitfalls
 
-- **`agx new` creates the folder before it launches.** If the launch fails (for example `agx: claude not found on PATH`), the empty folder stays; `gc` removes it once it is older than `--min-age` (`internal/cli/launch.go`, `newNewCmd`). `agx new --dry-run` creates nothing.
+- **`agx new` creates the folder before it launches.** The login is checked first, so `--login nope` stops with `agx: unknown login "nope"` and creates nothing. If the launch itself fails (for example `agx: claude not found on PATH`), the empty folder stays; `gc` removes it once it is older than `--min-age` (`internal/cli/launch.go`, `newNewCmd`). `agx new --dry-run` creates nothing.
 - **Promote never crosses disks.** The move is a single rename, which the operating system cannot do between filesystems, so a destination on another disk stops with `agx: sessions: destination is on a different disk; promote only moves within one disk (move it yourself, e.g. with mv): <from> → <to>`, exit 1, and neither the folder nor its history moves (`sessions.ErrCrossDevice`; tested by `TestRenameError_CrossDevice` in `sessions/crossdevice_unix_test.go`).
 - **Promote never overwrites.** An existing destination stops with `agx: sessions: destination already exists: <path>`, exit 1; a name such as `../x` stops with `agx: name must be a single folder name, got "../x"`, exit 2 (`internal/cli/sessions.go`, `validFolderName`).
 - **Folders promoted outside agx lose their history link.** A plain `mv` leaves the Claude history keyed by the old path; resume in the new folder then finds nothing. Use `agx sessions promote`, or `agx sessions promote --to` for another parent on the same disk.
