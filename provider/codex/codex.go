@@ -312,12 +312,14 @@ func toWindow(w wireWindow, vendor string) provider.Window {
 	return out
 }
 
-// planLabel title-cases Codex's plan_type ("plus" → "Plus").
+// planLabel title-cases Codex's plan_type ("plus" → "Plus"). The first rune,
+// not the first byte, is upper-cased so a non-ASCII plan stays valid UTF-8.
 func planLabel(plan string) string {
 	if plan == "" {
 		return ""
 	}
-	return strings.ToUpper(plan[:1]) + plan[1:]
+	_, size := utf8.DecodeRuneInString(plan)
+	return strings.ToUpper(plan[:size]) + plan[size:]
 }
 
 // Usage implements provider.Provider.
