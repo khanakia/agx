@@ -13,7 +13,7 @@ agx is one command for Claude Code and Codex across every account on your machin
 The release page publishes a SHA-256 for every archive in `checksums.txt`. Checking it proves the archive you got is the one the release workflow built. Pick your platform, then run the whole block:
 
 ```sh
-VERSION=v0.3.4
+VERSION=v0.3.5
 PLATFORM=linux_amd64        # or darwin_arm64, darwin_amd64, linux_arm64
 curl -sLO "https://github.com/khanakia/agx/releases/download/${VERSION}/agx_${VERSION}_${PLATFORM}.tar.gz"
 curl -sLO "https://github.com/khanakia/agx/releases/download/${VERSION}/checksums.txt"
@@ -24,7 +24,7 @@ sudo mv agx /usr/local/bin/
 
 The `grep … | sha256sum -c` line must print `OK`. If it prints `FAILED`, delete the archive and download it again; do not install it.
 
-On Windows, download `agx_v0.3.4_windows_amd64.zip` and its line in `checksums.txt` from the [Releases page](https://github.com/khanakia/agx/releases), check it with `certutil -hashfile agx_v0.3.4_windows_amd64.zip SHA256`, and put `agx.exe` on your `PATH`.
+On Windows, download `agx_v0.3.5_windows_amd64.zip` and its line in `checksums.txt` from the [Releases page](https://github.com/khanakia/agx/releases), check it with `certutil -hashfile agx_v0.3.5_windows_amd64.zip SHA256`, and put `agx.exe` on your `PATH`.
 
 ## Step 2 — Or install with Go
 
@@ -74,27 +74,27 @@ Open a new terminal afterwards; `agx doctor` then shows `✓ shell  shell layer 
 
 ## Try it
 
-Checking and installing the Linux amd64 archive of v0.3.4:
+Checking and installing the Linux amd64 archive of v0.3.5:
 
 ```text
 $ grep "agx_${VERSION}_${PLATFORM}.tar.gz" checksums.txt | sha256sum -c
-agx_v0.3.4_linux_amd64.tar.gz: OK
+agx_v0.3.5_linux_amd64.tar.gz: OK
 $ agx version
-agx v0.3.4
+agx v0.3.5
   source:      ldflags
   commit:      9250a7f11c3944434d67642de4999fbe99699707
   built:       2026-10-17T04:06:05Z
   go:          go1.26.4
   platform:    linux/amd64
 $ agx --version
-agx version v0.3.4
+agx version v0.3.5
 ```
 
 The same version built with `go install` reports where its version came from differently, because `go install` does not stamp a commit or build time:
 
 ```text
 $ agx version
-agx v0.3.4
+agx v0.3.5
   source:      module
   commit:      unknown
   built:       unknown
@@ -121,7 +121,7 @@ $ echo $?
 
 - **No accounts is a usage error, not an empty list.** `agx` / `agx usage` exit 2 with ``no profiles to show (run `agx doctor`)`` when no home was found (`internal/cli/usage.go`, `runUsage`), and `agx plan` says ``no plan-billed profiles (run `agx doctor`)`` (`internal/cli/plan.go`). Log in with Claude Code or Codex once, then run `agx profiles` again.
 - **`go install` builds lack a commit and build time.** `agx version` shows `source: module`, `commit: unknown`. Use a release archive when you need the provenance fields filled in (seen above; the values come from voltkit's `versioncmd`).
-- **There is no Windows arm64 build.** The v0.3.4 release has `windows_amd64.zip` only. On Windows, agx cannot replace its own process, so `run` starts the agent as a child process and waits (`internal/cli/exec_other.go`); Windows is otherwise untested.
+- **There is no Windows arm64 build.** The v0.3.5 release has `windows_amd64.zip` only. On Windows, agx cannot replace its own process, so `run` starts the agent as a child process and waits (`internal/cli/exec_other.go`); Windows is otherwise untested.
 - **The macOS Keychain is read only on macOS.** On Linux, a Claude Code login is read from `<home>/.credentials.json`; the Keychain lookup needs the macOS `security` tool and is skipped when it is missing (`provider/claude/keychain.go`).
 - **The shell layer is opt-in.** Without it, `agx new` and `agx resume` still start the agent in the right folder, but your shell does not change directory afterwards, and `agx doctor` reports `· shell  shell layer not loaded` (`internal/cli/doctor.go`).
 
