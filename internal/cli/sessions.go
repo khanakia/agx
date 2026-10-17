@@ -100,7 +100,8 @@ func newSessionsGCCmd(a *app) *cobra.Command {
 				return err
 			}
 			plan := sessions.PlanGC(folders, a.Now(), minAge)
-			var failed int
+			// failed holds the paths --yes could not remove (already warned).
+			failed := map[string]bool{}
 			if yes {
 				for _, it := range plan {
 					if !it.Remove {
@@ -108,7 +109,7 @@ func newSessionsGCCmd(a *app) *cobra.Command {
 					}
 					if err := sessions.RemoveEmpty(it.Folder.Path); err != nil {
 						a.warn(err.Error())
-						failed++
+						failed[it.Folder.Path] = true
 					}
 				}
 			}
@@ -116,10 +117,10 @@ func newSessionsGCCmd(a *app) *cobra.Command {
 				if err := output.JSON(a.Stdout, kindSessionGC, plan, len(plan)); err != nil {
 					return err
 				}
-			} else if err := a.printGC(plan, yes); err != nil {
+			} else if err := a.printGC(plan, yes, failed); err != nil {
 				return err
 			}
-			if failed > 0 {
+			if len(failed) > 0 {
 				return errPartial
 			}
 			return nil
@@ -133,11 +134,13 @@ func newSessionsGCCmd(a *app) *cobra.Command {
 }
 
 // printGC lists removable folders on stdout (data) and a summary on stderr.
-func (a *app) printGC(plan []sessions.GCItem, applied bool) error {
+// Folders in failed (removal attempted and refused) are left out, so a
+// folder that is still on disk is never listed or counted as removed.
+func (a *app) printGC(plan []sessions.GCItem, applied bool, failed map[string]bool) error {
 	var b strings.Builder
 	var n int
 	for _, it := range plan {
-		if it.Remove {
+		if it.Remove && !failed[it.Folder.Path] {
 			n++
 			b.WriteString(it.Folder.Name + "\n")
 		}
