@@ -1,0 +1,87 @@
+func (a *app) runMove(ctx context.Context, folder string, o *moveOpts) error {
+	if o.to == "" {
+		return usageErr(errors.New("--to <profile> is required (see `agx profiles`)"))
+	}
+	cfg, err := a.config()
+	if err != nil {
+		return err
+	}
+	to, ok := cfg.ByName(o.to)
+	if !ok {
+		return errUnknownProfile(o.to)
+	}
+	// Order of checks, most useful message first: a malformed request
+	// (cross-provider, same home) is wrong whatever the provider can do; then
+	// whether the provider can move at all; then which accounts exist.
+	from, hasFrom, err := a.checkMovePair(cfg, to, o.from)
+	if err != nil {
+		return err
+	}
+	prov, err := a.providerFor(to.Provider)
+	if err != nil {
+		return err
+	}
+	mover, ok := prov.(provider.ConversationMover)
+	if !ok {
+		reason := errNoMover.Error()
+		if u, ok := prov.(provider.MoveUnsupported); ok {
+			reason = u.MoveUnsupportedReason()
+		}
+		return fmt.Errorf("moving %s conversations is not supported: %s", to.Provider, reason)
+	}
+	sources, err := a.moveSources(cfg, to, from, hasFrom)
+	if err != nil {
+		return err
+	}
+	dir, err := a.resolveFolder(cfg, folder)
+	if err != nil {
+		return err
+	}
+
+	var results []moveResult
+	blocked := false
+	for _, from := range sources {
+		plan, err := mover.PlanMove(ctx, provider.MoveRequest{FromHome: from.Home, ToHome: to.Home, Dir: dir, OnlyIDs: o.only})
+		if err != nil {
+			return err
+		}
+		if len(plan.Conversations) == 0 {
+			continue
+		}
+		r := moveResult{MovePlan: plan, DryRun: o.dryRun, Titles: a.conversationTitles(ctx, prov, from.Home, dir)}
+		blocked = blocked || len(plan.Blockers) > 0
+		results = append(results, r)
+	}
+	if len(results) == 0 {
+		a.note(fmt.Sprintf("no %s conversations for %s outside %s — nothing to move", to.Provider, render.ShortenHome(dir, a.UserHome), to.Name))
+		if o.json {
+			return output.JSON(a.Stdout, kindSessionMove, results, 0)
+		}
+		return nil
+	}
+
+	if !blocked && !o.dryRun {
+		for i := range results {
+			if !o.noBackup {
+				results[i].Backup = filepath.Join(results[i].FromHome, backupsDir,
+					moveBackupPrefix+sessions.Slug(filepath.Base(dir))+"-"+a.Now().Format(moveBackupStampFmt))
+			}
+			if err := provider.ApplyMovePlan(results[i].MovePlan, results[i].Backup); err != nil {
+				return err
+			}
+			results[i].Applied = true
+		}
+	}
+
+	if o.json {
+		if err := output.JSON(a.Stdout, kindSessionMove, results, len(results)); err != nil {
+			return err
+		}
+	} else if err := a.printMove(results, to); err != nil {
+		return err
+	}
+	if blocked {
+		return &ExitError{Code: ExitFailure, Err: errMoveBlocked}
+	}
+	return nil
+}

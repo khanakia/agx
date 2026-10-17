@@ -23,11 +23,17 @@ import (
 	"github.com/khanakia/agx/secret"
 )
 
-// Exit codes (spec §4, voltkit convention).
+// Exit codes (spec §4, voltkit convention). Scripts branch on them, so a
+// value never changes meaning.
 const (
-	ExitOK      = 0
+	// ExitOK: the command did what was asked.
+	ExitOK = 0
+	// ExitFailure: the request was valid but something failed (an account
+	// unreachable, a move blocked, a picker dismissed).
 	ExitFailure = 1
-	ExitUsage   = 2
+	// ExitUsage: the request itself was wrong (unknown profile, bad flag,
+	// invalid config); retrying unchanged cannot succeed.
+	ExitUsage = 2
 )
 
 // ExitError carries a specific process exit code through cobra.
@@ -189,7 +195,9 @@ func (a *app) note(line string) {
 	_, _ = fmt.Fprintln(a.Stderr, line)
 }
 
-// ctx returns a context for one command.
+// ctxOf returns the command's context, or Background when cobra was run
+// without one (tests call Execute directly). It takes the one method it
+// needs so it does not care which cobra type carries the context.
 func ctxOf(c interface{ Context() context.Context }) context.Context {
 	if ctx := c.Context(); ctx != nil {
 		return ctx

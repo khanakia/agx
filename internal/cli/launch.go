@@ -189,15 +189,7 @@ func (a *app) runResume(ctx context.Context, o *resumeOpts, query []string) erro
 
 	idx := 0
 	if !o.last && len(convs) > 1 {
-		items := make([]string, len(views))
-		for i, v := range views {
-			items[i] = a.conversationLine(v)
-		}
-		idx, err = a.Picker.Pick("resume", items)
-		if errors.Is(err, ErrCancelled) {
-			return &ExitError{Code: ExitFailure, Err: err}
-		}
-		if err != nil {
+		if idx, err = a.pickOne("resume", a.conversationItems(views)); err != nil {
 			return err
 		}
 	}
@@ -214,7 +206,10 @@ func (a *app) resumeConversation(ctx context.Context, cfg config.Config, o *resu
 
 	p, ok := cfg.ForHome(chosen.Provider, chosen.Home)
 	if o.profile != "" {
-		p, ok = cfg.ByName(o.profile)
+		// An unknown -p is the user's typo, not a home without a profile.
+		if p, ok = cfg.ByName(o.profile); !ok {
+			return errUnknownProfile(o.profile)
+		}
 	}
 	if !ok {
 		return fmt.Errorf("no profile uses %s (%s); add one to the config", chosen.Home, chosen.Provider)
@@ -230,34 +225,32 @@ func (a *app) resumeConversation(ctx context.Context, cfg config.Config, o *resu
 // limited to cwd unless all is set. It never widens on its own: an empty cwd
 // returns an empty list.
 func (a *app) findConversations(ctx context.Context, cfg config.Config, cwd string, all bool, limit int) ([]provider.Conversation, error) {
-	collect := func(dir string) ([]provider.Conversation, error) {
-		var out []provider.Conversation
-		for _, p := range cfg.Homes() {
-			prov, err := a.providerFor(p.Provider)
-			if err != nil {
-				return nil, err
-			}
-			lister, ok := prov.(provider.ConversationLister)
-			if !ok {
-				continue
-			}
-			cs, err := lister.Conversations(ctx, p.Home, provider.ConversationQuery{Dir: dir, Limit: limit})
-			if err != nil {
-				a.warn(fmt.Sprintf("%s: %v", p.Home, err))
-				continue
-			}
-			out = append(out, cs...)
-		}
-		slices.SortFunc(out, func(x, y provider.Conversation) int { return y.Updated.Compare(x.Updated) })
-		if limit > 0 && len(out) > limit {
-			out = out[:limit]
-		}
-		return out, nil
-	}
+	dir := cwd
 	if all {
-		return collect("")
+		dir = "" // an empty Dir asks the lister for every folder
 	}
-	return collect(cwd)
+	var out []provider.Conversation
+	for _, p := range cfg.Homes() {
+		prov, err := a.providerFor(p.Provider)
+		if err != nil {
+			return nil, err
+		}
+		lister, ok := prov.(provider.ConversationLister)
+		if !ok {
+			continue
+		}
+		cs, err := lister.Conversations(ctx, p.Home, provider.ConversationQuery{Dir: dir, Limit: limit})
+		if err != nil {
+			a.warn(fmt.Sprintf("%s: %v", p.Home, err))
+			continue
+		}
+		out = append(out, cs...)
+	}
+	slices.SortFunc(out, func(x, y provider.Conversation) int { return y.Updated.Compare(x.Updated) })
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
 }
 
 // filterConversations keeps conversations whose title, folder or id contains
@@ -349,6 +342,15 @@ func shortID(id string) string {
 	return string(r[:min(len(r), shortIDLen)])
 }
 
+// conversationItems is one conversationLine per view, for a picker.
+func (a *app) conversationItems(vs []conversationView) []string {
+	items := make([]string, len(vs))
+	for i, v := range vs {
+		items[i] = a.conversationLine(v)
+	}
+	return items
+}
+
 // conversationLine formats one picker / list row on a single line.
 func (a *app) conversationLine(v conversationView) string {
 	title := v.Title
@@ -400,7 +402,7 @@ func (a *app) resolveProfile(ctx context.Context, o *launchOpts) (provider.Profi
 	default:
 		p, ok := cfg.ByName(o.profile)
 		if !ok {
-			return provider.Profile{}, usageErr(fmt.Errorf("unknown profile %q (see `agx profiles`)", o.profile))
+			return provider.Profile{}, errUnknownProfile(o.profile)
 		}
 		return p, nil
 	}

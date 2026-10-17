@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/khanakia/agx/provider"
 )
@@ -90,11 +91,17 @@ func (c *UsageClient) get(ctx context.Context, endpoint, accessToken string) ([]
 	return body, nil
 }
 
-// snippet trims an error body for inclusion in an error message.
+// snippet trims an error body for inclusion in an error message. The cut
+// is moved back to a rune boundary, so a non-ASCII body never yields an
+// invalid UTF-8 message.
 func snippet(b []byte) string {
 	s := strings.Join(strings.Fields(string(b)), " ") // one line, even for pretty JSON
 	if len(s) > snippetMax {
-		return s[:snippetMax] + "…"
+		cut := snippetMax
+		for cut > 0 && !utf8.RuneStart(s[cut]) {
+			cut--
+		}
+		return s[:cut] + "…"
 	}
 	return s
 }

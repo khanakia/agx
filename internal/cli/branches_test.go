@@ -5,11 +5,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/khanakia/agx/provider"
+	"github.com/khanakia/agx/secret"
 )
 
 func TestProfiles_Text(t *testing.T) {
@@ -221,5 +223,53 @@ func TestYesNo(t *testing.T) {
 	t.Parallel()
 	if yesNo(true) != cellYes || yesNo(false) != cellNo {
 		t.Error("yesNo")
+	}
+}
+
+// TestResume_UnknownProfile: `resume -p typo` names the typo and exits 2;
+// it used to report "no profile uses <home>" with exit 1, pointing the user
+// at the config instead of the flag.
+func TestResume_UnknownProfile(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t, "")
+	home := filepath.Join(h.home, ".claude")
+	h.claude.convs[home] = []provider.Conversation{{Provider: provider.Claude, Home: home, ID: "x", Dir: h.cwd, Updated: h.now}}
+	if code := h.run("resume", "--last", "-p", "nope"); code != ExitUsage || !strings.Contains(h.stderr.String(), `unknown profile "nope"`) {
+		t.Errorf("exit %d: %s", code, h.stderr.String())
+	}
+	if len(h.execs) != 0 {
+		t.Errorf("launched %+v", h.execs)
+	}
+}
+
+// TestDoctor_SecretOrderStable: findings for several secrets come out in
+// name order on every run (they used to follow map iteration order).
+func TestDoctor_SecretOrderStable(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t, "profiles:\n  - {name: kimi, provider: claude, billing: api, secrets: {D: 'gopass:d', A: 'gopass:a', C: 'gopass:c', B: 'gopass:b'}}\n")
+	d := h.deps()
+	d.LookPath = func(name string) (string, error) {
+		if name == secret.GopassBin {
+			return "", errors.New("missing")
+		}
+		return "/bin/" + name, nil
+	}
+	want := []string{"A needs gopass", "B needs gopass", "C needs gopass", "D needs gopass"}
+	for range 20 {
+		h.stdout.Reset()
+		root := NewRoot(d)
+		root.SetArgs([]string{"doctor", "--json"})
+		if err := root.Execute(); ExitCode(err) != ExitFailure {
+			t.Fatalf("doctor: %v", err)
+		}
+		var got []string
+		for _, f := range decode[[]finding](t, h.stdout.Bytes()).Data {
+			if strings.HasSuffix(f.Detail, "needs gopass, which is not on PATH") {
+				got = append(got, strings.TrimSuffix(f.Detail, ", which is not on PATH"))
+			}
+		}
+		if !slices.Equal(got, want) {
+			t.Fatalf("secret findings = %q, want %q", got, want)
+		}
 	}
 }

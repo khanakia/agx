@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -370,14 +371,8 @@ func firstOf(ps []provider.Profile, id provider.ID) int {
 	return -1
 }
 
-func validBilling(b provider.Billing) bool {
-	for _, v := range provider.BillingValues {
-		if b == v {
-			return true
-		}
-	}
-	return false
-}
+// validBilling reports whether b is one of provider.BillingValues.
+func validBilling(b provider.Billing) bool { return slices.Contains(provider.BillingValues, b) }
 
 // expand resolves a leading "~" and makes the path absolute and clean.
 // Empty stays empty.
@@ -396,6 +391,7 @@ func expand(p, userHome string) string {
 	return filepath.Clean(p)
 }
 
+// knownIDs lists provider ids in the given (display) order, for errors.
 func knownIDs(ps []provider.Provider) string {
 	ids := make([]string, 0, len(ps))
 	for _, p := range ps {
@@ -404,6 +400,7 @@ func knownIDs(ps []provider.Provider) string {
 	return strings.Join(ids, ", ")
 }
 
+// knownIDsMap lists the ids of m sorted, so the error text is stable.
 func knownIDsMap(m map[provider.ID]provider.Provider) string {
 	ids := make([]string, 0, len(m))
 	for id := range m {
@@ -451,10 +448,7 @@ func (c Config) ForHome(id provider.ID, home string) (provider.Profile, bool) {
 		}
 		return r
 	}
-	for _, p := range c.Profiles {
-		if p.Provider != id || filepath.Clean(p.Home) != filepath.Clean(home) {
-			continue
-		}
+	for _, p := range c.ProfilesForHome(id, home) {
 		if !found || rank(p) > rank(best) {
 			best, found = p, true
 		}

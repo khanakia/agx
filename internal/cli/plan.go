@@ -60,23 +60,18 @@ type planRow struct {
 }
 
 func (a *app) runPlan(ctx context.Context, names []string, asJSON bool, timeout time.Duration) error {
-	if timeout <= 0 {
-		return usageErr(errors.New("--timeout must be positive"))
+	if err := checkTimeout(timeout); err != nil {
+		return err
 	}
 	cfg, err := a.config()
 	if err != nil {
 		return err
 	}
-	var targets []provider.Profile
-	if len(names) > 0 {
-		for _, n := range names {
-			p, ok := cfg.ByName(n)
-			if !ok {
-				return usageErr(fmt.Errorf("unknown profile %q (see `agx profiles`)", n))
-			}
-			targets = append(targets, p)
-		}
-	} else {
+	targets, err := profilesByName(cfg, names)
+	if err != nil {
+		return err
+	}
+	if len(names) == 0 {
 		for _, p := range cfg.Homes() {
 			if p.Billing == provider.BillingPlan {
 				targets = append(targets, p)
@@ -129,7 +124,7 @@ func (a *app) planFor(ctx context.Context, p provider.Profile, timeout time.Dura
 	defer cancel()
 	sub, err := reader.Subscription(fctx, p)
 	if err != nil {
-		row.Error = withHint(err, p, a.UserHome).Error()
+		row.Error = withHint(err, p).Error()
 		return row
 	}
 	row.Sub = sub
