@@ -206,7 +206,10 @@ func (a *app) resumeConversation(ctx context.Context, cfg config.Config, o *resu
 
 	p, ok := cfg.ForHome(chosen.Provider, chosen.Home)
 	if o.profile != "" {
-		p, ok = cfg.ByName(o.profile)
+		// An unknown -p is the user's typo, not a home without a profile.
+		if p, ok = cfg.ByName(o.profile); !ok {
+			return errUnknownProfile(o.profile)
+		}
 	}
 	if !ok {
 		return fmt.Errorf("no profile uses %s (%s); add one to the config", chosen.Home, chosen.Provider)

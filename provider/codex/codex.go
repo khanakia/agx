@@ -23,6 +23,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/khanakia/agx/provider"
 )
@@ -466,11 +467,16 @@ func (p *Provider) Conversations(ctx context.Context, home string, q provider.Co
 }
 
 // snippet trims an error body for inclusion in an error message: one line
-// (even for pretty JSON), at most snippetMax bytes plus an ellipsis.
+// (even for pretty JSON), at most snippetMax bytes plus an ellipsis. The cut
+// is moved back to a rune boundary so the message stays valid UTF-8.
 func snippet(b []byte) string {
 	s := strings.Join(strings.Fields(string(b)), " ")
 	if len(s) > snippetMax {
-		return s[:snippetMax] + "…"
+		cut := snippetMax
+		for cut > 0 && !utf8.RuneStart(s[cut]) {
+			cut--
+		}
+		return s[:cut] + "…"
 	}
 	return s
 }
