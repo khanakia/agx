@@ -147,3 +147,76 @@ func TestPromote(t *testing.T) {
 		t.Errorf("overwrite err = %v", err)
 	}
 }
+
+// A promote that fails at the rename (a cross-disk destination, a vanished
+// source) must leave the disk exactly as it was: no parent folders created
+// for a destination that never arrived, and no pre-existing folder removed.
+func TestPromote_FailureLeavesNoParents(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name     string
+		existing string // relative dir that exists before the promote
+		dst      string // relative destination
+		gone     []string
+		kept     []string
+	}{
+		{name: "all-parents-new", dst: "a/b/c/dst", gone: []string{"a"}},
+		{name: "some-parents-exist", existing: "a", dst: "a/b/c/dst", gone: []string{"a/b"}, kept: []string{"a"}},
+		{name: "parent-exists", existing: "a/b", dst: "a/b/dst", kept: []string{"a/b"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			if c.existing != "" {
+				mkdir(t, filepath.Join(root, c.existing))
+			}
+			// A missing source makes the rename fail the same way EXDEV does:
+			// after the parents were made.
+			err := Promote(filepath.Join(root, "missing"), filepath.Join(root, c.dst))
+			if err == nil {
+				t.Fatal("promote of a missing source succeeded")
+			}
+			for _, g := range c.gone {
+				if _, err := os.Stat(filepath.Join(root, g)); !errors.Is(err, os.ErrNotExist) {
+					t.Errorf("%s left behind after a failed promote", g)
+				}
+			}
+			for _, k := range c.kept {
+				if _, err := os.Stat(filepath.Join(root, k)); err != nil {
+					t.Errorf("pre-existing %s removed: %v", k, err)
+				}
+			}
+		})
+	}
+}
+
+// With no HistoryFunc, history is unknown, and gc must keep the folder: an
+// empty folder can still have conversations recorded for it.
+func TestPlanGC_UnknownHistoryKept(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	mkdir(t, filepath.Join(root, "20260101_000000"))
+	folders, err := List(root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(folders) != 1 || !folders[0].HistoryUnknown || folders[0].HasHistory {
+		t.Fatalf("folders = %+v", folders)
+	}
+	now := time.Date(2026, 10, 1, 0, 0, 0, 0, time.Local)
+	plan := PlanGC(folders, now, time.Hour)
+	if plan[0].Remove || plan[0].Reason != GCHistoryUnknown {
+		t.Errorf("unknown history: %+v", plan[0])
+	}
+
+	known, err := List(root, func(string) bool { return false })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if known[0].HistoryUnknown {
+		t.Error("a HistoryFunc was given, history is known")
+	}
+	if p := PlanGC(known, now, time.Hour); !p[0].Remove {
+		t.Errorf("known-empty folder kept: %+v", p[0])
+	}
+}

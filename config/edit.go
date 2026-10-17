@@ -202,6 +202,7 @@ func (e Editor) RemoveLogin(name string) ([]string, error) {
 					cleared = append(cleared, "providers."+provs.Content[i].Value+".login")
 				}
 			}
+			pruneEmptyProviders(root)
 		}
 		return nil
 	})
@@ -271,6 +272,7 @@ func (e Editor) SetProviderLogin(id provider.ID, name string) (Change, error) {
 		}
 		if name == login.Home {
 			mapDelete(entry, keyLogin)
+			pruneEmptyProviders(root)
 			ch.After = unsetValue
 			return nil
 		}
@@ -333,6 +335,29 @@ func setScalar(m *yaml.Node, key, value string) {
 		n.Tag = "!!bool"
 	}
 	setNode(m, key, n)
+}
+
+// pruneEmptyProviders drops every providers.<id> mapping left with no keys,
+// then `providers:` itself when nothing is left in it, so removing the last
+// setting leaves no `claude: {}` / `providers: {}` behind. Only empty
+// mappings go: a null, a scalar or a non-empty entry is the user's and is
+// kept as written.
+func pruneEmptyProviders(root *yaml.Node) {
+	provs := mapGet(root, keyProviders)
+	if provs == nil || provs.Kind != yaml.MappingNode {
+		return
+	}
+	kept := provs.Content[:0]
+	for i := 0; i+1 < len(provs.Content); i += 2 {
+		if v := provs.Content[i+1]; v.Kind == yaml.MappingNode && len(v.Content) == 0 {
+			continue
+		}
+		kept = append(kept, provs.Content[i], provs.Content[i+1])
+	}
+	provs.Content = kept
+	if len(provs.Content) == 0 {
+		mapDelete(root, keyProviders)
+	}
 }
 
 // mapDelete removes key from mapping m.

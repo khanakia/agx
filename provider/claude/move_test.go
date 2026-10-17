@@ -2,6 +2,7 @@ package claude
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -92,8 +93,37 @@ func TestPlanMove_OnlyIDs(t *testing.T) {
 		t.Error("unknown id must fail")
 	}
 	writeFile(t, filepath.Join(HistoryDir(from, dir), "aaaa-3333.jsonl"), "{}")
-	if _, err := p.PlanMove(context.Background(), provider.MoveRequest{FromHome: from, ToHome: to, Dir: dir, OnlyIDs: []string{"aaaa"}}); err == nil {
-		t.Error("ambiguous prefix must fail")
+	_, err = p.PlanMove(context.Background(), provider.MoveRequest{FromHome: from, ToHome: to, Dir: dir, OnlyIDs: []string{"aaaa"}})
+	if !errors.Is(err, ErrAmbiguousID) || !strings.Contains(err.Error(), "matches 2 conversations") {
+		t.Errorf("ambiguous prefix err = %v", err)
+	}
+}
+
+// matchID over the input space: exact, unique prefix, ambiguous prefix,
+// missing, an exact id that is also a prefix of another, empty input.
+func TestMatchID(t *testing.T) {
+	t.Parallel()
+	ids := []string{"aaaa-1111", "aaaa-2222", "bbbb-1111", "cccc", "cccc-9"}
+	for _, c := range []struct {
+		want   string
+		wantID string
+		wantN  int
+	}{
+		{"aaaa-1111", "aaaa-1111", 1},
+		{"bbbb", "bbbb-1111", 1},
+		{"aaaa", "", 2},
+		{"a", "", 2},
+		{"zzzz", "", 0},
+		{"cccc", "cccc", 1}, // exact beats being a prefix of cccc-9
+		{"", "", len(ids)},
+	} {
+		id, n := matchID(ids, c.want)
+		if id != c.wantID || n != c.wantN {
+			t.Errorf("matchID(%q) = %q, %d; want %q, %d", c.want, id, n, c.wantID, c.wantN)
+		}
+	}
+	if id, n := matchID(nil, "x"); id != "" || n != 0 {
+		t.Errorf("matchID(nil) = %q, %d", id, n)
 	}
 }
 

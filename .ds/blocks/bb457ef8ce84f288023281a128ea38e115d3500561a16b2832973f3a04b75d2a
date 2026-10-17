@@ -1,0 +1,92 @@
+func Resolve(f File, userHome string, providers []provider.Provider) (Config, error) {
+	byID := make(map[provider.ID]provider.Provider, len(providers))
+	for _, p := range providers {
+		byID[p.ID()] = p
+	}
+	for id := range f.Providers {
+		if _, ok := byID[provider.ID(id)]; !ok {
+			return Config{}, fmt.Errorf("%w: providers.%s: unknown provider (known: %s)", ErrInvalid, id, knownIDs(providers))
+		}
+	}
+
+	cfg := Config{ProviderLogins: map[provider.ID]string{}}
+	logins, err := resolveLogins(f.Logins, byID)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.Logins = logins
+	for id, d := range f.Providers {
+		if d.Login == "" || d.Login == login.Home {
+			continue
+		}
+		if err := checkLoginRef(fmt.Sprintf("providers.%s.login", id), d.Login, provider.ID(id), logins); err != nil {
+			return Config{}, err
+		}
+		cfg.ProviderLogins[provider.ID(id)] = d.Login
+	}
+	cfg.SessionsRoot = expand(f.Sessions.Root, userHome)
+	if cfg.SessionsRoot == "" {
+		cfg.SessionsRoot = filepath.Join(userHome, defaultSessionsDirName)
+	}
+	cfg.PromoteRoot = expand(f.Sessions.PromoteRoot, userHome)
+	if cfg.PromoteRoot == "" {
+		cfg.PromoteRoot = filepath.Dir(cfg.SessionsRoot)
+	}
+
+	seen := map[string]bool{}
+	configured := map[provider.ID]bool{}
+	for i, s := range f.Profiles {
+		p, err := resolveProfile(i, s, f.Providers, byID, userHome)
+		if err != nil {
+			return Config{}, err
+		}
+		if err := checkProfileLogin(i, p, byID, logins); err != nil {
+			return Config{}, err
+		}
+		if seen[p.Name] {
+			return Config{}, fmt.Errorf("%w: profiles[%d]: duplicate name %q", ErrInvalid, i, p.Name)
+		}
+		seen[p.Name] = true
+		configured[p.Provider] = true
+		cfg.Profiles = append(cfg.Profiles, p)
+	}
+
+	for _, prov := range providers {
+		if configured[prov.ID()] {
+			continue
+		}
+		disc, err := prov.Discover(userHome)
+		if err != nil {
+			return Config{}, fmt.Errorf("config: discover %s: %w", prov.ID(), err)
+		}
+		for _, p := range disc {
+			if seen[p.Name] {
+				// A discovered name colliding with a configured one (e.g. a
+				// codex profile named "personal") is namespaced, not dropped.
+				p.Name = string(p.Provider) + "-" + p.Name
+			}
+			seen[p.Name] = true
+			p.Args = append(append([]string{}, f.Providers[string(prov.ID())].Args...), p.Args...)
+			cfg.Profiles = append(cfg.Profiles, p)
+		}
+	}
+
+	if err := settleDefaults(cfg.Profiles); err != nil {
+		return Config{}, err
+	}
+
+	for name, args := range f.Shell.Aliases {
+		if !aliasPattern.MatchString(name) {
+			return Config{}, fmt.Errorf("%w: shell.aliases.%s: not a valid shell function name", ErrInvalid, name)
+		}
+		if strings.TrimSpace(args) == "" {
+			return Config{}, fmt.Errorf("%w: shell.aliases.%s: empty command", ErrInvalid, name)
+		}
+		if !aliasArgsPattern.MatchString(args) {
+			return Config{}, fmt.Errorf("%w: shell.aliases.%s: only letters, digits, spaces and _./:=@+- are allowed", ErrInvalid, name)
+		}
+		cfg.Aliases = append(cfg.Aliases, Alias{Name: name, Args: strings.TrimSpace(args)})
+	}
+	sort.Slice(cfg.Aliases, func(i, j int) bool { return cfg.Aliases[i].Name < cfg.Aliases[j].Name })
+	return cfg, nil
+}

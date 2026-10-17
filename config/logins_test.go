@@ -139,10 +139,10 @@ func TestResolve_Logins_Invalid(t *testing.T) {
 		{"added-bad", "logins: [{name: a, token: stored, added: 16/10/2026}]", "added: want YYYY-MM-DD"},
 		// References.
 		{"profile-unknown-login", "logins: [{name: a, token: stored}]\nprofiles: [{name: w, provider: claude, home: ~/.w, login: nosuch}]", `profiles[0] (w): login: unknown login "nosuch"`},
-		{"profile-auto", "profiles: [{name: w, provider: claude, home: ~/.w, login: auto}]", `"auto" is accepted only as --login`},
+		{"profile-auto", "profiles: [{name: w, provider: claude, home: ~/.w, login: auto}]", `profiles[0] (w): login: "auto" is accepted only as --login`},
 		{"profile-wrong-provider", "logins: [{name: a, token: stored}]\nprofiles: [{name: c, provider: codex, home: ~/.codex, login: a}]", `"a" is a claude login, not codex`},
-		{"profile-api-billed", "logins: [{name: a, token: stored}]\nprofiles: [{name: k, provider: claude, home: ~/.k, billing: api, login: a}]", "billed per token"},
-		{"profile-own-env-set", "logins: [{name: a, token: stored}]\nprofiles: [{name: k, provider: claude, home: ~/.k, env: {CLAUDE_CODE_OAUTH_TOKEN: x}, login: a}]", "sets CLAUDE_CODE_OAUTH_TOKEN in env"},
+		{"profile-api-billed", "logins: [{name: a, token: stored}]\nprofiles: [{name: k, provider: claude, home: ~/.k, billing: api, login: a}]", "profiles[0] (k): login: profile already has its own credential: profile k is billed per token"},
+		{"profile-own-env-set", "logins: [{name: a, token: stored}]\nprofiles: [{name: k, provider: claude, home: ~/.k, env: {CLAUDE_CODE_OAUTH_TOKEN: x}, login: a}]", "profiles[0] (k): login: profile already has its own credential: profile k sets CLAUDE_CODE_OAUTH_TOKEN in env"},
 		{"profile-own-env-unset", "logins: [{name: a, token: stored}]\nprofiles: [{name: k, provider: claude, home: ~/.k, env: {ANTHROPIC_AUTH_TOKEN: x}, login: a}]", "sets ANTHROPIC_AUTH_TOKEN in env"},
 		{"profile-own-secret", "logins: [{name: a, kind: api-key, token: stored}]\nprofiles: [{name: k, provider: claude, home: ~/.k, secrets: {ANTHROPIC_API_KEY: 'gopass:x'}, login: a}]", "sets ANTHROPIC_API_KEY in secrets"},
 		{"provider-unknown-login", "providers:\n  claude: {login: nosuch}\n", `providers.claude.login: unknown login "nosuch"`},
@@ -161,6 +161,10 @@ func TestResolve_Logins_Invalid(t *testing.T) {
 		}
 		if !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%s: err = %v, want %q", c.name, err, c.want)
+		}
+		// The field is named once; "login: login:" was a doubled prefix.
+		if strings.Contains(err.Error(), "login: login:") {
+			t.Errorf("%s: doubled prefix: %v", c.name, err)
 		}
 		if !errors.Is(err, ErrInvalid) && c.name != "unknown-key" {
 			t.Errorf("%s: %v is not ErrInvalid", c.name, err)

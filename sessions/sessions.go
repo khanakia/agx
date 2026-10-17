@@ -97,15 +97,22 @@ type Folder struct {
 	// Files counts regular files, recursively, excluding ignoredFiles.
 	Files int `json:"files"`
 	// HasHistory reports whether any provider holds a conversation started
-	// in this folder.
+	// in this folder. Meaningful only when HistoryUnknown is false.
 	HasHistory bool `json:"has_history"`
+	// HistoryUnknown is true when nobody was asked (List got a nil
+	// HistoryFunc). PlanGC keeps such folders: "not asked" must never read
+	// as "no conversations", or gc would delete folders that have some.
+	HistoryUnknown bool `json:"history_unknown,omitempty"`
 }
 
 // HistoryFunc reports whether any provider has conversation history for dir.
+// A nil HistoryFunc means "unknown", not "none": List then marks every folder
+// HistoryUnknown and PlanGC never removes it.
 type HistoryFunc func(dir string) bool
 
 // List returns the folders directly under root, newest first. A missing root
-// is an empty list, not an error.
+// is an empty list, not an error. With a nil hasHistory every folder is
+// HistoryUnknown (see HistoryFunc).
 func List(root string, hasHistory HistoryFunc) ([]Folder, error) {
 	entries, err := os.ReadDir(root)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -125,6 +132,8 @@ func List(root string, hasHistory HistoryFunc) ([]Folder, error) {
 		}
 		if hasHistory != nil {
 			f.HasHistory = hasHistory(f.Path)
+		} else {
+			f.HistoryUnknown = true
 		}
 		out = append(out, f)
 	}
@@ -179,7 +188,9 @@ const (
 	GCCollect    GCReason = "empty, no history"
 	GCHasFiles   GCReason = "has files"
 	GCHasHistory GCReason = "has conversation history"
-	GCTooNew     GCReason = "newer than min age"
+	// GCHistoryUnknown keeps a folder whose history was never checked.
+	GCHistoryUnknown GCReason = "history unknown"
+	GCTooNew         GCReason = "newer than min age"
 )
 
 // GCItem is one folder's gc decision.
@@ -191,7 +202,8 @@ type GCItem struct {
 
 // PlanGC decides, for each folder, whether gc may remove it (spec §9): no
 // files, no history in any provider, and older than minAge (by creation
-// stamp, else mtime). It changes nothing.
+// stamp, else mtime). A folder whose history is unknown is kept. It changes
+// nothing.
 func PlanGC(folders []Folder, now time.Time, minAge time.Duration) []GCItem {
 	out := make([]GCItem, 0, len(folders))
 	for _, f := range folders {
@@ -199,6 +211,8 @@ func PlanGC(folders []Folder, now time.Time, minAge time.Duration) []GCItem {
 		switch {
 		case f.Files > 0:
 			item.Reason = GCHasFiles
+		case f.HistoryUnknown:
+			item.Reason = GCHistoryUnknown
 		case f.HasHistory:
 			item.Reason = GCHasHistory
 		case now.Sub(sortKey(f)) < minAge:
@@ -251,19 +265,59 @@ var ErrCrossDevice = errors.New("sessions: destination is on a different disk; p
 
 // Promote moves src to dst with os.Rename (same volume), refusing to
 // overwrite. Parent directories of dst are created.
+//
+// Invariant: a refused or failed promote changes nothing. The rename is the
+// only step that can reveal a cross-disk destination (EXDEV), and it needs
+// the parents to exist first, so the parents Promote created are removed
+// again when the rename fails — innermost first, with os.Remove, which
+// cannot delete a folder something else filled in the meantime.
 func Promote(src, dst string) error {
 	if _, err := os.Stat(dst); err == nil {
 		return fmt.Errorf("%w: %s", ErrExists, dst)
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("sessions: stat %s: %w", dst, err)
 	}
-	if err := os.MkdirAll(filepath.Dir(dst), dirPerm); err != nil {
+	created, err := mkdirParents(filepath.Dir(dst))
+	if err != nil {
 		return fmt.Errorf("sessions: create parent of %s: %w", dst, err)
 	}
 	if err := os.Rename(src, dst); err != nil {
+		removeCreated(created)
 		return renameError(src, dst, err)
 	}
 	return nil
+}
+
+// mkdirParents is os.MkdirAll that also reports which directories it made,
+// innermost first, so a caller can undo exactly those and nothing that
+// existed before.
+func mkdirParents(dir string) ([]string, error) {
+	var missing []string
+	for d := filepath.Clean(dir); ; d = filepath.Dir(d) {
+		if _, err := os.Stat(d); err == nil {
+			break
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			return nil, err
+		}
+		missing = append(missing, d)
+		if parent := filepath.Dir(d); parent == d {
+			break // reached the filesystem root
+		}
+	}
+	if err := os.MkdirAll(dir, dirPerm); err != nil {
+		removeCreated(missing)
+		return nil, err
+	}
+	return missing, nil
+}
+
+// removeCreated undoes mkdirParents, innermost first. Errors are ignored on
+// purpose: it runs only on a path that is already failing, and os.Remove
+// refusing a non-empty folder is exactly the safety wanted here.
+func removeCreated(dirs []string) {
+	for _, d := range dirs {
+		_ = os.Remove(d)
+	}
 }
 
 // renameError classifies a failed rename, mapping a cross-device move to

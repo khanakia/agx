@@ -340,7 +340,7 @@ promote onto existing: exists=true
 - Alias values are pasted into generated shell code, so only letters, digits, spaces and `_./:=@+-` are accepted (`config/config.go`, `aliasArgsPattern`).
 - `auto` is reserved as a profile name and `home` / `auto` as login names (`config/config.go`, `resolveProfile`; `config/logins.go`, `resolveLogins`).
 - `pick.Best` never chooses an `api`-billed profile, whatever its usage says (`pick/pick.go`, `TestBest_APIBilledNeverChosen`).
-- Passing a nil `HistoryFunc` to `sessions.List` reports every folder as having no history, so `PlanGC` will mark an empty folder that holds conversations as collectable. Always pass a real history check before collecting (`sessions/sessions.go`, `List`).
+- Passing a nil `HistoryFunc` to `sessions.List` marks every folder's history as unknown (`Folder.HistoryUnknown`), and `PlanGC` keeps such folders with the reason `history unknown` instead of collecting them. Pass a real history check when you want empty folders collected (`sessions/sessions.go`, `List`, `PlanGC`).
 - Folder age comes from the timestamp in the name, parsed in local time, and falls back to mtime only for hand-made names (`sessions/sessions.go`, `sortKey`, `TestListAndPlanGC`).
 - `RemoveEmpty` re-checks at delete time and refuses a folder that gained a file after planning; `.DS_Store` does not count as content (`sessions/sessions.go`, `TestRemoveEmpty`).
 - `Promote` refuses an existing destination (`sessions.ErrExists`) and a destination on another disk (`sessions.ErrCrossDevice`): it is one atomic rename and never copies (`sessions/sessions.go`, `TestPromote`; `sessions/crossdevice_unix_test.go`, `TestRenameError_CrossDevice`).

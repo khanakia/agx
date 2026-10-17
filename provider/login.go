@@ -2,6 +2,8 @@ package provider
 
 import (
 	"context"
+	"maps"
+	"slices"
 	"time"
 )
 
@@ -49,15 +51,16 @@ type LoginUsageReader interface {
 }
 
 // ApplyLoginEnv returns a copy of env with a login's variables applied:
-// every unset name removed, then every set name set. The input slice is
-// never modified.
+// every unset name removed, then every set name set, in sorted key order so
+// the resulting env (and a --dry-run printing it) is the same on every run
+// despite map iteration being random. The input slice is never modified.
 func ApplyLoginEnv(env []string, set map[string]string, unset []string) []string {
 	out := append([]string{}, env...)
 	for _, k := range unset {
 		out = UnsetEnv(out, k)
 	}
-	for k, v := range set {
-		out = SetEnv(out, k, v)
+	for _, k := range slices.Sorted(maps.Keys(set)) {
+		out = SetEnv(out, k, set[k])
 	}
 	return out
 }

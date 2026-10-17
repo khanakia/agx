@@ -227,7 +227,7 @@ team     source=cmd    resolved 19 chars, owned by agx=false
 personal expires 2027-10-01
 work has no added date: expiry unknown
 missing stored: true
-multi-line cmd: login file (cmd): login: token command printed more than one line
+multi-line cmd: login file (cmd): login: token has more than one line
 compatible: login: profile already has its own credential: profile kimi sets ANTHROPIC_API_KEY in env
 world-readable token file: insecure=true
 ```
@@ -245,7 +245,7 @@ world-readable token file: insecure=true
 - The zero `TokenFile` reads as empty, so a `Resolver` without `Tokens` reports every stored login as `login.ErrMissing` rather than failing loudly at construction (`login/tokens.go`, `TestTokenFile_EmptyAndUnset`).
 - A raw token in `config.yaml`'s `token:` field is rejected at load; only `stored` is accepted there, and the error never echoes the value (`config/logins.go`, `resolveLogin`, `TestResolve_Logins_Invalid`).
 - `auto` is accepted only as the `--login` flag of a launch, never as a configured default, because it probes every login and spends a few tokens of each account's quota (`config/logins.go`, `ErrAutoLogin`).
-- `ApplyLoginEnv` sets variables in map order; the resulting env slice order is not stable between runs, so compare environments as sets in tests (`provider/login.go`, `ApplyLoginEnv`).
+- `ApplyLoginEnv` sets variables in sorted name order, so the resulting env slice is the same on every run (`provider/login.go`, `ApplyLoginEnv`).
 - Codex has no token logins: it does not implement `provider.LoginLauncher`, and `config.NoLoginsReason(provider.Codex)` explains why (`config/logins.go`).
 
 ## Related
