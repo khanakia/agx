@@ -82,8 +82,8 @@ agx_v0.3.5_linux_amd64.tar.gz: OK
 $ agx version
 agx v0.3.5
   source:      ldflags
-  commit:      9250a7f11c3944434d67642de4999fbe99699707
-  built:       2026-10-17T04:06:05Z
+  commit:      f2c5427ad65ed9fc5709acfb4ed8d51d9d33832c
+  built:       2026-10-17T05:35:49Z
   go:          go1.26.4
   platform:    linux/amd64
 $ agx --version
