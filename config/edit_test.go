@@ -339,3 +339,54 @@ func TestTildePath(t *testing.T) {
 		}
 	}
 }
+
+// TestEditor_PrunesEmptyProviders: removing the last key of providers.<id>
+// (login use home, login rm) drops the empty entry and an empty providers:,
+// while other providers, other keys and the rest of the file survive.
+func TestEditor_PrunesEmptyProviders(t *testing.T) {
+	t.Parallel()
+	const head = "logins: [{name: a, token: stored}]\nprofiles: [{name: personal, provider: claude, home: ~/.claude}]\n"
+	for _, c := range []struct {
+		name      string
+		providers string
+		do        func(Editor) error
+		want      []string // substrings that must remain
+		gone      []string // substrings that must be gone
+	}{
+		{name: "use-home-last-key", providers: "providers:\n  claude: {login: a}\n",
+			do:   func(e Editor) error { _, err := e.SetProviderLogin(provider.Claude, "home"); return err },
+			gone: []string{"providers", "claude: {}"}},
+		{name: "use-home-other-key", providers: "providers:\n  claude: {login: a, args: [--verbose]}\n",
+			do:   func(e Editor) error { _, err := e.SetProviderLogin(provider.Claude, "home"); return err },
+			want: []string{"providers:", "--verbose"}, gone: []string{"login: a"}},
+		{name: "use-home-other-provider", providers: "providers:\n  claude: {login: a}\n  codex: {args: [--x]}\n",
+			do:   func(e Editor) error { _, err := e.SetProviderLogin(provider.Claude, "home"); return err },
+			want: []string{"providers:", "codex:"}, gone: []string{"claude:"}},
+		{name: "use-home-never-set", providers: "",
+			do:   func(e Editor) error { _, err := e.SetProviderLogin(provider.Claude, "home"); return err },
+			gone: []string{"providers"}},
+		{name: "rm-login-last-key", providers: "providers:\n  claude: {login: a}\n",
+			do:   func(e Editor) error { _, err := e.RemoveLogin("a"); return err },
+			gone: []string{"providers", "claude: {}"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			e := newEditor(t, head+c.providers, 0o644)
+			if err := c.do(e); err != nil {
+				t.Fatal(err)
+			}
+			e.load(t)
+			body := read(t, e.Path)
+			for _, w := range append([]string{"personal"}, c.want...) {
+				if !strings.Contains(body, w) {
+					t.Errorf("lost %q:\n%s", w, body)
+				}
+			}
+			for _, g := range c.gone {
+				if strings.Contains(body, g) {
+					t.Errorf("left %q:\n%s", g, body)
+				}
+			}
+		})
+	}
+}

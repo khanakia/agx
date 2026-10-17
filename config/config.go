@@ -231,8 +231,8 @@ func Resolve(f File, userHome string, providers []provider.Provider) (Config, er
 		if err != nil {
 			return Config{}, err
 		}
-		if err := checkProfileLogin(p, byID, logins); err != nil {
-			return Config{}, fmt.Errorf("%w: profiles[%d] (%s): %w", ErrInvalid, i, p.Name, err)
+		if err := checkProfileLogin(i, p, byID, logins); err != nil {
+			return Config{}, err
 		}
 		if seen[p.Name] {
 			return Config{}, fmt.Errorf("%w: profiles[%d]: duplicate name %q", ErrInvalid, i, p.Name)

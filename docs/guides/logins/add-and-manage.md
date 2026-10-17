@@ -198,9 +198,9 @@ see its usage with `agx login check ci` (one probe: a few tokens of its quota)
 - **One source per login.** `agx login add bad --cmd x --env Y` is refused with `give one token source: --cmd, --env, or a paste (--stdin / --setup / the prompt)`. In `config.yaml`, two of `token`, `token_cmd`, `token_env` give `set exactly one of token: stored, token_cmd, token_env` (`config/logins.go`).
 - **Reserved and invalid names.** `home` and `auto` are reserved (`login name "home" is reserved`), and names must match `^[a-z0-9][a-z0-9-]*$` (`config/logins.go`, `ValidLoginName`).
 - **Adding an existing name needs `--replace`.** Otherwise: `login "personal" already exists (use --replace to rotate its token)`.
-- **Multi-line input is refused, with a message that mentions a command.** `printf 'a\nb\n' | agx login add two --stdin` fails with `login: token command printed more than one line` even though no command was involved; the message comes from `login.ErrMultiline` and applies to pasted input too.
+- **Multi-line input is refused.** `printf 'a\nb\n' | agx login add two --stdin` fails with `login: token has more than one line`; the same check (`login.ErrMultiline`) applies to pasted, stored, command and env tokens.
 - **A token command has 10 seconds.** A store that waits for a passphrase nobody types fails the launch with `timed out after 10s` (`login/login.go`, `cmdTimeout`).
-- **`login use` and `login rm` edit config.yaml in place.** Comments and key order are kept, but blank lines between sections are not, and `agx login use home --provider claude` leaves an empty `providers: claude: {}` behind (seen in a real run; `config/edit.go`).
+- **`login use` and `login rm` edit config.yaml in place.** Comments and key order are kept, but blank lines between sections are not (`config/edit.go`).
 
 ## Related
 

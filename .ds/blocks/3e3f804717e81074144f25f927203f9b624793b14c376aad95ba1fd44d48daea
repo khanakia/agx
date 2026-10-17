@@ -1,0 +1,20 @@
+func PlanGC(folders []Folder, now time.Time, minAge time.Duration) []GCItem {
+	out := make([]GCItem, 0, len(folders))
+	for _, f := range folders {
+		item := GCItem{Folder: f}
+		switch {
+		case f.Files > 0:
+			item.Reason = GCHasFiles
+		case f.HistoryUnknown:
+			item.Reason = GCHistoryUnknown
+		case f.HasHistory:
+			item.Reason = GCHasHistory
+		case now.Sub(sortKey(f)) < minAge:
+			item.Reason = GCTooNew
+		default:
+			item.Remove, item.Reason = true, GCCollect
+		}
+		out = append(out, item)
+	}
+	return out
+}

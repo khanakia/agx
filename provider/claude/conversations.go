@@ -132,6 +132,12 @@ type transcriptLine struct {
 // readConversation extracts id, cwd and title from one transcript. ok is
 // false when no cwd is found (a transcript that never ran a turn cannot be
 // resumed in a known directory).
+//
+// Such transcripts are skipped from listings but still moved by PlanMove,
+// on purpose: they live in the folder's history directory, and leaving them
+// behind would keep the source account reporting history for the folder.
+// Listing them is not done because resume picks the newest conversation in a
+// folder, and an empty, turn-less transcript would win over the real one.
 func readConversation(path string) (provider.Conversation, bool) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -177,9 +183,14 @@ func lastTitle(f *os.File) string {
 	if _, err := f.ReadAt(buf, start); err != nil && !errors.Is(err, io.EOF) {
 		return ""
 	}
+	// Cheap prefilter before decoding: the quoted record type must appear
+	// somewhere in the line. It matches the value alone, not `"type":"…"`,
+	// so JSON written with spaces (`"type": "ai-title"`) is still found; the
+	// decode below then checks it really is the type field.
+	aiMark, customMark := []byte(`"`+recordAITitle+`"`), []byte(`"`+recordCustomTitle+`"`)
 	var custom, ai string
 	for _, line := range bytes.Split(buf, []byte{'\n'}) {
-		if !bytes.Contains(line, []byte(`"type":"`+recordAITitle+`"`)) && !bytes.Contains(line, []byte(`"type":"`+recordCustomTitle+`"`)) {
+		if !bytes.Contains(line, aiMark) && !bytes.Contains(line, customMark) {
 			continue
 		}
 		var l transcriptLine

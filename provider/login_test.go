@@ -37,3 +37,16 @@ func TestApplyLoginEnv_Matrix(t *testing.T) {
 		}
 	}
 }
+
+// Set names are applied in sorted order, so the env is identical on every
+// call; without sorting, map iteration would reorder T1..T8 between calls.
+func TestApplyLoginEnv_DeterministicOrder(t *testing.T) {
+	t.Parallel()
+	set := map[string]string{"T8": "8", "T3": "3", "T1": "1", "T6": "6", "T2": "2", "T7": "7", "T5": "5", "T4": "4"}
+	want := []string{"A=1", "T1=1", "T2=2", "T3=3", "T4=4", "T5=5", "T6=6", "T7=7", "T8=8"}
+	for range 50 {
+		if got := ApplyLoginEnv([]string{"A=1"}, set, nil); !slices.Equal(got, want) {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+	}
+}
