@@ -1,0 +1,9 @@
+func EncodePath(dir string) string {
+	b := []byte(dir)
+	for i, c := range b {
+		if !isASCIIAlnum(c) {
+			b[i] = '-'
+		}
+	}
+	return string(b)
+}

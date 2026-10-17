@@ -1,0 +1,23 @@
+{
+  "_table": "tasks",
+  "_v": 1,
+  "assigned_to_actor_id": null,
+  "body": "HANDOFF §9, AGX_SPEC §15 (not built): notify when an account's plan usage crosses a threshold.",
+  "commitment": "accepted",
+  "completed_at": null,
+  "created_at": "2026-10-16T13:41:50.728075000Z",
+  "created_by_actor_id": "act_afbe7ed1d969752697eebecaac20e9dc",
+  "deferred_until": "2026-11-16T00:00:00.000000000Z",
+  "due_at": null,
+  "id": "tsk_01a144f294087128b2d789057f9fdea7",
+  "mission_id": null,
+  "plan_id": null,
+  "priority": "low",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "started_at": null,
+  "status": "todo",
+  "tasklist_id": "tlt_01a144f291777c9e99fcbd18a8e76d14",
+  "title": "Threshold notifications for plan usage",
+  "updated_at": "2026-10-16T13:45:57.266933000Z"
+}

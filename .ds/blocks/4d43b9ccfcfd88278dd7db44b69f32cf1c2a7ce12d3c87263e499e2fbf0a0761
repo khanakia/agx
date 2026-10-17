@@ -1,0 +1,34 @@
+func newDoctorCmd(a *app) *cobra.Command {
+	var asJSON bool
+	c := &cobra.Command{
+		Use:   "doctor",
+		Short: "Check config, profiles, logins, binaries, secrets and shell integration",
+		Long: "Runs local checks only (no network, never resolves secret values) and explains where\n" +
+			"each setting came from. Exits 1 when any check fails.",
+		Args: usageArgs(cobra.NoArgs),
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			fs := a.doctor()
+			if asJSON {
+				if err := output.JSON(a.Stdout, kindDoctorReport, fs, len(fs)); err != nil {
+					return err
+				}
+			} else {
+				var b strings.Builder
+				for _, f := range fs {
+					fmt.Fprintf(&b, "%s %-*s %s\n", levelMarks[f.Level], areaWidth, f.Area, f.Detail)
+				}
+				if _, err := io.WriteString(a.Stdout, b.String()); err != nil {
+					return err
+				}
+			}
+			for _, f := range fs {
+				if f.Level == levelFail {
+					return errPartial
+				}
+			}
+			return nil
+		},
+	}
+	c.Flags().BoolVar(&asJSON, flagJSON, false, "print the JSON envelope")
+	return c
+}

@@ -1,0 +1,48 @@
+func newSessionsMoveCmd(a *app) *cobra.Command {
+	o := &moveOpts{}
+	c := &cobra.Command{
+		Use:   "move [folder] --to <profile>",
+		Short: "Move a folder's conversations to another account of the same provider",
+		Long: "Moves every conversation started in [folder] (default: here) from the other accounts of\n" +
+			"the target's provider into the --to account, so `claude -c`, `agx resume` and friends\n" +
+			"continue them there. The target profile decides the provider; moving between providers\n" +
+			"is refused. Aborts before changing anything if the agent is running in the folder or a\n" +
+			"conversation already exists in the target. Sources are backed up first (--no-backup to skip).",
+		Example: "  agx sessions move --to work --dry-run          # this folder, show the plan\n" +
+			"  agx sessions move --to work                    # this folder, personal → work\n" +
+			"  agx sessions move docker_setup_mac --to work   # a folder by name or path\n" +
+			"  agx sessions move . --to personal --from work  # back again\n" +
+			"  agx sessions move . --to work --only aeba9843  # one conversation (id or unique prefix)\n" +
+			"  agx sessions move -i                           # pick this folder's chats, then the target\n" +
+			"  agx sessions move -i --all --to work --dry-run # pick any folder, then its chats",
+
+		Args: usageArgs(cobra.MaximumNArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			folder := "."
+			if len(args) == 1 {
+				folder = args[0]
+			}
+			if o.pick {
+				if len(args) == 1 || len(o.only) > 0 {
+					return usageErr(errors.New("--pick chooses the folder and the chats; drop the folder argument and --only"))
+				}
+				dir, err := a.pickMove(ctxOf(cmd), o)
+				if err != nil {
+					return err
+				}
+				folder = dir
+			}
+			return a.runMove(ctxOf(cmd), folder, o)
+		},
+	}
+	f := c.Flags()
+	f.StringVar(&o.to, "to", "", "target profile (required) — decides the provider")
+	f.StringVar(&o.from, "from", "", "only move from this profile (default: every other account of the provider)")
+	f.StringSliceVar(&o.only, "only", nil, "only these conversation ids (full id or unique prefix; comma-separated)")
+	f.BoolVar(&o.dryRun, flagDryRun, false, "print the plan and change nothing")
+	f.BoolVar(&o.noBackup, "no-backup", false, "skip copying the sources to <home>/backups first")
+	f.BoolVar(&o.json, flagJSON, false, "print the JSON envelope")
+	f.BoolVarP(&o.pick, "pick", "i", false, "pick this folder's chats to move (and --to, when not given); --all to pick the folder first")
+	f.BoolVar(&o.all, "all", false, "with --pick: choose the folder from every workspace first")
+	return c
+}

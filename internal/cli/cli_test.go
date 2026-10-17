@@ -34,6 +34,11 @@ type fakeProv struct {
 	history map[string]map[string]bool
 	// subs are subscriptions by home (nil map = zero subscription).
 	subs map[string]provider.Subscription
+	// probeUsage / probeErrs answer LoginUsage by token value (loginProv);
+	// probes counts the probes, which cost real quota in the real provider.
+	probeUsage map[string]provider.Usage
+	probeErrs  map[string]error
+	probes     int
 }
 
 func (f *fakeProv) ID() provider.ID                             { return f.id }
@@ -157,6 +162,14 @@ type harness struct {
 	execs    []provider.Command
 	picker   *fakePicker
 	now      time.Time
+	// provs replaces the default provider list ([claude]) when set.
+	provs []provider.Provider
+	// stdin is what the command reads from standard input.
+	stdin string
+	// secretInput answers the hidden prompt; interactive records the
+	// commands run attached to the terminal (`claude setup-token`).
+	secretInput string
+	interactive []provider.Command
 }
 
 func newHarness(t *testing.T, configYAML string) *harness {
@@ -202,9 +215,9 @@ func newHarness(t *testing.T, configYAML string) *harness {
 
 func (h *harness) deps() Deps {
 	return Deps{
-		Stdout: &h.stdout, Stderr: &h.stderr, Stdin: strings.NewReader(""),
+		Stdout: &h.stdout, Stderr: &h.stderr, Stdin: strings.NewReader(h.stdin),
 		UserHome:   h.home,
-		Providers:  []provider.Provider{h.claude},
+		Providers:  h.providers(),
 		ConfigPath: func() (string, string, error) { return h.cfgPath, "test", nil },
 		Now:        func() time.Time { return h.now },
 		Getwd:      func() (string, error) { return h.cwd, nil },
@@ -233,7 +246,20 @@ func (h *harness) deps() Deps {
 			}
 			return "/usr/bin/" + name, nil
 		},
+		RunInteractive: func(c provider.Command) error {
+			h.interactive = append(h.interactive, c)
+			return nil
+		},
+		PromptSecret: func(string) (string, error) { return h.secretInput, nil },
 	}
+}
+
+// providers is h.provs, or just the fake Claude.
+func (h *harness) providers() []provider.Provider {
+	if h.provs != nil {
+		return h.provs
+	}
+	return []provider.Provider{h.claude}
 }
 
 // run executes agx with args and returns the exit code.

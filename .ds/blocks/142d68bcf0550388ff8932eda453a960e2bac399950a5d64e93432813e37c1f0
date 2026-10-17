@@ -1,0 +1,6 @@
+type File struct {
+	Sessions  SessionsSpec                    `yaml:"sessions"`
+	Providers map[string]ProviderDefaultsSpec `yaml:"providers"`
+	Profiles  []ProfileSpec                   `yaml:"profiles"`
+	Shell     ShellSpec                       `yaml:"shell"`
+}

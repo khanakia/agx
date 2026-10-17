@@ -84,6 +84,20 @@ _{{.Name}}_emit_cwd() {
       ;;
   esac
 }
+
+# aglogin NAME: every run in this terminal spends login NAME's quota
+# (exports {{.EnvLogin}}); aglogin with no argument undoes it. A function,
+# because a child process cannot change its parent shell's environment.
+aglogin() {
+  if [ "$#" -eq 0 ]; then
+    unset {{.EnvLogin}}
+    echo "{{.Name}}: {{.EnvLogin}} unset — profile and provider defaults apply" >&2
+    return 0
+  fi
+  command {{.Name}} login exists "$1" || return 1
+  export {{.EnvLogin}}="$1"
+  echo "{{.Name}}: {{.EnvLogin}}=$1 in this terminal (aglogin with no argument undoes it)" >&2
+}
 {{range .Aliases}}
 {{.Name}}() { {{$.Name}} {{.Args}} "$@"; }{{end}}
 `))
@@ -94,13 +108,14 @@ func Write(w io.Writer, p Params) error {
 		return fmt.Errorf("%w %q (supported: %v)", ErrUnsupported, p.Shell, Shells)
 	}
 	data := struct {
-		Name, Shell, EnvShellInit, EnvPlanFile, PlanList, PlanCase string
-		Aliases                                                    []Alias
+		Name, Shell, EnvShellInit, EnvPlanFile, EnvLogin, PlanList, PlanCase string
+		Aliases                                                              []Alias
 	}{
 		Name:         appmeta.Name,
 		Shell:        string(p.Shell),
 		EnvShellInit: appmeta.EnvShellInit,
 		EnvPlanFile:  appmeta.EnvPlanFile,
+		EnvLogin:     appmeta.EnvLogin,
 		PlanList:     strings.Join(planCommands, " / "),
 		PlanCase:     strings.Join(planCommands, "|"),
 		Aliases:      p.Aliases,

@@ -62,6 +62,7 @@ func newWsCmd(a *app) *cobra.Command {
 	f.BoolVar(&o.json, flagJSON, false, "with --list: print the JSON envelope")
 	f.BoolVar(&o.dryRun, flagDryRun, false, "print what would run and exit")
 	f.StringVarP(&o.profile, flagProfile, "p", "", "resume on this profile instead of the home's own (advanced)")
+	bindLoginFlag(f, &o.login)
 	return c
 }
 

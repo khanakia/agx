@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/ubgo/voltkit/appdir"
@@ -89,6 +90,11 @@ type Deps struct {
 	IsTerminal func(w io.Writer) bool
 	// LookPath finds a binary on PATH (doctor).
 	LookPath func(string) (string, error)
+	// RunInteractive runs cmd attached to the terminal and waits (`claude
+	// setup-token` for `login add --setup`).
+	RunInteractive func(cmd provider.Command) error
+	// PromptSecret shows prompt and reads one line without echo.
+	PromptSecret func(prompt string) (string, error)
 }
 
 // SystemDeps wires the real machine.
@@ -127,6 +133,9 @@ func SystemDeps() (Deps, error) {
 		Picker:     TerminalPicker{},
 		IsTerminal: isTerminal,
 		LookPath:   lookPath,
+
+		RunInteractive: runInteractive,
+		PromptSecret:   promptSecret,
 	}, nil
 }
 
@@ -136,6 +145,9 @@ type app struct {
 	cfg     config.Config
 	cfgRung string
 	loaded  bool
+	// noteMu serialises stderr lines: probes and usage fetches run
+	// concurrently and may each warn (e.g. an approximate expiry).
+	noteMu sync.Mutex
 }
 
 // config loads the config once per invocation.
@@ -170,6 +182,8 @@ func (a *app) warn(msg string) { a.note(appmeta.Name + ": " + msg) }
 
 // note writes one plain line to stderr (status next to stdout data).
 func (a *app) note(line string) {
+	a.noteMu.Lock()
+	defer a.noteMu.Unlock()
 	// stderr is the channel of last resort: if writing to it fails there is
 	// nowhere left to report that, so the error is deliberately dropped.
 	_, _ = fmt.Fprintln(a.Stderr, line)

@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-10-16
+
+### Added
+
+- Logins: run any home on any account's quota. A login is a named, long-lived Claude token (`claude setup-token`) or API key that agx passes to Claude Code at launch, so a home keeps its history, settings and `resume` while the run spends another account's plan. `agx login add NAME` takes the token at a hidden prompt, from `--stdin`, after `--setup` (runs `claude setup-token` first), or as a source read at each launch: `--cmd "<command>"` or `--env VAR`. `--kind api-key` adds an API key instead; `--account` is a label; `--replace` rotates a token and keeps the kind and account.
+- `agx login ls` (`--json`, kind `login.list`; never a value), `agx login check [NAME]` (resolves the token and probes its usage; `--no-probe` only resolves), `agx login use NAME|home -p PROFILE` / `--provider ID` (edits config.yaml in place, keeping comments and order, and prints the key before and after; a discovered profile is first written into the file together with its provider's other discovered profiles) and `agx login rm NAME` (refused while a profile or provider default uses it; `--force` clears those references; prints that removing does not revoke the token).
+- `--login NAME|home|auto` on `run`, `new`, `resume` and `ws`, carried through the shell layer's plan file. Precedence: `--login`, then `AGX_LOGIN`, then the profile's `login:`, then `providers.<id>.login`, then the home's own login. A login that does not fit the profile (another provider, `billing: api`, or a profile with its own credential in `env:` / `secrets:`) is an error when asked for by name and skipped with a note when it comes from `AGX_LOGIN`.
+- `aglogin NAME` in `agx shell-init` (zsh and bash): exports `AGX_LOGIN` for this terminal after checking the name; `aglogin` with no argument unsets it.
+- Config keys `logins:` (`name`, `provider`, `kind`, exactly one of `token: stored` / `token_cmd` / `token_env`, `account`, `added`), a profile's `login:` and `providers.<id>.login`. A raw token pasted into config.yaml is rejected without echoing it.
+- `~/.agx/tokens.yaml` for pasted tokens: mode 0600 in a 0700 folder, atomic writes, refused when group or others can access it (with the `chmod 600` that fixes it).
+- At launch an `oauth-token` login sets `CLAUDE_CODE_OAUTH_TOKEN` and removes `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN`; an `api-key` login sets `ANTHROPIC_API_KEY` and removes the other two. The launch line says `agx: <profile> · login <name>`, and `--dry-run` shows `login:` and `NAME=<token:source>`. A missing, empty or multi-line token, a failing or hung `--cmd` (10 s limit) or an unset `--env` stops the launch; agx never falls back to the home login silently.
+- Usage of a login by probe: a setup-token cannot read the usage endpoint (403), so agx sends one minimal Messages request (smallest model, one output token) and reads the `anthropic-ratelimit-unified-5h-*` / `-7d-*` response headers into the same 5-hour and weekly windows. A probe spends a few tokens of the login's plan quota and counts toward its rate limits, so it runs only on request: `agx usage --logins` (one row per login after the homes; JSON rows carry `login`, `account` and `"source": "probe"`, kind unchanged), `agx usage --login NAME`, `agx login check` and `--login auto`. A plain `agx` / `agx usage` never probes. Missing or malformed headers are an error, never a 0% row; api-key logins are never probed.
+- `--login auto`: compares the home's own login with every login that fits the profile, using the `-p auto` rule (lowest fullest window; ties go to the home, then config order), skips a login whose token does not resolve or whose probe fails, and says which won and why (`agx: login auto → personal (max 12%) over home (max 64%)`). `auto` is refused in config.yaml, `AGX_LOGIN` and `agx login use`, so probing never becomes a default.
+- Expiry: `agx login ls` shows EXPIRES (setup-tokens are taken to last 365 days from `added`; `~` for `--cmd` / `--env` logins) and `agx doctor` warns 30 days ahead. Past it a stored login is refused with the renew command (doctor fails); a `--cmd` / `--env` login warns and runs (doctor warns), because the token behind it may have been rotated since the login was added.
+- `agx doctor` checks tokens.yaml (mode, folder mode, inside a git work tree), each stored login's entry, each `--env` source, and expiry.
+- Library: package `login` (`Login`, `Resolver`, `TokenFile`, `Clean`, `Compatible`, `ExpiresAt`); `provider.LoginLauncher`, `provider.LoginLifetimer`, `provider.LoginUsageReader`, `provider.ApplyLoginEnv`; `config.Editor` for comment-preserving config edits.
+
+### Changed
+
+- `agx profiles`: the column that showed the home's login state is now `STATE`; `LOGIN` shows the login a run spends and why (`personal (profile)`, `work (AGX_LOGIN)`, `home`). In `--json`, `login` is unchanged and `login_name` / `login_source` are new.
+- `--dry-run` always prints a `login:` line.
+
+### Not yet
+
+- `agx plan --login NAME`: the plan comes from the profile endpoint, which refuses setup-tokens, so `agx plan` accepts only `--login home`.
+- Codex logins: a Codex plan login exists only as refreshable tokens in `auth.json`, and the API-key variable interactive Codex honours is unverified.
+
 ## [0.3.2] - 2026-10-14
 
 ### Changed
@@ -97,7 +124,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/khanakia/agx/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/khanakia/agx/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/khanakia/agx/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/khanakia/agx/compare/v0.2.1...v0.3.0

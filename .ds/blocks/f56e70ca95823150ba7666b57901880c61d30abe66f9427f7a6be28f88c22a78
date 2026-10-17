@@ -1,0 +1,1 @@
+	ErrRateLimited = errors.New("usage endpoint rate-limited this account; try again shortly")
