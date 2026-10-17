@@ -107,8 +107,8 @@ func (a *app) runUsage(ctx context.Context, o *usageOpts, names []string) error 
 	if err := validColor(o.color); err != nil {
 		return err
 	}
-	if o.timeout <= 0 {
-		return usageErr(errors.New("--timeout must be positive"))
+	if err := checkTimeout(o.timeout); err != nil {
+		return err
 	}
 	cfg, err := a.config()
 	if err != nil {
@@ -119,16 +119,11 @@ func (a *app) runUsage(ctx context.Context, o *usageOpts, names []string) error 
 		return err
 	}
 
-	var targets []provider.Profile
-	if len(names) > 0 {
-		for _, n := range names {
-			p, ok := cfg.ByName(n)
-			if !ok {
-				return usageErr(fmt.Errorf("unknown profile %q (see `agx profiles`)", n))
-			}
-			targets = append(targets, p)
-		}
-	} else {
+	targets, err := profilesByName(cfg, names)
+	if err != nil {
+		return err
+	}
+	if len(names) == 0 {
 		for _, p := range cfg.Homes() {
 			if o.provider == "" || string(p.Provider) == o.provider {
 				targets = append(targets, p)
@@ -167,10 +162,44 @@ func (a *app) runUsage(ctx context.Context, o *usageOpts, names []string) error 
 			return err
 		}
 	}
+	if anyFailed(reports) {
+		return errPartial
+	}
+	return nil
+}
+
+// anyFailed reports whether a usage row failed. A per-token (api-billed)
+// row carries ErrAPIBilled to say "no windows", which is an answer, not a
+// failure, so it never turns the exit code to 1.
+func anyFailed(reports []render.UsageReport) bool {
 	for _, r := range reports {
 		if r.Err != nil && !errors.Is(r.Err, provider.ErrAPIBilled) {
-			return errPartial
+			return true
 		}
+	}
+	return false
+}
+
+// profilesByName resolves profile-name arguments in the order given; an
+// unknown name is a usage error. No names yields nil, which callers read as
+// "use their own default set" (every home, every plan home, ...).
+func profilesByName(cfg config.Config, names []string) ([]provider.Profile, error) {
+	var out []provider.Profile
+	for _, n := range names {
+		p, ok := cfg.ByName(n)
+		if !ok {
+			return nil, errUnknownProfile(n)
+		}
+		out = append(out, p)
+	}
+	return out, nil
+}
+
+// checkTimeout validates a --timeout value: zero or negative would make
+// every fetch fail at once, which reads like every account being down.
+func checkTimeout(d time.Duration) error {
+	if d <= 0 {
+		return usageErr(errors.New("--timeout must be positive"))
 	}
 	return nil
 }
@@ -191,15 +220,17 @@ func (a *app) fetchUsage(ctx context.Context, targets []provider.Profile, timeou
 			fctx, cancel := context.WithTimeout(ctx, timeout)
 			defer cancel()
 			u, err := prov.Usage(fctx, p)
-			reports[i].Usage, reports[i].Err = u, withHint(err, p, a.UserHome)
+			reports[i].Usage, reports[i].Err = u, withHint(err, p)
 		})
 	}
 	wg.Wait()
 	return reports
 }
 
-// withHint appends how to fix login problems.
-func withHint(err error, p provider.Profile, userHome string) error {
+// withHint appends how to fix login problems: the fix for an expired,
+// rejected or missing home login is one interactive run on that profile,
+// which lets the vendor CLI refresh or log in (agx itself never refreshes).
+func withHint(err error, p provider.Profile) error {
 	switch {
 	case err == nil:
 		return nil
@@ -267,7 +298,7 @@ func usageLogin(cfg config.Config, o *usageOpts, names []string) (*login.Login, 
 	}
 	l, ok := cfg.LoginByName(o.login)
 	if !ok {
-		return nil, usageErr(fmt.Errorf("unknown login %q (see `agx login ls`)", o.login))
+		return nil, errUnknownLogin(o.login)
 	}
 	return &l, nil
 }

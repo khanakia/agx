@@ -144,7 +144,7 @@ func readConversation(path string) (provider.Conversation, bool) {
 
 	head := io.LimitReader(f, headScanBytes)
 	sc := bufio.NewScanner(head)
-	sc.Buffer(make([]byte, 0, 64<<10), headScanBytes)
+	sc.Buffer(make([]byte, 0, scanStartBytes), headScanBytes)
 	for sc.Scan() {
 		var l transcriptLine
 		if json.Unmarshal(sc.Bytes(), &l) != nil {

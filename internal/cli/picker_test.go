@@ -20,26 +20,28 @@ func fakeFzf(t *testing.T, body string) string {
 	return path
 }
 
+// TestPickFzf drives Pick through a fake fzf (FzfBin), the path a real
+// terminal takes when fzf is installed.
 func TestPickFzf(t *testing.T) {
 	t.Parallel()
 	items := []string{"first", "second\nwith newline", "third"}
 	// fzf echoes the chosen "index<TAB>text" line; here: the second line.
-	if i, err := pickFzf(fakeFzf(t, "sed -n 2p"), "resume", items); err != nil || i != 1 {
+	if i, err := pickWith(fakeFzf(t, "sed -n 2p"), items); err != nil || i != 1 {
 		t.Errorf("select = %d, %v", i, err)
 	}
 	// Newlines inside an item must not split it into two picker lines.
-	if i, err := pickFzf(fakeFzf(t, "sed -n 3p"), "resume", items); err != nil || i != 2 {
+	if i, err := pickWith(fakeFzf(t, "sed -n 3p"), items); err != nil || i != 2 {
 		t.Errorf("newline item broke indexing: %d, %v", i, err)
 	}
 	for name, body := range map[string]string{"esc": "exit 130", "no match": "exit 1"} {
-		if _, err := pickFzf(fakeFzf(t, body), "resume", items); !errors.Is(err, ErrCancelled) {
+		if _, err := pickWith(fakeFzf(t, body), items); !errors.Is(err, ErrCancelled) {
 			t.Errorf("%s = %v, want ErrCancelled", name, err)
 		}
 	}
-	if _, err := pickFzf(fakeFzf(t, "echo garbage"), "resume", items); err == nil || errors.Is(err, ErrCancelled) {
+	if _, err := pickWith(fakeFzf(t, "echo garbage"), items); err == nil || errors.Is(err, ErrCancelled) {
 		t.Errorf("garbage selection = %v", err)
 	}
-	if _, err := pickFzf(fakeFzf(t, "exit 2"), "resume", items); err == nil || errors.Is(err, ErrCancelled) {
+	if _, err := pickWith(fakeFzf(t, "exit 2"), items); err == nil || errors.Is(err, ErrCancelled) {
 		t.Errorf("fzf error = %v", err)
 	}
 }
@@ -94,4 +96,10 @@ func TestTerminalPicker(t *testing.T) {
 	if i, err := p.Pick("x", []string{"only", "two"}); err != nil || i != 0 {
 		t.Errorf("fzf path = %d, %v", i, err)
 	}
+}
+
+// pickWith is Pick through the fzf at bin (a composite literal cannot sit
+// in an if header unparenthesised, so the tests call this).
+func pickWith(bin string, items []string) (int, error) {
+	return TerminalPicker{FzfBin: bin}.Pick("resume", items)
 }

@@ -161,10 +161,7 @@ func (a *app) pickMove(ctx context.Context, o *moveOpts) (string, error) {
 // pickChats multi-selects conversations in the resume row format, falling
 // back to a single choice when the picker cannot select several.
 func (a *app) pickChats(chats []conversationView) ([]conversationView, error) {
-	items := make([]string, len(chats))
-	for i, v := range chats {
-		items[i] = a.conversationLine(v)
-	}
+	items := a.conversationItems(chats)
 	var idx []int
 	var err error
 	if mp, ok := a.Picker.(MultiPicker); ok {
@@ -214,10 +211,7 @@ func (a *app) pickMoveTarget(cfg config.Config, chats []conversationView) (strin
 	if len(names) == 0 {
 		return "", errors.New("no profile shares a provider with this folder's conversations")
 	}
-	i, err := a.Picker.Pick("move to", items)
-	if errors.Is(err, ErrCancelled) {
-		return "", &ExitError{Code: ExitFailure, Err: err}
-	}
+	i, err := a.pickOne("move to", items)
 	if err != nil {
 		return "", err
 	}
@@ -243,7 +237,7 @@ func (a *app) runMove(ctx context.Context, folder string, o *moveOpts) error {
 	}
 	to, ok := cfg.ByName(o.to)
 	if !ok {
-		return usageErr(fmt.Errorf("unknown profile %q (see `agx profiles`)", o.to))
+		return errUnknownProfile(o.to)
 	}
 	// Order of checks, most useful message first: a malformed request
 	// (cross-provider, same home) is wrong whatever the provider can do; then
@@ -330,7 +324,7 @@ func (a *app) checkMovePair(cfg config.Config, to provider.Profile, fromName str
 	}
 	from, ok := cfg.ByName(fromName)
 	if !ok {
-		return provider.Profile{}, false, usageErr(fmt.Errorf("unknown profile %q (see `agx profiles`)", fromName))
+		return provider.Profile{}, false, errUnknownProfile(fromName)
 	}
 	if from.Provider != to.Provider {
 		return provider.Profile{}, false, usageErr(fmt.Errorf("can't move conversations from %s (%s) to %s (%s): %w — choose a --to profile of the same provider",

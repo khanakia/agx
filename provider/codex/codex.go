@@ -56,6 +56,9 @@ const (
 	maxResponseBytes = 1 << 20
 	snippetMax       = 200
 	headScanBytes    = 256 << 10
+	// scanStartBytes is the scanner's first buffer: most first lines fit,
+	// and the scanner grows it up to headScanBytes for the rest.
+	scanStartBytes = 64 << 10
 	// DefaultTimeout bounds one usage fetch end to end.
 	DefaultTimeout = 15 * time.Second
 )
@@ -373,11 +376,7 @@ func (p *Provider) Usage(ctx context.Context, pr provider.Profile) (provider.Usa
 	case resp.StatusCode == http.StatusTooManyRequests:
 		return provider.Usage{}, provider.RateLimitError(resp.Header)
 	case resp.StatusCode != http.StatusOK:
-		b := strings.Join(strings.Fields(string(body)), " ") // one line, even for pretty JSON
-		if len(b) > snippetMax {
-			b = b[:snippetMax] + "…"
-		}
-		return provider.Usage{}, fmt.Errorf("codex: unexpected HTTP %d: %s", resp.StatusCode, b)
+		return provider.Usage{}, fmt.Errorf("codex: unexpected HTTP %d: %s", resp.StatusCode, snippet(body))
 	}
 	u, err := ParseUsage(body)
 	u.Identity.CredentialSource = filepath.Join(pr.Home, authFile)
@@ -466,6 +465,16 @@ func (p *Provider) Conversations(ctx context.Context, home string, q provider.Co
 	return out, nil
 }
 
+// snippet trims an error body for inclusion in an error message: one line
+// (even for pretty JSON), at most snippetMax bytes plus an ellipsis.
+func snippet(b []byte) string {
+	s := strings.Join(strings.Fields(string(b)), " ")
+	if len(s) > snippetMax {
+		return s[:snippetMax] + "…"
+	}
+	return s
+}
+
 // readMeta reads a rollout's first line.
 func readMeta(path string) (sessionMeta, bool) {
 	f, err := os.Open(path)
@@ -475,7 +484,7 @@ func readMeta(path string) (sessionMeta, bool) {
 	// Read-only: a close error cannot lose data, and the read already succeeded or failed.
 	defer func() { _ = f.Close() }()
 	sc := bufio.NewScanner(io.LimitReader(f, headScanBytes))
-	sc.Buffer(make([]byte, 0, 64<<10), headScanBytes)
+	sc.Buffer(make([]byte, 0, scanStartBytes), headScanBytes)
 	if !sc.Scan() {
 		return sessionMeta{}, false
 	}

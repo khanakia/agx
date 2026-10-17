@@ -115,7 +115,7 @@ func (a *app) pickLogin(cfg config.Config, p provider.Profile, flag string) (log
 		}
 		l, ok := cfg.LoginByName(name)
 		if !ok {
-			return loginChoice{}, usageErr(fmt.Errorf("unknown login %q (see `agx login ls`)", name))
+			return loginChoice{}, errUnknownLogin(name)
 		}
 		if err := a.loginFits(p, l); err != nil {
 			return loginChoice{}, usageErr(err)
@@ -189,6 +189,13 @@ func (a *app) loginLauncher(id provider.ID) (provider.LoginLauncher, error) {
 		return nil, errors.New(config.NoLoginsReason(id))
 	}
 	return ll, nil
+}
+
+// editor edits the loaded config file in place (comments kept). Callers
+// set a.loaded = false after a successful edit so the next a.config()
+// re-reads what was written.
+func (a *app) editor(cfg config.Config) config.Editor {
+	return config.Editor{Path: cfg.Path, UserHome: a.UserHome, Providers: a.Providers}
 }
 
 // tokenFile is tokens.yaml beside the config file.
@@ -394,7 +401,7 @@ func (a *app) runLoginAdd(ctx context.Context, o *loginAddOpts, name string) err
 		}
 		spec.Token, stored = login.StoredMarker, true
 	}
-	ed := config.Editor{Path: cfg.Path, UserHome: a.UserHome, Providers: a.Providers}
+	ed := a.editor(cfg)
 	if err := ed.AddLogin(spec, o.replace); err != nil {
 		if stored && !exists {
 			// Roll back so tokens.yaml never holds a login config lacks.
@@ -612,7 +619,7 @@ func (a *app) checkOne(ctx context.Context, name string, probe bool) error {
 	}
 	l, ok := cfg.LoginByName(name)
 	if !ok {
-		return usageErr(fmt.Errorf("unknown login %q (see `agx login ls`)", name))
+		return errUnknownLogin(name)
 	}
 	if _, err := a.resolveLoginValue(ctx, l); err != nil {
 		if _, werr := fmt.Fprintf(a.Stdout, "login %s: failed: %v\n", name, err); werr != nil {
@@ -632,7 +639,7 @@ func (a *app) checkOne(ctx context.Context, name string, probe bool) error {
 	if err := render.Usage(a.Stdout, []render.UsageReport{r}, opt); err != nil {
 		return err
 	}
-	if r.Err != nil && !errors.Is(r.Err, provider.ErrAPIBilled) {
+	if anyFailed([]render.UsageReport{r}) {
 		return errPartial
 	}
 	return nil
@@ -661,12 +668,12 @@ func (a *app) runLoginRm(name string, force bool) error {
 	}
 	l, ok := cfg.LoginByName(name)
 	if !ok {
-		return usageErr(fmt.Errorf("unknown login %q (see `agx login ls`)", name))
+		return errUnknownLogin(name)
 	}
 	if used := cfg.UsedBy(name); len(used) > 0 && !force {
 		return fmt.Errorf("login %s is used by %s — point them elsewhere (`agx login use home -p NAME`) or pass --force", name, strings.Join(used, ", "))
 	}
-	ed := config.Editor{Path: cfg.Path, UserHome: a.UserHome, Providers: a.Providers}
+	ed := a.editor(cfg)
 	cleared, err := ed.RemoveLogin(name)
 	if err != nil {
 		return err
@@ -727,15 +734,15 @@ func (a *app) runLoginUse(name, profile, prov string) error {
 	if name != login.Home {
 		var ok bool
 		if l, ok = cfg.LoginByName(name); !ok {
-			return usageErr(fmt.Errorf("unknown login %q (see `agx login ls`)", name))
+			return errUnknownLogin(name)
 		}
 	}
-	ed := config.Editor{Path: cfg.Path, UserHome: a.UserHome, Providers: a.Providers}
+	ed := a.editor(cfg)
 	var ch config.Change
 	if profile != "" {
 		p, ok := cfg.ByName(profile)
 		if !ok {
-			return usageErr(fmt.Errorf("unknown profile %q (see `agx profiles`)", profile))
+			return errUnknownProfile(profile)
 		}
 		if name != login.Home {
 			if err := a.loginFits(p, l); err != nil {
