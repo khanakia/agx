@@ -1,0 +1,21 @@
+func newUsageCmd(a *app) *cobra.Command {
+	o := &usageOpts{}
+	c := &cobra.Command{
+		Use:   "usage [profile...]",
+		Short: "Plan usage for every account (5-hour, weekly, per model)",
+		Long: "Shows how much of each plan window is used and when it resets, for every plan-billed\n" +
+			"login on this machine (one row set per provider home, even when several profiles share it).",
+		Example: "  agx                      # same as agx usage\n" +
+			"  agx usage work           # one profile\n" +
+			"  agx usage --provider codex\n" +
+			"  agx usage --json | jq '.data[] | {profile, windows: [.windows[] | {label, percent}]}'",
+		Args: cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error { return a.runUsage(ctxOf(cmd), o, args) },
+	}
+	f := c.Flags()
+	f.BoolVar(&o.json, flagJSON, false, "print the JSON envelope instead of bars")
+	f.StringVar(&o.color, flagColor, colorAuto, "colour: auto | always | never")
+	f.DurationVar(&o.timeout, flagTimeout, defaultUsageTimeout, "per-account fetch timeout")
+	f.StringVar(&o.provider, flagProvider, "", "only this provider (claude, codex)")
+	return c
+}

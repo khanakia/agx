@@ -1,0 +1,14 @@
+{
+  "_table": "missions",
+  "_v": 1,
+  "body": "Design: docsi/LOGINS_SPEC.md (status review, 2026-10-16). Run Claude Code / Codex in any home on any account's quota via --login, per-profile/provider/terminal defaults and optional token sources (stored, token_cmd, token_env). Order: owner review, then the read-only checks V1-V5 (§12), then the build plan steps 2-7 (§13). Decisions D1-D12 are in §14.",
+  "completed_at": null,
+  "created_at": "2026-10-16T13:41:22.281403000Z",
+  "created_by_actor_id": "act_afbe7ed1d969752697eebecaac20e9dc",
+  "id": "msn_01a144f224e9762e8890991e9860f127",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "status": "active",
+  "target_date": null,
+  "title": "Logins — use any account's quota from any home",
+  "updated_at": "2026-10-16T13:41:22.281404000Z"
+}

@@ -1,0 +1,6 @@
+func RateLimitError(h http.Header) error {
+	if d, ok := retryAfter(h.Get(retryAfterHeader)); ok {
+		return fmt.Errorf("%w (retry after %s)", ErrRateLimited, d)
+	}
+	return ErrRateLimited
+}

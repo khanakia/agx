@@ -97,7 +97,7 @@ func TestLayering(t *testing.T) {
 				t.Errorf("provider imports %s; it must stay stdlib-only", imp)
 			}
 			// 2. Libraries never import internal packages or the framework.
-			isLibrary := strings.HasPrefix(dir, "provider") || dir == "config" || dir == "secret" || dir == "pick" || dir == "sessions"
+			isLibrary := strings.HasPrefix(dir, "provider") || dir == "config" || dir == "secret" || dir == "login" || dir == "pick" || dir == "sessions"
 			if isLibrary && (strings.HasPrefix(imp, module+"/internal/") || imp == cobraPath || strings.HasPrefix(imp, "github.com/ubgo/voltkit/")) {
 				t.Errorf("library %s imports %s", dir, imp)
 			}

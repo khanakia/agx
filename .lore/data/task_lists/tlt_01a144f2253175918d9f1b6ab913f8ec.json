@@ -1,0 +1,11 @@
+{
+  "_table": "task_lists",
+  "_v": 1,
+  "body": "Tasks for mission msn_01a144f224e9762e8890991e9860f127: owner review, V1-V5 (spec §12), build plan steps 2-7 (spec §13). Spec: docsi/LOGINS_SPEC.md",
+  "created_at": "2026-10-16T13:41:22.353348000Z",
+  "id": "tlt_01a144f2253175918d9f1b6ab913f8ec",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "status_str": "active",
+  "title": "Logins build",
+  "updated_at": "2026-10-16T13:41:22.353349000Z"
+}

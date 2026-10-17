@@ -1,0 +1,26 @@
+func newRunCmd(a *app) *cobra.Command {
+	o := &launchOpts{}
+	c := &cobra.Command{
+		Use:   "run [-p profile|auto] [-- agent-args...]",
+		Short: "Launch an agent here on a profile",
+		Example: "  agx run                    # default Claude profile\n" +
+			"  agx run -p work\n" +
+			"  agx run -p auto            # the Claude account with the most headroom\n" +
+			"  agx run -p kimi -- --model x",
+		Args: cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := ctxOf(cmd)
+			p, err := a.resolveProfile(ctx, o)
+			if err != nil {
+				return err
+			}
+			dir, err := a.Getwd()
+			if err != nil {
+				return err
+			}
+			return a.launch(ctx, p, provider.LaunchRequest{Dir: dir, Args: args}, o.dryRun, o.login)
+		},
+	}
+	o.bind(c)
+	return c
+}

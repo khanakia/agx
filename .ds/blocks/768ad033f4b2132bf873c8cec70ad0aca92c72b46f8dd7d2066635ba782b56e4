@@ -1,0 +1,55 @@
+func newSessionsGCCmd(a *app) *cobra.Command {
+	var (
+		yes    bool
+		asJSON bool
+		minAge time.Duration
+	)
+	c := &cobra.Command{
+		Use:   "gc",
+		Short: "Remove empty session folders that have no conversation history",
+		Long: "A folder is removed only when it has no files (.DS_Store ignored), no provider holds a\n" +
+			"conversation started in it, and it is older than --min-age. Without --yes nothing is\n" +
+			"deleted. Deletion can only remove empty directories, so real work is never at risk.",
+		Example: "  agx sessions gc            # show the plan\n  agx sessions gc --yes",
+		Args:    usageArgs(cobra.NoArgs),
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cfg, err := a.config()
+			if err != nil {
+				return err
+			}
+			folders, err := sessions.List(cfg.SessionsRoot, a.historyFunc(cfg))
+			if err != nil {
+				return err
+			}
+			plan := sessions.PlanGC(folders, a.Now(), minAge)
+			var failed int
+			if yes {
+				for _, it := range plan {
+					if !it.Remove {
+						continue
+					}
+					if err := sessions.RemoveEmpty(it.Folder.Path); err != nil {
+						a.warn(err.Error())
+						failed++
+					}
+				}
+			}
+			if asJSON {
+				if err := output.JSON(a.Stdout, kindSessionGC, plan, len(plan)); err != nil {
+					return err
+				}
+			} else if err := a.printGC(plan, yes); err != nil {
+				return err
+			}
+			if failed > 0 {
+				return errPartial
+			}
+			return nil
+		},
+	}
+	f := c.Flags()
+	f.BoolVar(&yes, "yes", false, "actually remove the folders")
+	f.BoolVar(&asJSON, flagJSON, false, "print the JSON envelope")
+	f.DurationVar(&minAge, "min-age", defaultGCMinAge, "keep folders younger than this")
+	return c
+}

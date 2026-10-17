@@ -24,6 +24,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/khanakia/agx/login"
 	"github.com/khanakia/agx/provider"
 	"github.com/khanakia/agx/secret"
 )
@@ -58,6 +59,7 @@ var aliasArgsPattern = regexp.MustCompile(`^[A-Za-z0-9 _./:=@+-]+$`)
 // File is the on-disk schema (spec §5.2). Unknown keys are rejected.
 type File struct {
 	Sessions  SessionsSpec                    `yaml:"sessions"`
+	Logins    []LoginSpec                     `yaml:"logins"`
 	Providers map[string]ProviderDefaultsSpec `yaml:"providers"`
 	Profiles  []ProfileSpec                   `yaml:"profiles"`
 	Shell     ShellSpec                       `yaml:"shell"`
@@ -72,6 +74,25 @@ type SessionsSpec struct {
 // ProviderDefaultsSpec is merged under every profile of that provider.
 type ProviderDefaultsSpec struct {
 	Args []string `yaml:"args"`
+	// Login is the provider-wide default login (logins spec §5.3); "" or
+	// "home" means the home login.
+	Login string `yaml:"login"`
+}
+
+// LoginSpec is one configured login (logins spec §6). Exactly one of Token,
+// TokenCmd, TokenEnv is set, and Token only ever holds login.StoredMarker:
+// raw values live in tokens.yaml, never here.
+type LoginSpec struct {
+	Name     string `yaml:"name"`
+	Provider string `yaml:"provider"`
+	// Kind defaults to the provider's first login kind.
+	Kind     string `yaml:"kind"`
+	Token    string `yaml:"token"`
+	TokenCmd string `yaml:"token_cmd"`
+	TokenEnv string `yaml:"token_env"`
+	Account  string `yaml:"account"`
+	// Added is a YYYY-MM-DD date written by `agx login add`.
+	Added string `yaml:"added"`
 }
 
 // ProfileSpec is one configured profile.
@@ -89,6 +110,8 @@ type ProfileSpec struct {
 	Env         map[string]string `yaml:"env"`
 	// Secrets maps env var name → "scheme:ref" (package secret).
 	Secrets map[string]string `yaml:"secrets"`
+	// Login is the profile's default login name, or "home".
+	Login string `yaml:"login"`
 }
 
 // ShellSpec configures `agx shell-init`.
@@ -118,6 +141,11 @@ type Config struct {
 	Profiles []provider.Profile
 	// Aliases are sorted by name for deterministic shell output.
 	Aliases []Alias
+	// Logins are in config order.
+	Logins []login.Login
+	// ProviderLogins maps a provider to its default login name (never
+	// "home": that is stored as absent).
+	ProviderLogins map[provider.ID]string
 }
 
 // ErrInvalid wraps every validation failure.
@@ -171,7 +199,21 @@ func Resolve(f File, userHome string, providers []provider.Provider) (Config, er
 		}
 	}
 
-	cfg := Config{}
+	cfg := Config{ProviderLogins: map[provider.ID]string{}}
+	logins, err := resolveLogins(f.Logins, byID)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.Logins = logins
+	for id, d := range f.Providers {
+		if d.Login == "" || d.Login == login.Home {
+			continue
+		}
+		if err := checkLoginRef(fmt.Sprintf("providers.%s.login", id), d.Login, provider.ID(id), logins); err != nil {
+			return Config{}, err
+		}
+		cfg.ProviderLogins[provider.ID(id)] = d.Login
+	}
 	cfg.SessionsRoot = expand(f.Sessions.Root, userHome)
 	if cfg.SessionsRoot == "" {
 		cfg.SessionsRoot = filepath.Join(userHome, defaultSessionsDirName)
@@ -187,6 +229,9 @@ func Resolve(f File, userHome string, providers []provider.Provider) (Config, er
 		p, err := resolveProfile(i, s, f.Providers, byID, userHome)
 		if err != nil {
 			return Config{}, err
+		}
+		if err := checkProfileLogin(p, byID, logins); err != nil {
+			return Config{}, fmt.Errorf("%w: profiles[%d] (%s): %w", ErrInvalid, i, p.Name, err)
 		}
 		if seen[p.Name] {
 			return Config{}, fmt.Errorf("%w: profiles[%d]: duplicate name %q", ErrInvalid, i, p.Name)
@@ -280,7 +325,7 @@ func resolveProfile(i int, s ProfileSpec, defaults map[string]ProviderDefaultsSp
 	return provider.Profile{
 		Name: s.Name, Provider: prov.ID(), Home: home, Billing: billing,
 		Args: args, Env: s.Env, Secrets: s.Secrets, Default: s.Default,
-		Source: provider.SourceConfig,
+		Source: provider.SourceConfig, Login: s.Login,
 	}, nil
 }
 

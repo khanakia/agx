@@ -1,0 +1,6 @@
+func HomeEnv(env []string, key, home, defaultHome string) []string {
+	if filepath.Clean(home) == filepath.Clean(defaultHome) {
+		return UnsetEnv(env, key)
+	}
+	return SetEnv(env, key, home)
+}

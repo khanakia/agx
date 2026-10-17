@@ -42,6 +42,12 @@ tasks:
       - task: cross
       - task: build
 
+  docs:check:
+    desc: docsync - fail when code a README sentence cites (ds:block links) changed since the sentence was acked; needs the ds CLI (go install github.com/ubgo/docsync/cli/cmd/ds@latest)
+    cmds:
+      - 'command -v ds >/dev/null || { echo "docs:check needs the ds CLI: go install github.com/ubgo/docsync/cli/cmd/ds@latest"; exit 1; }'
+      - ds check
+
   install:
     desc: Install agx into $GOBIN (or ~/go/bin) so it is on PATH
     cmds:

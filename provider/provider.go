@@ -66,6 +66,9 @@ type Profile struct {
 	Secrets map[string]string
 	Default bool
 	Source  Source
+	// Login is the profile's default login name ("" = none, "home" = the
+	// home login even when the provider has a default login).
+	Login string
 }
 
 // Subscription is what a provider reports about an account's plan. Fields

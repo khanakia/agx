@@ -21,6 +21,12 @@ type UsageReport struct {
 	Profile provider.Profile
 	Usage   provider.Usage
 	Err     error
+	// Login names the token login this row was probed for; "" for a home
+	// row. A login row has no home, only the login's provider.
+	Login string
+	// Account is the login's account label from config — the user's own
+	// note, never verified (logins spec §14 D15).
+	Account string
 }
 
 // Options controls rendering. The zero value renders plain text with
@@ -102,6 +108,16 @@ func Usage(w io.Writer, reports []UsageReport, opt Options) error {
 
 // writeHeader prints "email  Plan  profile · provider  ~/home".
 func writeHeader(b *strings.Builder, st styler, r UsageReport, home string) {
+	if r.Login != "" {
+		who := r.Account
+		if who == "" {
+			who = loginLabel + r.Login
+		}
+		b.WriteString(st.wrap(ansiBold, who))
+		b.WriteString(st.wrap(ansiDim, fmt.Sprintf("  %s%s · %s  %s", loginLabel, r.Login, r.Profile.Provider, probeLabel)))
+		b.WriteByte('\n')
+		return
+	}
 	who := r.Usage.Identity.Email
 	if who == "" {
 		who = r.Profile.Name
@@ -113,6 +129,12 @@ func writeHeader(b *strings.Builder, st styler, r UsageReport, home string) {
 	b.WriteString(st.wrap(ansiDim, fmt.Sprintf("  %s · %s  %s", r.Profile.Name, r.Profile.Provider, ShortenHome(r.Profile.Home, home))))
 	b.WriteByte('\n')
 }
+
+// Login row header parts: "login NAME · provider  (probe)".
+const (
+	loginLabel = "login "
+	probeLabel = "(probe)"
+)
 
 // writeWindows prints windows in order, adding a heading when the group
 // changes.

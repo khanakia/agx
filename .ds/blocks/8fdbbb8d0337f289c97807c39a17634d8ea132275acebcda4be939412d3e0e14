@@ -1,0 +1,5 @@
+type ShellSpec struct {
+	// Aliases maps a shell function name to the agx arguments it runs,
+	// e.g. cl: "run -p personal".
+	Aliases map[string]string `yaml:"aliases"`
+}

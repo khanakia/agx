@@ -8,6 +8,7 @@ import (
 	"github.com/ubgo/voltkit/output"
 
 	"github.com/khanakia/agx/internal/render"
+	"github.com/khanakia/agx/login"
 	"github.com/khanakia/agx/provider"
 )
 
@@ -48,9 +49,13 @@ type profileJSON struct {
 	Organization string           `json:"organization,omitempty"`
 	Plan         string           `json:"plan,omitempty"`
 	Login        string           `json:"login"`
-	ExpiresAt    *time.Time       `json:"expires_at,omitempty"`
-	Credential   string           `json:"credential,omitempty"`
-	Args         []string         `json:"args,omitempty"`
+	// LoginName is the login a run on this profile spends ("home" for the
+	// home's own login); LoginSource says which rule chose it.
+	LoginName   string     `json:"login_name"`
+	LoginSource string     `json:"login_source"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
+	Credential  string     `json:"credential,omitempty"`
+	Args        []string   `json:"args,omitempty"`
 	// SecretVars lists the env var names filled from secrets (never values).
 	SecretVars []string `json:"secret_vars,omitempty"`
 	Error      string   `json:"error,omitempty"`
@@ -64,7 +69,18 @@ func (a *app) runProfiles(asJSON bool) error {
 	now := a.Now()
 	rows := make([]profileJSON, 0, len(cfg.Profiles))
 	for _, p := range cfg.Profiles {
-		rows = append(rows, a.describeProfile(p, now))
+		r := a.describeProfile(p, now)
+		// The listing must not fail on a bad AGX_LOGIN; it shows the error.
+		lc, _, err := a.pickLogin(cfg, p, "")
+		switch {
+		case err != nil:
+			r.LoginName, r.LoginSource = loginError, err.Error()
+		case lc.Login != nil:
+			r.LoginName, r.LoginSource = lc.Login.Name, lc.Source
+		default:
+			r.LoginName, r.LoginSource = login.Home, lc.Source
+		}
+		rows = append(rows, r)
 	}
 	if asJSON {
 		return output.JSON(a.Stdout, kindProfileList, rows, len(rows))
@@ -83,9 +99,14 @@ func (a *app) runProfiles(asJSON bool) error {
 		if r.Plan != "" {
 			account += " · " + r.Plan
 		}
-		table = append(table, []string{def + r.Name, string(r.Provider), render.ShortenHome(r.Home, a.UserHome), account, login, string(r.Billing), string(r.Source)})
+		uses := r.LoginName
+		if r.LoginSource != loginSrcHome {
+			uses += " (" + r.LoginSource + ")"
+		}
+		table = append(table, []string{def + r.Name, string(r.Provider), render.ShortenHome(r.Home, a.UserHome), account, login, uses, string(r.Billing), string(r.Source)})
 	}
-	return render.Table(a.Stdout, []string{"PROFILE", "PROVIDER", "HOME", "ACCOUNT", "LOGIN", "BILLING", "SOURCE"}, table)
+	// STATE is the home login's state; LOGIN is whose quota a run spends.
+	return render.Table(a.Stdout, []string{"PROFILE", "PROVIDER", "HOME", "ACCOUNT", "STATE", "LOGIN", "BILLING", "SOURCE"}, table)
 }
 
 // describeProfile reads one profile's local login state.

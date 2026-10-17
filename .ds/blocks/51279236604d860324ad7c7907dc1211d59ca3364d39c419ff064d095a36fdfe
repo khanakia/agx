@@ -1,0 +1,31 @@
+func newSessionsLsCmd(a *app) *cobra.Command {
+	var asJSON bool
+	c := &cobra.Command{
+		Use:     "ls",
+		Aliases: []string{"list"},
+		Short:   "List session folders with files and conversation history",
+		Args:    usageArgs(cobra.NoArgs),
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cfg, err := a.config()
+			if err != nil {
+				return err
+			}
+			folders, err := sessions.List(cfg.SessionsRoot, a.historyFunc(cfg))
+			if err != nil {
+				return err
+			}
+			if asJSON {
+				return output.JSON(a.Stdout, kindSessionList, folders, len(folders))
+			}
+			now := a.Now()
+			rows := make([][]string, 0, len(folders))
+			for _, f := range folders {
+				rows = append(rows, []string{f.Name, render.FormatAgo(now, f.Modified), strconv.Itoa(f.Files), yesNo(f.HasHistory)})
+			}
+			a.note(fmt.Sprintf("%s (%d folders)", render.ShortenHome(cfg.SessionsRoot, a.UserHome), len(folders)))
+			return render.Table(a.Stdout, []string{"FOLDER", "LAST ACTIVITY", "FILES", "HISTORY"}, rows)
+		},
+	}
+	c.Flags().BoolVar(&asJSON, flagJSON, false, "print the JSON envelope")
+	return c
+}

@@ -20,6 +20,7 @@ env:
   TASK_VERSION: v3.53.1
   STATICCHECK_VERSION: 2026.2.1
   GOLANGCI_LINT_VERSION: v2.13.2
+  DS_VERSION: v0.1.9
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -41,3 +42,18 @@ jobs:
         run: task check
       - name: golangci-lint
         run: golangci-lint run ./...
+  # docsync: fails when code a README sentence cites changed since the
+  # sentence was last confirmed. Needs full history to compare ledger hashes.
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install ds
+        run: go install github.com/ubgo/docsync/cli/cmd/ds@"$DS_VERSION"
+      - name: ds check
+        run: ds check --no-update

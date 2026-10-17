@@ -1,0 +1,33 @@
+func Best(cands []Candidate) (Result, error) {
+	res := Result{Skipped: map[string]error{}}
+	var eligible []Scored
+	for _, c := range cands {
+		switch {
+		case c.Err != nil:
+			res.Skipped[c.Profile.Name] = c.Err
+		case c.Profile.Billing == provider.BillingAPI:
+			res.Skipped[c.Profile.Name] = provider.ErrAPIBilled
+		default:
+			eligible = append(eligible, Scored{Profile: c.Profile, Score: c.Usage.MaxPercent()})
+		}
+	}
+	if len(eligible) == 0 {
+		return res, fmt.Errorf("%w: %s", ErrNoCandidate, reasons(cands, res.Skipped))
+	}
+	// Stable selection: strictly-lower score wins, so equal scores keep
+	// config order.
+	best := 0
+	for i := 1; i < len(eligible); i++ {
+		if eligible[i].Score < eligible[best].Score {
+			best = i
+		}
+	}
+	res.Chosen, res.Score = eligible[best].Profile, eligible[best].Score
+	for i, e := range eligible {
+		if i != best {
+			res.Others = append(res.Others, e)
+		}
+	}
+	sortScored(res.Others)
+	return res, nil
+}

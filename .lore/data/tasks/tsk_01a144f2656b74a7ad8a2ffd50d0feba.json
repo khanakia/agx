@@ -1,0 +1,23 @@
+{
+  "_table": "tasks",
+  "_v": 1,
+  "assigned_to_actor_id": null,
+  "body": "Spec §13 step 7; D5. README section with copy-paste examples, AGX_SPEC rule change (§11) and command reference, CHANGELOG, HANDOFF.",
+  "commitment": "accepted",
+  "completed_at": "2026-10-16T17:34:06.441573280Z",
+  "created_at": "2026-10-16T13:41:38.795303000Z",
+  "created_by_actor_id": "act_afbe7ed1d969752697eebecaac20e9dc",
+  "deferred_until": null,
+  "due_at": null,
+  "id": "tsk_01a144f2656b74a7ad8a2ffd50d0feba",
+  "mission_id": "msn_01a144f224e9762e8890991e9860f127",
+  "plan_id": null,
+  "priority": "medium",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "started_at": null,
+  "status": "done",
+  "tasklist_id": "tlt_01a144f2253175918d9f1b6ab913f8ec",
+  "title": "Build 7: docs — README, AGX_SPEC §11 rule change, CHANGELOG, HANDOFF",
+  "updated_at": "2026-10-16T17:34:06.441574236Z"
+}

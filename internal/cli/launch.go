@@ -29,6 +29,8 @@ type launchOpts struct {
 	profile  string
 	provider string
 	dryRun   bool
+	// login is --login: a login name, "home", or "" for the defaults.
+	login string
 }
 
 func (o *launchOpts) bind(c *cobra.Command) {
@@ -36,6 +38,7 @@ func (o *launchOpts) bind(c *cobra.Command) {
 	f.StringVarP(&o.profile, flagProfile, "p", "", "profile to launch, or \"auto\" for the most headroom (default: the provider's default profile)")
 	f.StringVar(&o.provider, flagProvider, string(provider.Claude), "provider for the default / auto profile")
 	f.BoolVar(&o.dryRun, flagDryRun, false, "print what would run (secret values redacted) and exit")
+	bindLoginFlag(f, &o.login)
 }
 
 func newRunCmd(a *app) *cobra.Command {
@@ -58,7 +61,7 @@ func newRunCmd(a *app) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return a.launch(ctx, p, provider.LaunchRequest{Dir: dir, Args: args}, o.dryRun)
+			return a.launch(ctx, p, provider.LaunchRequest{Dir: dir, Args: args}, o.dryRun, o.login)
 		},
 	}
 	o.bind(c)
@@ -86,13 +89,13 @@ func newNewCmd(a *app) *cobra.Command {
 			}
 			if o.dryRun {
 				dir := filepath.Join(cfg.SessionsRoot, sessions.Name(sessions.Slug(args...), a.Now()))
-				return a.launch(ctx, p, provider.LaunchRequest{Dir: dir}, true)
+				return a.launch(ctx, p, provider.LaunchRequest{Dir: dir}, true, o.login)
 			}
 			dir, err := sessions.Create(cfg.SessionsRoot, sessions.Slug(args...), a.Now())
 			if err != nil {
 				return err
 			}
-			return a.launchOrPlan(ctx, plan{Dir: dir, Profile: p.Name}, p, provider.LaunchRequest{Dir: dir})
+			return a.launchOrPlan(ctx, plan{Dir: dir, Profile: p.Name, Login: o.login}, p, provider.LaunchRequest{Dir: dir})
 		},
 	}
 	o.bind(c)
@@ -138,6 +141,7 @@ func newResumeCmd(a *app) *cobra.Command {
 	f.IntVar(&o.limit, "limit", defaultResumeLimit, "maximum conversations to consider")
 	f.BoolVar(&o.dryRun, flagDryRun, false, "print what would run and exit")
 	f.StringVarP(&o.profile, flagProfile, "p", "", "resume on this profile instead of the home's own (advanced)")
+	bindLoginFlag(f, &o.login)
 	return c
 }
 
@@ -217,9 +221,9 @@ func (a *app) resumeConversation(ctx context.Context, cfg config.Config, o *resu
 	}
 	req := provider.LaunchRequest{Dir: chosen.Dir, ResumeID: chosen.ID}
 	if o.dryRun {
-		return a.launch(ctx, p, req, true)
+		return a.launch(ctx, p, req, true, o.login)
 	}
-	return a.launchOrPlan(ctx, plan{Dir: chosen.Dir, Profile: p.Name, ResumeID: chosen.ID}, p, req)
+	return a.launchOrPlan(ctx, plan{Dir: chosen.Dir, Profile: p.Name, ResumeID: chosen.ID, Login: o.login}, p, req)
 }
 
 // findConversations lists conversations from every distinct provider home,
@@ -431,10 +435,18 @@ func (a *app) autoPick(ctx context.Context, cfg config.Config, id provider.ID) (
 // starts, so it must never pass the marker on.
 const childSessionEnv = "CLAUDE_CODE_CHILD_SESSION"
 
-// launch builds the provider command (resolving secrets) and executes it,
-// or prints it for --dry-run.
-func (a *app) launch(ctx context.Context, p provider.Profile, req provider.LaunchRequest, dryRun bool) error {
+// launch builds the provider command (resolving secrets and the login) and
+// executes it, or prints it for --dry-run. loginFlag is --login.
+func (a *app) launch(ctx context.Context, p provider.Profile, req provider.LaunchRequest, dryRun bool, loginFlag string) error {
 	prov, err := a.providerFor(p.Provider)
+	if err != nil {
+		return err
+	}
+	cfg, err := a.config()
+	if err != nil {
+		return err
+	}
+	lc, err := a.chooseLogin(ctx, cfg, p, loginFlag)
 	if err != nil {
 		return err
 	}
@@ -458,17 +470,31 @@ func (a *app) launch(ctx context.Context, p provider.Profile, req provider.Launc
 	if err != nil {
 		return err
 	}
+	// The login is applied after the profile's own env/secrets (logins spec
+	// §7), so its unset list wins over anything inherited.
+	var loginLines []string
+	if lc.Login != nil {
+		if dryRun {
+			cmd.Env, loginLines = a.dryRunLoginEnv(cmd.Env, lc)
+		} else if cmd.Env, err = a.applyLogin(ctx, cmd.Env, lc); err != nil {
+			return err
+		}
+	}
 	if dryRun {
-		return a.printDryRun(p, cmd, secretNames)
+		return a.printDryRun(p, cmd, secretNames, lc, loginLines)
+	}
+	if lc.Login != nil {
+		a.warn(p.Name + " · login " + lc.Login.Name)
 	}
 	return a.Exec(cmd)
 }
 
 // printDryRun shows the command without secret values: only the env vars
 // agx changed are listed, and secrets appear as NAME=<secret:scheme>.
-func (a *app) printDryRun(p provider.Profile, cmd provider.Command, secretNames []string) error {
+func (a *app) printDryRun(p provider.Profile, cmd provider.Command, secretNames []string, lc loginChoice, loginLines []string) error {
 	var b strings.Builder
 	fmt.Fprintf(&b, "profile: %s (%s, %s)\n", p.Name, p.Provider, p.Home)
+	fmt.Fprintf(&b, "login:   %s\n", lc.describe())
 	fmt.Fprintf(&b, "dir:     %s\n", cmd.Dir)
 	base := map[string]bool{}
 	for _, kv := range a.Environ() {
@@ -490,6 +516,7 @@ func (a *app) printDryRun(p provider.Profile, cmd provider.Command, secretNames 
 		scheme, _, _ := strings.Cut(p.Secrets[k], ":")
 		changed = append(changed, k+"=<secret:"+scheme+">")
 	}
+	changed = append(changed, loginLines...)
 	slices.Sort(changed)
 	for _, kv := range changed {
 		fmt.Fprintf(&b, "env:     %s\n", kv)
@@ -507,6 +534,9 @@ type plan struct {
 	Profile  string   `json:"profile"`
 	ResumeID string   `json:"resume_id,omitempty"`
 	Args     []string `json:"args,omitempty"`
+	// Login is the --login value the user gave (a name or "home"), so exec
+	// launches on the same login; never a token.
+	Login string `json:"login,omitempty"`
 }
 
 // planVersion is bumped when the plan shape changes incompatibly; exec
@@ -521,7 +551,7 @@ const planPerm os.FileMode = 0o600
 func (a *app) launchOrPlan(ctx context.Context, pl plan, p provider.Profile, req provider.LaunchRequest) error {
 	path, ok := a.LookupEnv(appmeta.EnvPlanFile)
 	if !ok || path == "" {
-		return a.launch(ctx, p, req, false)
+		return a.launch(ctx, p, req, false, pl.Login)
 	}
 	pl.Version = planVersion
 	raw, err := json.Marshal(pl)
@@ -574,7 +604,7 @@ func newExecCmd(a *app) *cobra.Command {
 				return fmt.Errorf("plan names unknown profile %q", pl.Profile)
 			}
 			req := provider.LaunchRequest{Dir: pl.Dir, ResumeID: pl.ResumeID, Args: pl.Args}
-			return a.launch(ctxOf(cmd), p, req, false)
+			return a.launch(ctxOf(cmd), p, req, false, pl.Login)
 		},
 	}
 	c.Flags().StringVar(&planPath, "plan", "", "plan file")

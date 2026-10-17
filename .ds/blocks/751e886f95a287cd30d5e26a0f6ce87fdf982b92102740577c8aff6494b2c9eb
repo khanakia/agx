@@ -1,0 +1,22 @@
+func newWsCmd(a *app) *cobra.Command {
+	o := &resumeOpts{browse: true}
+	c := &cobra.Command{
+		Use:   "ws [query...]",
+		Short: "Pick a workspace, then a chat in it, and resume it (resume --browse)",
+		Long: "Lists every folder that has conversations (newest activity first, across all profiles\n" +
+			"and providers); pick one, then pick a chat in it, and it resumes on the profile whose\n" +
+			"home stores it. Esc on the chat list goes back to the workspaces.",
+		Example: "  agx ws                # browse workspaces → chats\n" +
+			"  agx ws invoice        # only workspaces with a chat matching \"invoice\"\n" +
+			"  agx ws --list         # print the workspaces",
+		Args: cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error { return a.runResume(ctxOf(cmd), o, args) },
+	}
+	f := c.Flags()
+	f.BoolVar(&o.list, "list", false, "print the workspaces instead of picking")
+	f.BoolVar(&o.json, flagJSON, false, "with --list: print the JSON envelope")
+	f.BoolVar(&o.dryRun, flagDryRun, false, "print what would run and exit")
+	f.StringVarP(&o.profile, flagProfile, "p", "", "resume on this profile instead of the home's own (advanced)")
+	bindLoginFlag(f, &o.login)
+	return c
+}

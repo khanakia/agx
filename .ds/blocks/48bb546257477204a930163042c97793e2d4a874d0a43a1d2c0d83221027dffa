@@ -1,0 +1,14 @@
+func newProfilesCmd(a *app) *cobra.Command {
+	var asJSON bool
+	c := &cobra.Command{
+		Use:     "profiles",
+		Aliases: []string{"who", "accounts"},
+		Short:   "Every profile: provider, home, account, plan, login state",
+		Long: "Lists every profile agx knows — configured in ~/.agx/config.yaml or discovered on disk —\n" +
+			"with the account it is logged in as. Reads local files only; no network.",
+		Args: usageArgs(cobra.NoArgs),
+		RunE: func(cmd *cobra.Command, _ []string) error { return a.runProfiles(asJSON) },
+	}
+	c.Flags().BoolVar(&asJSON, flagJSON, false, "print the JSON envelope")
+	return c
+}

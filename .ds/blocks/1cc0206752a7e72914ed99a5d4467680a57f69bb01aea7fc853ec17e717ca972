@@ -1,0 +1,38 @@
+func ApplyMovePlan(plan MovePlan, backupDir string) error {
+	if len(plan.Blockers) > 0 {
+		return fmt.Errorf("%w: %v", ErrMoveBlocked, plan.Blockers)
+	}
+	if backupDir != "" {
+		for _, it := range plan.Items {
+			rel, err := filepath.Rel(plan.FromHome, it.From)
+			if err != nil {
+				return fmt.Errorf("backup path for %s: %w", it.From, err)
+			}
+			if err := CopyTree(it.From, filepath.Join(backupDir, rel)); err != nil {
+				return fmt.Errorf("backup %s: %w", it.From, err)
+			}
+		}
+	}
+	var done []MoveItem
+	for _, it := range plan.Items {
+		err := os.MkdirAll(filepath.Dir(it.To), dirPerm)
+		if err == nil {
+			err = os.Rename(it.From, it.To)
+		}
+		if err != nil {
+			rollbackErr := rollback(done)
+			if rollbackErr != nil {
+				return fmt.Errorf("move %s: %w (rollback also failed: %v — restore from %s)", it.From, err, rollbackErr, backupDir)
+			}
+			return fmt.Errorf("move %s: %w (nothing was changed)", it.From, err)
+		}
+		done = append(done, it)
+	}
+	for _, dir := range plan.Cleanup {
+		// os.Remove only deletes an empty directory; a non-empty one (e.g.
+		// the "left in place" entries) or an already missing one is exactly
+		// the case to leave alone, so the error is intentionally ignored.
+		_ = os.Remove(dir)
+	}
+	return nil
+}
