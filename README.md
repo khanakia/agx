@@ -1,5 +1,5 @@
 <h1 align="center">agx</h1>
-<p align="center"><strong>One CLI for your AI coding agents and all their accounts.</strong></p>
+<p align="center"><strong>One CLI for your coding agents and all their accounts.</strong></p>
 <p align="center">See Claude Code and Codex plan usage for every account at once, launch on the account with the most headroom, resume any conversation on the account that holds it, and keep your session folders tidy.</p>
 
 <p align="center">
@@ -11,7 +11,7 @@
   <a href="https://github.com/khanakia/agx/stargazers"><img src="https://img.shields.io/github/stars/khanakia/agx?style=flat&color=2563eb" alt="GitHub stars"></a>
 </p>
 
-**agx** is an open-source command-line toolkit for AI coding agents. If you run [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with more than one account (personal and work logins via `CLAUDE_CONFIG_DIR`), or use Claude Code alongside OpenAI's Codex CLI, agx puts them behind one command: plan usage for every account in one view (the same numbers as claude.ai Settings → Usage and ChatGPT's Codex limits), `agx run -p auto` to start on whichever account has the most room left, `agx resume` to continue a past conversation on the account that actually stores it, and `agx new` / `agx sessions` for throwaway session folders. It is a single Go binary that reads the logins your agent CLIs already saved and never refreshes or copies them; with `agx login` any home can also run on another account's quota.
+**agx** is an open-source command-line toolkit for coding agents. If you run [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with more than one account (personal and work logins via `CLAUDE_CONFIG_DIR`), or use Claude Code alongside OpenAI's Codex CLI, agx puts them behind one command: plan usage for every account in one view (the same numbers as claude.ai Settings → Usage and ChatGPT's Codex limits), `agx run -p auto` to start on whichever account has the most room left, `agx resume` to continue a past conversation on the account that actually stores it, and `agx new` / `agx sessions` for throwaway session folders. It is a single Go binary that reads the logins your agent CLIs already saved and never refreshes or copies them; with `agx login` any home can also run on another account's quota.
 
 ```text
 $ agx
@@ -39,6 +39,7 @@ agx: auto → work (max 9%) over personal (max 78%)
 - [Why agx?](#why-agx)
 - [Install](#install)
 - [Quick start](#quick-start)
+- [Documentation](#documentation)
 - [Examples](#examples)
 - [Commands](#commands)
 - [Configuration](#configuration)
@@ -108,6 +109,16 @@ agx run -p work --login personal   # work history, personal quota (after `agx lo
 ```
 
 No config is needed: agx discovers `~/.claude` (profile `personal`), every `~/.claude-<name>` (profile `<name>`), and `~/.codex` (profile `codex`). Add a config file when you want named profiles, extra flags, secrets or aliases.
+
+## Documentation
+
+Step-by-step guides, decision pages and runnable examples live in [`docs/`](docs/README.md):
+
+- [Learning path](docs/README.md#learning-path): fourteen steps from install to the full setup (accounts, usage, run and auto-pick, resume, session folders, moving history, logins, config, shell integration, doctor, scripting, the Go library), each with its guide and example.
+- [Start from your goal](docs/README.md#start-from-your-goal): "I want to …" → the page that does it.
+- [Choosing guides](docs/choosing/README.md): which profile or login, which token source, which run or resume command, library or CLI.
+- [Feature index](docs/reference/features.md): every feature, the package that implements it, its guide section and its example.
+- [Examples](examples/README.md): Go programs that use the library against temporary homes and `httptest` servers; `go test ./examples/` runs them all.
 
 ## Examples
 
@@ -213,10 +224,10 @@ agx run -p work --dry-run            # print what would run; starts nothing
 
 ```text
 $ agx run -p work --dry-run
-profile: work (claude, /Users/you/.claude-work)
+profile: work (claude, ~/.claude-work)
 login:   home
-dir:     /Users/you/code/app
-env:     CLAUDE_CONFIG_DIR=/Users/you/.claude-work
+dir:     ~/code/app
+env:     CLAUDE_CONFIG_DIR=/home/you/.claude-work
 exec:    claude --dangerously-skip-permissions
 
 $ agx run -p auto
@@ -264,8 +275,8 @@ just now     claude work       Claude account usage limits      …/20260923_175
 1 hr ago     codex  codex      (untitled)                       ~/work/agentop                019eea1d
 
 $ agx resume --last --dry-run         # in a folder whose conversation lives on the work account
-profile: work (claude, /Users/you/.claude-work)
-dir:     /Users/you/work/sessions/20260921_091439
+profile: work (claude, ~/.claude-work)
+dir:     ~/work/sessions/20260921_091439
 exec:    claude --dangerously-skip-permissions --resume dbcaeaf2-…
 ```
 
@@ -434,11 +445,11 @@ agx login rm personal                                  # refused while a profile
 
 ```text
 $ agx run -p work --login personal --dry-run
-profile: work (claude, /Users/you/.claude-work)
+profile: work (claude, ~/.claude-work)
 login:   personal (--login)
-dir:     /Users/you/code/app
+dir:     ~/code/app
 env:     CLAUDE_CODE_OAUTH_TOKEN=<token:stored>
-env:     CLAUDE_CONFIG_DIR=/Users/you/.claude-work
+env:     CLAUDE_CONFIG_DIR=/home/you/.claude-work
 exec:    claude --dangerously-skip-permissions
 
 $ agx run -p work --login personal
@@ -746,6 +757,10 @@ agx resume --all --list --json | jq -r '.data[] | "\(.updated)  \(.title)"'
 
 ## How it works
 
+![agx architecture: a shell alias or an agx command goes to internal/cli, which resolves the profile and login through config, login and secret, picks an account for auto, builds the command and environment through the provider model and provider/claude or provider/codex, and execs claude or codex in the chosen home; usage and conversations flow back as tables or --json.](docs/assets/architecture.svg)
+
+The [documentation index](docs/README.md#how-the-pieces-fit) walks through the numbered flow.
+
 | | Claude Code | Codex |
 |---|---|---|
 | Accounts | one per config dir: `~/.claude`, or `CLAUDE_CONFIG_DIR` (`~/.claude-work`, …) | one per `CODEX_HOME` (default `~/.codex`) |
@@ -772,6 +787,8 @@ The building blocks are public, dependency-light packages:
 | `github.com/khanakia/agx/login` | named logins: resolve a token from a private token file, a command or an env var without ever putting it in an error; the 0600 token file |
 
 A test in `internal/archtest` enforces the layering (the domain model imports only the standard library; libraries never import the CLI framework).
+
+Guides: [Use agx as a Go library](docs/guides/library/README.md) (package map, layering, implementing your own provider) and [Library or CLI](docs/choosing/library-or-cli.md) (when to import the packages and when to shell out to `agx --json`). Every package has a runnable program in [`examples/`](examples/README.md).
 
 ## Development
 
@@ -863,9 +880,9 @@ No. It removes the login from agx only. Revoke the token in your claude.ai accou
 
 Yes, with `--login auto` on `run`, `new`, `resume` or `ws`. It compares the home's own login with every login that fits the profile and runs on the one with the most room, saying which and why. A setup-token cannot read the usage endpoint, so each login is checked with a probe that spends a few tokens of its quota; that is why `auto` is only ever a flag you type, never a default.
 
-**Is this an official Anthropic or OpenAI tool?**
+**Is this an official Claude Code or Codex tool?**
 
-No. It is an independent open-source project, not affiliated with Anthropic or OpenAI. The usage endpoints are undocumented and could change; parsing is defensive and never hides a limit it doesn't recognise.
+No. It is an independent open-source project, not affiliated with the makers of Claude Code or Codex. The usage endpoints are undocumented and could change; parsing is defensive and never hides a limit it doesn't recognise.
 
 <!-- docsync: the code blocks this README cites (remote defs, so no directive lives in the Go source). Run `task docs:check`. -->
 <!-- ds:def id=newusagecmd-r3ert49b file=internal/cli/usage.go pick=symbol:newUsageCmd owner=@khanakia stability=stable -->
@@ -932,4 +949,4 @@ No. It is an independent open-source project, not affiliated with Anthropic or O
 
 [Apache-2.0](LICENSE) © 2026 khanakia
 
-<sub>agx: open-source CLI toolkit for AI coding agents — Claude Code and OpenAI Codex usage limits across multiple accounts, auto account selection, cross-account conversation resume, session folder management. Local, read-only, no telemetry, written in Go.</sub>
+<sub>agx: open-source CLI toolkit for coding agents — Claude Code and OpenAI Codex usage limits across multiple accounts, auto account selection, cross-account conversation resume, session folder management. Local, read-only, no telemetry, written in Go.</sub>
