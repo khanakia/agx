@@ -68,8 +68,11 @@ const (
 	approxMark  = "~"
 )
 
+// bindLoginFlag registers --login on f. The usage text must not contain
+// back quotes: pflag takes the first back-quoted word as the value name, so
+// help would read "--login agx login ls" instead of "--login string".
 func bindLoginFlag(f *pflag.FlagSet, dst *string) {
-	f.StringVar(dst, flagLogin, "", "run on this login's quota (a name from `agx login ls`, \"home\" for the home's own login, or \"auto\" for the most headroom — probes each login)")
+	f.StringVar(dst, flagLogin, "", "run on this login's quota (a name from 'agx login ls', \"home\" for the home's own login, or \"auto\" for the most headroom — probes each login)")
 }
 
 // loginChoice is the login a launch runs on; Login nil means the home login.
@@ -102,6 +105,18 @@ func (a *app) chooseLogin(ctx context.Context, cfg config.Config, p provider.Pro
 		a.warn(note)
 	}
 	return lc, err
+}
+
+// checkLogin validates the login p would run on (--login, AGX_LOGIN, the
+// profile's own) without side effects, for callers that must refuse before
+// they create anything (`agx new`). "auto" passes: choosing it probes
+// quota, which the launch itself does once.
+func (a *app) checkLogin(cfg config.Config, p provider.Profile, flag string) error {
+	if flag == login.Auto {
+		return nil
+	}
+	_, _, err := a.pickLogin(cfg, p, flag)
+	return err
 }
 
 // pickLogin is chooseLogin without side effects: the note is returned.
@@ -386,6 +401,7 @@ func (a *app) runLoginAdd(ctx context.Context, o *loginAddOpts, name string) err
 		return err
 	}
 	stored := false
+	var prev previousToken
 	switch {
 	case o.cmd != "":
 		spec.TokenCmd = o.cmd
@@ -396,6 +412,12 @@ func (a *app) runLoginAdd(ctx context.Context, o *loginAddOpts, name string) err
 		if err != nil {
 			return err
 		}
+		// Keep what tokens.yaml held under this name, so a refused config
+		// edit can put it back: losing a rotated-out token that config
+		// still points at would break the login.
+		if prev, err = loadPreviousToken(tf, name); err != nil {
+			return err
+		}
 		if err := tf.Set(name, val); err != nil {
 			return err
 		}
@@ -403,10 +425,10 @@ func (a *app) runLoginAdd(ctx context.Context, o *loginAddOpts, name string) err
 	}
 	ed := a.editor(cfg)
 	if err := ed.AddLogin(spec, o.replace); err != nil {
-		if stored && !exists {
-			// Roll back so tokens.yaml never holds a login config lacks.
-			if _, rmErr := tf.Remove(name); rmErr != nil {
-				a.warn("could not remove the token again: " + rmErr.Error())
+		if stored {
+			// Roll back so tokens.yaml matches the unchanged config again.
+			if rbErr := prev.restore(tf, name); rbErr != nil {
+				a.warn("could not restore tokens.yaml: " + rbErr.Error())
 			}
 		}
 		return err
@@ -441,6 +463,33 @@ func (a *app) runLoginAdd(ctx context.Context, o *loginAddOpts, name string) err
 	}
 	a.note("see its usage with `agx login check " + name + "` (one probe: a few tokens of its quota)")
 	return nil
+}
+
+// previousToken is what tokens.yaml held under a name before `login add`
+// overwrote it; ok is false when nothing was stored.
+type previousToken struct {
+	value string
+	ok    bool
+}
+
+// loadPreviousToken reads name's current entry from tf (none when the
+// file does not exist yet).
+func loadPreviousToken(tf login.TokenFile, name string) (previousToken, error) {
+	all, err := tf.Load()
+	if err != nil {
+		return previousToken{}, err
+	}
+	v, ok := all[name]
+	return previousToken{value: v, ok: ok}, nil
+}
+
+// restore puts the previous entry back, or removes name when there was none.
+func (p previousToken) restore(tf login.TokenFile, name string) error {
+	if p.ok {
+		return tf.Set(name, p.value)
+	}
+	_, err := tf.Remove(name)
+	return err
 }
 
 // readToken reads a raw token from stdin or a hidden prompt, after running

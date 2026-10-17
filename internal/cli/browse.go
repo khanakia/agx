@@ -46,16 +46,17 @@ type workspace struct {
 func newWsCmd(a *app) *cobra.Command {
 	o := &resumeOpts{browse: true}
 	c := &cobra.Command{
-		Use:   "ws [query...]",
+		Use:   "ws [query...] [-- agent-args...]",
 		Short: "Pick a workspace, then a chat in it, and resume it (resume --browse)",
 		Long: "Lists every folder that has conversations (newest activity first, across all profiles\n" +
 			"and providers); pick one, then pick a chat in it, and it resumes on the profile whose\n" +
-			"home stores it. Esc on the chat list goes back to the workspaces.",
+			"home stores it. Esc on the chat list goes back to the workspaces. Words after `--` are\n" +
+			"passed to the agent.",
 		Example: "  agx ws                # browse workspaces → chats\n" +
 			"  agx ws invoice        # only workspaces with a chat matching \"invoice\"\n" +
 			"  agx ws --list         # print the workspaces",
 		Args: cobra.ArbitraryArgs,
-		RunE: func(cmd *cobra.Command, args []string) error { return a.runResume(ctxOf(cmd), o, args) },
+		RunE: a.runResumeArgs(o),
 	}
 	f := c.Flags()
 	f.BoolVar(&o.list, "list", false, "print the workspaces instead of picking")

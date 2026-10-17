@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- `agx new`, `agx resume` and `agx ws` pass the words after `--` to the agent, as `agx run` does. Before, `new` folded them into the folder name and `resume` / `ws` into the query, and the agent got none.
+- `agx new --login NAME` checks the login before it creates the session folder, so an unknown or unusable login no longer leaves an empty folder behind.
+- `--login` help reads `--login string` instead of `--login agx login ls`.
+- `agx login add --replace` of a stored login puts the previous token back in tokens.yaml when the config edit is refused, instead of losing it.
+- `agx doctor` prints one warning row for a `token_env` login whose variable is unset, not a warning followed by a contradictory `no known expiry` row.
+- `agx doctor` warns when `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` is set in the shell for a plan-billed Claude profile on its home login: Claude Code would bill the API instead of the plan. agx still passes the environment through unchanged.
+- `agx sessions move` gives each backup its own folder (`-2`, `-3`, … after the time stamp) when two moves happen in the same second; the second move used to fail on files the first had already copied.
+
 ### Documentation
 
 - New `docs/` tree: an index with a fourteen-step learning path, a "start from your goal" table and the architecture diagram (`docs/README.md`); 24 step-by-step guides under `docs/guides/` (getting started, usage and diagnostics, running, logins, configuration and shell, the Go library), each with complete snippets, real output and pitfalls traced to the code; four decision pages under `docs/choosing/` (which profile or login, which token source, running and resuming, library or CLI); and a feature index (`docs/reference/features.md`) that points every feature at its guide section and, for 46 of 95, a runnable example.

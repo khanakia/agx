@@ -243,6 +243,7 @@ agx new -p work invoice bug          # on the work account
 agx new -p auto                      # on whichever Claude account has more room
 agx new -p codex refactor            # a Codex session
 agx new -p work demo --dry-run       # show the folder and command; create nothing
+agx new -p work demo -- --model opus # words after -- go to the agent, not the folder name
 ```
 
 With the [shell layer](#shell-integration) loaded, your shell is left inside the new folder when the agent exits.
@@ -394,7 +395,7 @@ How it works:
 - **Picking (`-i` / `--pick`):** lists this folder's conversations (provider, profile, title, id); mark one or more with Tab (Enter alone takes the highlighted one). Without `--to`, a second list offers the profiles of the same provider and marks the ones that hold the chosen chats now. The chosen chats become `--only`, and every check below still applies. In a folder with no conversations it stops with "use --all"; only `--all` opens the workspace list first. Without fzf, type numbers such as `1 3` or `1,3`. `-i` cannot be combined with a folder argument or `--only`.
 - **Which folder:** no argument = the current folder. A bare name is looked up under `sessions.root`, then in the current folder, then matched against the current folder's own name (so `agx sessions move docker_setup_mac …` works from inside it too). Anything with a `/` is a path.
 - **What moves (Claude):** each conversation's transcript and tool results, its file checkpoints (`file-history/`) and environment snapshot (`session-env/`), plus the folder's project memory. It merges into whatever the target already has; after a full move the now-empty history folder in the old account is removed (anything the move doesn't recognise is left in place and listed).
-- **Safe by default:** it stops before changing anything if Claude is running in that folder (in either account) or a conversation already exists in the target; it copies the sources to `<home>/backups/agx-move-<folder>-<time>/` first (`--no-backup` to skip); and if a move fails half-way, [everything already moved is put back](ds:block?id=applymoveplan-j9u9m6j7). Running it twice is harmless — the second run finds nothing to move.
+- **Safe by default:** it stops before changing anything if Claude is running in that folder (in either account) or a conversation already exists in the target; it copies the sources to `<home>/backups/agx-move-<folder>-<time>/` first (a second move in the same second gets `-2`, `-3`, …; `--no-backup` to skip); and if a move fails half-way, [everything already moved is put back](ds:block?id=applymoveplan-j9u9m6j7). Running it twice is harmless — the second run finds nothing to move.
 - **Exit status:** `0` moved (or nothing to move), `1` blocked or failed (nothing changed), `2` a wrong request (unknown profile, different providers, same home, missing folder).
 - **Undo:** `agx sessions move --to personal --from work` moves them back; the backup folder holds the untouched originals.
 - **Not moved:** Claude's global up-arrow prompt history and the folder's trust / allowed-tools settings — Claude asks to trust the folder once on the new account.
@@ -622,9 +623,9 @@ A fixed account-and-quota pair is just an alias: `clwp: run -p work --login pers
 | `agx plan [profile…]` | Plan, subscription status and start date for every account; `--json`, `--timeout` |
 | `agx profiles` | Every profile: provider, home, account, plan, login state, the login a run spends, billing, source |
 | `agx run [-p profile\|auto] [-- args…]` | Start the agent in the current folder with the profile's flags, env and secrets |
-| `agx new [-p profile\|auto] [slug…]` | Create `sessions.root/[slug_]YYYYMMDD_HHMMSS`, enter it, start the agent |
-| `agx resume [query…]` | Pick a conversation (this folder, or every folder with `--all`) and continue it on its own account; `--last`, `--all`, `--list`, `--json`, `-b/--browse` |
-| `agx ws [query…]` | Pick a workspace (any folder with conversations), then a chat in it, and resume it; `--list`, `--json` |
+| `agx new [-p profile\|auto] [slug…] [-- agent-args…]` | Create `sessions.root/[slug_]YYYYMMDD_HHMMSS`, enter it, start the agent |
+| `agx resume [query…] [-- agent-args…]` | Pick a conversation (this folder, or every folder with `--all`) and continue it on its own account; `--last`, `--all`, `--list`, `--json`, `-b/--browse` |
+| `agx ws [query…] [-- agent-args…]` | Pick a workspace (any folder with conversations), then a chat in it, and resume it; `--list`, `--json` |
 | `agx sessions ls` | Session folders with file counts and whether any provider holds history for them |
 | `agx sessions gc [--yes]` | Remove empty session folders with no history (dry run unless `--yes`) |
 | `agx sessions promote <folder> <name>` | Move a session folder into a project, taking its Claude history along; `--dry-run`, `--git-init` |
@@ -657,9 +658,9 @@ agx new -p auto --provider codex my spike   # auto-pick among Codex accounts
 | [`agx plan`](ds:block?id=newplancmd-urn3m4qd) | `[profile…]` · `--json` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) · `--login home` (alias: `agx subscription`) |
 | [`agx profiles`](ds:block?id=newprofilescmd-ndr78yh5) | `--json` (aliases: `agx who`, `agx accounts`) |
 | [`agx run`](ds:block?id=newruncmd-jgrurvce) | `-p/--profile` · `--provider` · `--login NAME\|home\|auto` · `--dry-run` · `-- <args passed to the agent>` |
-| [`agx new`](ds:block?id=newnewcmd-u4uqk853) | `-p/--profile` · `--provider` · `--login NAME\|home\|auto` · `--dry-run` · `[slug words]` |
-| [`agx resume`](ds:block?id=newresumecmd-wp72e3ak) | `[query words]` · `--last` · `--all` · `--list` · `--json` (with `--list`) · [`--limit 50`](ds:block?id=defaultresumelimit-zc5uhvc4) · `-b/--browse` · `-p/--profile` · `--login NAME\|home\|auto` · `--dry-run` |
-| [`agx ws`](ds:block?id=newwscmd-s5rg592z) | `[query words]` · `--list` · `--json` (with `--list`) · `-p/--profile` · `--login NAME\|home\|auto` · `--dry-run` |
+| [`agx new`](ds:block?id=newnewcmd-u4uqk853) | `-p/--profile` · `--provider` · `--login NAME\|home\|auto` · `--dry-run` · `[slug words]` · `-- <args passed to the agent>` |
+| [`agx resume`](ds:block?id=newresumecmd-wp72e3ak) | `[query words]` · `--last` · `--all` · `--list` · `--json` (with `--list`) · [`--limit 50`](ds:block?id=defaultresumelimit-zc5uhvc4) · `-b/--browse` · `-p/--profile` · `--login NAME\|home\|auto` · `--dry-run` · `-- <args passed to the agent>` |
+| [`agx ws`](ds:block?id=newwscmd-s5rg592z) | `[query words]` · `--list` · `--json` (with `--list`) · `-p/--profile` · `--login NAME\|home\|auto` · `--dry-run` · `-- <args passed to the agent>` |
 | [`agx sessions ls`](ds:block?id=newsessionslscmd-tv2vrc6k) | `--json` |
 | [`agx sessions gc`](ds:block?id=newsessionsgccmd-qhhnyct9) | `--yes` · [`--min-age 24h`](ds:block?id=defaultgcminage-67k288nh) · `--json` |
 | [`agx sessions promote`](ds:block?id=newsessionspromotecmd-tdxnub7p) `<folder> <name>` | `--to <parent>` · `--dry-run` · `--git-init` · `--json` |

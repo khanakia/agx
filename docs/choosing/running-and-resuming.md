@@ -22,7 +22,7 @@ agx has four ways to start an agent (`run`, `run -p auto`, `new`, `resume` / `ws
 
 If X then Y:
 
-- If the agent needs extra flags every time, put them in the profile's `args:` ([Config reference: profiles](../guides/config-shell/config-reference.md#profiles)); they apply to every launch of that profile, `new` and `resume` included. Per-run flags after `--` exist only on `run`.
+- If the agent needs extra flags every time, put them in the profile's `args:` ([Config reference: profiles](../guides/config-shell/config-reference.md#profiles)); they apply to every launch of that profile, `new` and `resume` included. For one run, put the flags after `--`: `run`, `new`, `resume` and `ws` all pass those words to the agent.
 - If you want to spend another account's quota but keep this folder's chats, add `--login NAME` (or `--login auto`) to any of the commands above instead of switching profile; see [Which profile, which login](which-profile-or-login.md#step-4--choose--p-auto-or---login-auto).
 - If you are unsure what a command will do, add `--dry-run` to `run`, `new`, `resume` or `ws`: it prints the profile, login, folder, env and command line with secrets redacted, and launches nothing.
 
@@ -63,24 +63,24 @@ login:   home
 dir:     /home/you/agx-sessions/pglite_spike_20261017_030858
 exec:    claude
 $ agx new pglite spike -p work -- --model opus
-fake claude
+fake claude --model opus
 $ agx sessions ls
 ~/agx-sessions (1 folders)
-FOLDER                                   LAST ACTIVITY  FILES  HISTORY
-pglite_spike_model_opus_20261017_030858  just now       0      —
+FOLDER                        LAST ACTIVITY  FILES  HISTORY
+pglite_spike_20261017_035300  just now       0      —
 $ agx sessions gc
 nothing to remove
 $ agx sessions gc --min-age 0s
-pglite_spike_model_opus_20261017_030858
+pglite_spike_20261017_035300
 1 empty folder(s) would be removed — re-run with --yes
 ```
 
-The second command shows the `new` pitfall below: `--model opus` became part of the folder name, and the agent (a stand-in script that prints its arguments) received none. `gc` keeps the folder until it is older than `--min-age`, and lists it without `--yes`.
+In the second command the words before `--` name the folder and `--model opus` reaches the agent (a stand-in script that prints its arguments). `gc` keeps the folder until it is older than `--min-age`, and lists it without `--yes`.
 
 ## Pitfalls
 
-- **`new`, `resume` and `ws` do not pass arguments after `--` to the agent.** Their positional words are a slug or a query; `agx new pglite spike -- --model opus` names the folder `pglite_spike_model_opus_…` and launches without `--model` (`internal/cli/launch.go`, `newNewCmd` builds the slug from every argument). Use the profile's `args:`, or `agx run -- …` inside the folder.
-- **`agx new` creates the folder before launching**, so a failed launch leaves an empty folder; `gc` removes it after `--min-age` ([Session folders: pitfalls](../guides/running/new-and-sessions.md#pitfalls)).
+- **Agent flags go after `--`.** Before it, `new` reads words as the folder name and `resume` / `ws` as a query, and a word starting with `-` is read as an agx flag (`agx: unknown flag: --model`, exit 2). `agx new pglite -- --model opus` names the folder `pglite_…` and starts the agent with `--model opus` (`internal/cli/launch.go`, `splitAtDash`).
+- **`agx new` creates the folder before launching**, so a failed launch leaves an empty folder; `gc` removes it after `--min-age`. An unusable `--login` is refused before the folder is made ([Session folders: pitfalls](../guides/running/new-and-sessions.md#pitfalls)).
 - **`-p auto` may land you in an account without this project's chats.** It chooses the home; `--login auto` chooses only the quota ([Auto-pick: pitfalls](../guides/running/auto-pick.md#pitfalls)).
 - **`ws` hides folders that no longer exist**, including the old path of a promoted folder; `cd` into the new folder and run `agx resume` there ([Workspace picker: pitfalls](../guides/running/workspace-picker.md#pitfalls)).
 - **No terminal, no picker.** Under cron, CI or `ssh host agx resume`, use `--last` or `--list` ([Resume: pitfalls](../guides/running/resume.md#pitfalls)).

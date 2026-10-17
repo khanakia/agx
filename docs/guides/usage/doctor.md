@@ -42,6 +42,7 @@ One or more lines per profile, configured or discovered. The secret checks come 
 | Level | Detail | Meaning and fix |
 |---|---|---|
 | ✗ | `VAR needs gopass, which is not on PATH` | a `secrets:` entry uses `gopass:…`; install gopass or put it on `PATH` |
+| ! | ``ANTHROPIC_API_KEY is set in this shell, so Claude Code bills the API instead of this plan — unset it, or give the profile a login (`agx login use`)`` (or `ANTHROPIC_AUTH_TOKEN`) | a plan-billed Claude profile that runs on its home login would inherit the variable, and Claude Code then bills the API key instead of the plan; agx removes these variables only for token logins and does not touch them otherwise |
 | ✗ | `claude is not on PATH` (or `codex`) | the agent binary is missing; install it or fix `PATH` |
 | ! | `home PATH does not exist` | the profile's `home:` folder is missing; log in once with that home, or fix the path |
 | ✓ | `you@example.com Max (20x)` | logged in, with the email and plan from the home's files; Codex shows `logged in` because it keeps no email locally |
@@ -64,7 +65,7 @@ Checked only when `~/.agx/tokens.yaml` (beside `config.yaml`) exists, that is af
 
 ### login NAME
 
-One or two lines per login in `config.yaml`: the token source first, then the expiry.
+One or two lines per login in `config.yaml`: the token source first, then the expiry. A `token_env` login whose variable is unset gets only the warning row.
 
 | Level | Detail | Meaning and fix |
 |---|---|---|
@@ -115,7 +116,6 @@ $ agx doctor
 ! login soon         expires 2026-11-01 (in 14 d 21 hr); renew: agx login add soon --setup --replace
 ✗ login lost         no token in ~/.agx/tokens.yaml — run `agx login add lost --stdin --replace`
 ! login ci           AGX_DOCS_CI_TOKEN is not set in this shell
-✓ login ci           oauth-token (env), expires approximately 2027-10-01
 ! login vault        past its approximate expiry 2026-09-01; runs go ahead — if the token was not rotated, renew: agx login add vault --replace
 · shell              shell layer not loaded — add `eval "$(agx shell-init zsh)"` to your shell rc so new/resume can cd
 $ echo $?
@@ -133,7 +133,6 @@ The same machine after `chmod 644 ~/.agx/tokens.yaml` (only the token lines show
 ✗ login soon         token unreadable: ~/.agx/tokens.yaml was refused (see above)
 ✗ login lost         token unreadable: ~/.agx/tokens.yaml was refused (see above)
 ! login ci           AGX_DOCS_CI_TOKEN is not set in this shell
-✓ login ci           oauth-token (env), expires approximately 2027-10-01
 ! login vault        past its approximate expiry 2026-09-01; runs go ahead — if the token was not rotated, renew: agx login add vault --replace
 ```
 

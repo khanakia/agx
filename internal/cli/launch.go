@@ -71,12 +71,14 @@ func newRunCmd(a *app) *cobra.Command {
 func newNewCmd(a *app) *cobra.Command {
 	o := &launchOpts{}
 	c := &cobra.Command{
-		Use:   "new [-p profile|auto] [slug words...]",
+		Use:   "new [-p profile|auto] [slug words...] [-- agent-args...]",
 		Short: "Create a timestamped session folder and launch an agent in it",
 		Long: "Creates sessions.root/[slug_]YYYYMMDD_HHMMSS, enters it and launches. With the shell\n" +
-			"layer (`eval \"$(agx shell-init zsh)\"`) your shell also ends up in the new folder.",
-		Example: "  agx new\n  agx new -p work pglite golang     # → pglite_golang_20260924_101500\n  agx new -p auto",
-		Args:    cobra.ArbitraryArgs,
+			"layer (`eval \"$(agx shell-init zsh)\"`) your shell also ends up in the new folder.\n" +
+			"Words before `--` name the folder; words after it are passed to the agent.",
+		Example: "  agx new\n  agx new -p work pglite golang     # → pglite_golang_20260924_101500\n  agx new -p auto\n" +
+			"  agx new -p work pglite -- --model opus",
+		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := ctxOf(cmd)
 			cfg, err := a.config()
@@ -87,19 +89,38 @@ func newNewCmd(a *app) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			words, agentArgs := splitAtDash(cmd, args)
+			slug := sessions.Slug(words...)
 			if o.dryRun {
-				dir := filepath.Join(cfg.SessionsRoot, sessions.Name(sessions.Slug(args...), a.Now()))
-				return a.launch(ctx, p, provider.LaunchRequest{Dir: dir}, true, o.login)
+				dir := filepath.Join(cfg.SessionsRoot, sessions.Name(slug, a.Now()))
+				return a.launch(ctx, p, provider.LaunchRequest{Dir: dir, Args: agentArgs}, true, o.login)
 			}
-			dir, err := sessions.Create(cfg.SessionsRoot, sessions.Slug(args...), a.Now())
+			// Refuse a login that cannot be used BEFORE the folder exists: a
+			// failed `new` must not leave an empty session folder behind.
+			if err := a.checkLogin(cfg, p, o.login); err != nil {
+				return err
+			}
+			dir, err := sessions.Create(cfg.SessionsRoot, slug, a.Now())
 			if err != nil {
 				return err
 			}
-			return a.launchOrPlan(ctx, plan{Dir: dir, Profile: p.Name, Login: o.login}, p, provider.LaunchRequest{Dir: dir})
+			req := provider.LaunchRequest{Dir: dir, Args: agentArgs}
+			return a.launchOrPlan(ctx, plan{Dir: dir, Profile: p.Name, Args: agentArgs, Login: o.login}, p, req)
 		},
 	}
 	o.bind(c)
 	return c
+}
+
+// splitAtDash splits a command's positional args at a literal `--`: the
+// words before it belong to agx (slug words for new, a query for resume /
+// ws), the words after it go to the agent unchanged. Without `--` every
+// word is agx's. cobra drops the `--` itself and only reports where it was.
+func splitAtDash(cmd *cobra.Command, args []string) (own, agent []string) {
+	if n := cmd.ArgsLenAtDash(); n >= 0 {
+		return args[:n], args[n:]
+	}
+	return args, nil
 }
 
 // resumeOpts configure `agx resume`.
@@ -111,6 +132,19 @@ type resumeOpts struct {
 	json   bool
 	browse bool
 	limit  int
+	// agentArgs are the words after `--`, appended to the agent's resume
+	// command (set by RunE from splitAtDash, never a flag).
+	agentArgs []string
+}
+
+// runResumeArgs is the RunE of resume and ws: it splits the query from the
+// agent args at `--` and runs runResume.
+func (a *app) runResumeArgs(o *resumeOpts) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		var query []string
+		query, o.agentArgs = splitAtDash(cmd, args)
+		return a.runResume(ctxOf(cmd), o, query)
+	}
 }
 
 // defaultResumeLimit bounds the picker list.
@@ -119,18 +153,20 @@ const defaultResumeLimit = 50
 func newResumeCmd(a *app) *cobra.Command {
 	o := &resumeOpts{}
 	c := &cobra.Command{
-		Use:   "resume [query...]",
+		Use:   "resume [query...] [-- agent-args...]",
 		Short: "Continue a conversation on the account that holds it",
 		Long: "Lists conversations started in this folder (or every folder with --all) across\n" +
 			"every provider home, lets you pick one, and continues it in its folder on the\n" +
-			"profile whose home stores it — so a work conversation resumes on work.",
+			"profile whose home stores it — so a work conversation resumes on work.\n" +
+			"Words before `--` filter the list; words after it are passed to the agent.",
 		Example: "  agx resume                 # pick from this folder's conversations\n" +
 			"  agx resume pglite          # filter by title / folder / id\n" +
 			"  agx resume --last          # newest, no picker\n" +
 			"  agx resume --all --list    # print, don't launch\n" +
-			"  agx resume -b              # pick a workspace, then a chat (same as agx ws)",
+			"  agx resume -b              # pick a workspace, then a chat (same as agx ws)\n" +
+			"  agx resume --last -- --model opus",
 		Args: cobra.ArbitraryArgs,
-		RunE: func(cmd *cobra.Command, args []string) error { return a.runResume(ctxOf(cmd), o, args) },
+		RunE: a.runResumeArgs(o),
 	}
 	f := c.Flags()
 	f.BoolVarP(&o.browse, flagBrowse, "b", false, "pick a workspace (any folder with conversations), then a chat in it")
@@ -214,11 +250,11 @@ func (a *app) resumeConversation(ctx context.Context, cfg config.Config, o *resu
 	if !ok {
 		return fmt.Errorf("no profile uses %s (%s); add one to the config", chosen.Home, chosen.Provider)
 	}
-	req := provider.LaunchRequest{Dir: chosen.Dir, ResumeID: chosen.ID}
+	req := provider.LaunchRequest{Dir: chosen.Dir, ResumeID: chosen.ID, Args: o.agentArgs}
 	if o.dryRun {
 		return a.launch(ctx, p, req, true, o.login)
 	}
-	return a.launchOrPlan(ctx, plan{Dir: chosen.Dir, Profile: p.Name, ResumeID: chosen.ID, Login: o.login}, p, req)
+	return a.launchOrPlan(ctx, plan{Dir: chosen.Dir, Profile: p.Name, ResumeID: chosen.ID, Args: o.agentArgs, Login: o.login}, p, req)
 }
 
 // findConversations lists conversations from every distinct provider home,

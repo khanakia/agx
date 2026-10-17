@@ -37,6 +37,8 @@ agx resume invoice --last
 
 `--last` takes the newest match. This is also the way to resume from a script or any place without a terminal.
 
+Words after `--` are not part of the query; they go to the agent's resume command, after the profile's own `args`: `agx resume --last -- --model opus` runs `claude --resume <id> --model opus`.
+
 ## Step 4 — Search every folder with `--all`
 
 ```sh
