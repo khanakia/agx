@@ -72,9 +72,11 @@ type Login struct {
 var (
 	// ErrEmpty means the source produced no token.
 	ErrEmpty = errors.New("login: token is empty")
-	// ErrMultiline means a command printed more than one non-empty line,
-	// which is never a single token (e.g. it printed a whole file).
-	ErrMultiline = errors.New("login: token command printed more than one line")
+	// ErrMultiline means the value has more than one non-empty line, which
+	// is never a single token (a command that printed a whole file, a paste
+	// that caught two lines). The wording stays neutral because Clean checks
+	// every source — command output, a stored token, --stdin, a paste.
+	ErrMultiline = errors.New("login: token has more than one line")
 	// ErrMissing means a stored login has no entry in the token file.
 	ErrMissing = errors.New("login: no stored token")
 )

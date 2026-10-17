@@ -78,7 +78,7 @@ var want = map[string][]string{
 		"team     source=cmd    resolved 19 chars, owned by agx=false",
 		"personal expires 2027-10-01",
 		"missing stored: true",
-		"token command printed more than one line",
+		"token has more than one line",
 		"profile kimi sets ANTHROPIC_API_KEY in env",
 		"world-readable token file: insecure=true",
 	},

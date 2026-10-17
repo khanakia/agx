@@ -1,0 +1,43 @@
+func newNewCmd(a *app) *cobra.Command {
+	o := &launchOpts{}
+	c := &cobra.Command{
+		Use:   "new [-p profile|auto] [slug words...] [-- agent-args...]",
+		Short: "Create a timestamped session folder and launch an agent in it",
+		Long: "Creates sessions.root/[slug_]YYYYMMDD_HHMMSS, enters it and launches. With the shell\n" +
+			"layer (`eval \"$(agx shell-init zsh)\"`) your shell also ends up in the new folder.\n" +
+			"Words before `--` name the folder; words after it are passed to the agent.",
+		Example: "  agx new\n  agx new -p work pglite golang     # → pglite_golang_20260924_101500\n  agx new -p auto\n" +
+			"  agx new -p work pglite -- --model opus",
+		Args: cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := ctxOf(cmd)
+			cfg, err := a.config()
+			if err != nil {
+				return err
+			}
+			p, err := a.resolveProfile(ctx, o)
+			if err != nil {
+				return err
+			}
+			words, agentArgs := splitAtDash(cmd, args)
+			slug := sessions.Slug(words...)
+			if o.dryRun {
+				dir := filepath.Join(cfg.SessionsRoot, sessions.Name(slug, a.Now()))
+				return a.launch(ctx, p, provider.LaunchRequest{Dir: dir, Args: agentArgs}, true, o.login)
+			}
+			// Refuse a login that cannot be used BEFORE the folder exists: a
+			// failed `new` must not leave an empty session folder behind.
+			if err := a.checkLogin(cfg, p, o.login); err != nil {
+				return err
+			}
+			dir, err := sessions.Create(cfg.SessionsRoot, slug, a.Now())
+			if err != nil {
+				return err
+			}
+			req := provider.LaunchRequest{Dir: dir, Args: agentArgs}
+			return a.launchOrPlan(ctx, plan{Dir: dir, Profile: p.Name, Args: agentArgs, Login: o.login}, p, req)
+		},
+	}
+	o.bind(c)
+	return c
+}

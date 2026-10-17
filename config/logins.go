@@ -132,39 +132,43 @@ func checkLoginRef(where, name string, id provider.ID, logins []login.Login) err
 	return nil
 }
 
-// checkProfileLogin validates a profile's own `login:`.
-func checkProfileLogin(p provider.Profile, byID map[provider.ID]provider.Provider, logins []login.Login) error {
+// checkProfileLogin validates profiles[idx]'s own `login:` and returns a
+// complete ErrInvalid error that names the field once:
+// "profiles[idx] (name): login: …". login.Compatible's errors already start
+// with "login:" (the login package's prefix), so they get only the profile;
+// adding the field as well once printed "login: login: …".
+func checkProfileLogin(idx int, p provider.Profile, byID map[provider.ID]provider.Provider, logins []login.Login) error {
 	if p.Login == "" || p.Login == login.Home {
 		return nil
 	}
-	if p.Login == login.Auto {
-		return fmt.Errorf("login: %w", ErrAutoLogin)
-	}
-	i := slices.IndexFunc(logins, func(l login.Login) bool { return l.Name == p.Login })
-	if i < 0 {
-		return fmt.Errorf("login: unknown login %q (see `agx login ls`)", p.Login)
-	}
-	l := logins[i]
-	if l.Provider != p.Provider {
-		return fmt.Errorf("login: %q is a %s login, not %s", p.Login, l.Provider, p.Provider)
+	prof := fmt.Sprintf("profiles[%d] (%s)", idx, p.Name)
+	field := prof + ": " + keyLogin
+	if err := checkLoginRef(field, p.Login, p.Provider, logins); err != nil {
+		return err
 	}
 	ll, ok := byID[p.Provider].(provider.LoginLauncher)
 	if !ok {
-		return fmt.Errorf("login: %s", NoLoginsReason(p.Provider))
+		return fmt.Errorf("%w: %s: %s", ErrInvalid, field, NoLoginsReason(p.Provider))
 	}
+	l, _ := loginNamed(logins, p.Login) // present: checkLoginRef passed
 	if err := login.Compatible(p, ll, l.Kind); err != nil {
-		return fmt.Errorf("login: %w", err)
+		return fmt.Errorf("%w: %s: %w", ErrInvalid, prof, err)
 	}
 	return nil
 }
 
-// LoginByName returns the login named name.
-func (c Config) LoginByName(name string) (login.Login, bool) {
-	i := slices.IndexFunc(c.Logins, func(l login.Login) bool { return l.Name == name })
+// loginNamed returns the login called name from logins.
+func loginNamed(logins []login.Login, name string) (login.Login, bool) {
+	i := slices.IndexFunc(logins, func(l login.Login) bool { return l.Name == name })
 	if i < 0 {
 		return login.Login{}, false
 	}
-	return c.Logins[i], true
+	return logins[i], true
+}
+
+// LoginByName returns the login named name.
+func (c Config) LoginByName(name string) (login.Login, bool) {
+	return loginNamed(c.Logins, name)
 }
 
 // UsedBy lists what points at login name: profile names, then

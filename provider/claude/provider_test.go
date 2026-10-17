@@ -226,3 +226,37 @@ func TestMoveHistoryAndHasHistory(t *testing.T) {
 		t.Errorf("overwrite err = %v", err)
 	}
 }
+
+// Title records are found however the JSON is spaced, wherever the type
+// field sits in the object, and only when it really is the type field.
+func TestConversations_TitleSpacing(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name  string
+		lines []string
+		want  string
+	}{
+		{"compact", []string{`{"type":"ai-title","aiTitle":"T"}`}, "T"},
+		{"space-after-colon", []string{`{"type": "ai-title", "aiTitle": "T"}`}, "T"},
+		{"spaces-around", []string{`{ "type" : "ai-title" , "aiTitle" : "T" }`}, "T"},
+		{"tab", []string{"{\"type\":\t\"ai-title\",\"aiTitle\":\"T\"}"}, "T"},
+		{"type-last", []string{`{"aiTitle":"T","type":"ai-title"}`}, "T"},
+		{"custom-spaced", []string{`{"type":"ai-title","aiTitle":"A"}`, `{"type": "custom-title", "customTitle": "C"}`}, "C"},
+		{"empty-custom-ignored", []string{`{"type":"ai-title","aiTitle":"A"}`, `{"type": "custom-title", "customTitle": ""}`}, "A"},
+		{"mention-in-text-only", []string{`{"type":"user","message":"the \"ai-title\" record","aiTitle":"no"}`}, ""},
+		{"none", nil, ""},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			home := t.TempDir()
+			writeTranscript(t, home, "/w/t", "id-t", c.lines...)
+			got, err := (&Provider{}).Conversations(context.Background(), home, provider.ConversationQuery{Dir: "/w/t"})
+			if err != nil || len(got) != 1 {
+				t.Fatalf("got %+v, %v", got, err)
+			}
+			if got[0].Title != c.want {
+				t.Errorf("title = %q, want %q", got[0].Title, c.want)
+			}
+		})
+	}
+}
