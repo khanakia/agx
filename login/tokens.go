@@ -122,9 +122,11 @@ func (t TokenFile) save(all map[string]string) error {
 	}
 	sort.Strings(names)
 	doc := &yaml.Node{Kind: yaml.MappingNode}
+	// Keys are quoted like values: a plain `null:` or `~:` key decodes as a
+	// null, so a login named "null" would be written but never read back.
 	for _, n := range names {
 		doc.Content = append(doc.Content,
-			&yaml.Node{Kind: yaml.ScalarNode, Value: n},
+			&yaml.Node{Kind: yaml.ScalarNode, Value: n, Style: yaml.DoubleQuotedStyle},
 			&yaml.Node{Kind: yaml.ScalarNode, Value: all[n], Style: yaml.DoubleQuotedStyle})
 	}
 	var buf bytes.Buffer

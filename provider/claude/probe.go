@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -220,7 +221,9 @@ func ParseProbeHeaders(h http.Header) (provider.Usage, error) {
 			return provider.Usage{}, fmt.Errorf("%w: %s missing", ErrProbeHeaders, base+hdrReset)
 		}
 		util, err := strconv.ParseFloat(utilRaw, 64)
-		if err != nil || util < 0 {
+		// NaN and Inf parse without error but are not fractions: a NaN window
+		// is skipped by Usage.MaxPercent, so a garbled account would look idle.
+		if err != nil || util < 0 || math.IsNaN(util) || math.IsInf(util, 0) {
 			return provider.Usage{}, fmt.Errorf("%w: %s=%q is not a fraction", ErrProbeHeaders, base+hdrUtilization, utilRaw)
 		}
 		secs, err := strconv.ParseInt(resetRaw, 10, 64)
