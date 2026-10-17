@@ -1,0 +1,23 @@
+{
+  "_table": "tasks",
+  "_v": 1,
+  "assigned_to_actor_id": null,
+  "body": "User: 'push all to github'. Done by coordinator after secret scan.",
+  "commitment": "accepted",
+  "completed_at": "2026-10-17T05:13:49.811364000Z",
+  "created_at": "2026-10-17T05:13:06.748659000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "deferred_until": null,
+  "due_at": null,
+  "id": "tsk_01a148472dbc7a16ba703dd07a7e82b3",
+  "mission_id": null,
+  "plan_id": null,
+  "priority": "medium",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "started_at": null,
+  "status": "done",
+  "tasklist_id": "tlt_01a147b9baf57ac182ae07babf3c97ae",
+  "title": "Push private notes repo",
+  "updated_at": "2026-10-17T05:13:49.811365000Z"
+}
