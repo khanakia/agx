@@ -74,31 +74,31 @@ Open a new terminal afterwards; `agx doctor` then shows `✓ shell  shell layer 
 
 ## Try it
 
-Checking and installing the Linux amd64 archive of v0.3.3:
+Checking and installing the Linux amd64 archive of v0.3.4:
 
 ```text
 $ grep "agx_${VERSION}_${PLATFORM}.tar.gz" checksums.txt | sha256sum -c
-agx_v0.3.3_linux_amd64.tar.gz: OK
+agx_v0.3.4_linux_amd64.tar.gz: OK
 $ agx version
-agx v0.3.3
+agx v0.3.4
   source:      ldflags
-  commit:      6314c2a406c34c2252a595a775d6820748cd8ced
-  built:       2026-10-17T02:35:10Z
+  commit:      9250a7f11c3944434d67642de4999fbe99699707
+  built:       2026-10-17T04:06:05Z
   go:          go1.26.4
   platform:    linux/amd64
 $ agx --version
-agx version v0.3.3
+agx version v0.3.4
 ```
 
 The same version built with `go install` reports where its version came from differently, because `go install` does not stamp a commit or build time:
 
 ```text
 $ agx version
-agx v0.3.3
+agx v0.3.4
   source:      module
   commit:      unknown
   built:       unknown
-  go:          go1.26.5
+  go:          go1.27.1
   platform:    linux/amd64
 ```
 
@@ -121,7 +121,7 @@ $ echo $?
 
 - **No accounts is a usage error, not an empty list.** `agx` / `agx usage` exit 2 with ``no profiles to show (run `agx doctor`)`` when no home was found (`internal/cli/usage.go`, `runUsage`), and `agx plan` says ``no plan-billed profiles (run `agx doctor`)`` (`internal/cli/plan.go`). Log in with Claude Code or Codex once, then run `agx profiles` again.
 - **`go install` builds lack a commit and build time.** `agx version` shows `source: module`, `commit: unknown`. Use a release archive when you need the provenance fields filled in (seen above; the values come from voltkit's `versioncmd`).
-- **There is no Windows arm64 build.** The v0.3.3 release has `windows_amd64.zip` only. On Windows, agx cannot replace its own process, so `run` starts the agent as a child process and waits (`internal/cli/exec_other.go`); Windows is otherwise untested.
+- **There is no Windows arm64 build.** The v0.3.4 release has `windows_amd64.zip` only. On Windows, agx cannot replace its own process, so `run` starts the agent as a child process and waits (`internal/cli/exec_other.go`); Windows is otherwise untested.
 - **The macOS Keychain is read only on macOS.** On Linux, a Claude Code login is read from `<home>/.credentials.json`; the Keychain lookup needs the macOS `security` tool and is skipped when it is missing (`provider/claude/keychain.go`).
 - **The shell layer is opt-in.** Without it, `agx new` and `agx resume` still start the agent in the right folder, but your shell does not change directory afterwards, and `agx doctor` reports `· shell  shell layer not loaded` (`internal/cli/doctor.go`).
 
