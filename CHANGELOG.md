@@ -6,8 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-10-17
+
 ### Fixed
 
+- `agx resume -p <name>` with an unknown profile now says `unknown profile "<name>"` and exits 2, instead of "no profile uses ~/.claude" and exit 1.
+- `agx doctor` lists a profile's secret findings in a stable order, so its text and `--json` output no longer change from run to run.
+- Replacing a stored login with `--cmd` or `--env` (`agx login add --replace`) now removes the old raw token from `tokens.yaml`.
+- Error messages that quote a server response are cut on a character boundary and never end in half a UTF-8 character.
 - `agx new`, `agx resume` and `agx ws` pass the words after `--` to the agent, as `agx run` does. Before, `new` folded them into the folder name and `resume` / `ws` into the query, and the agent got none.
 - `agx new --login NAME` checks the login before it creates the session folder, so an unknown or unusable login no longer leaves an empty folder behind.
 - `--login` help reads `--login string` instead of `--login agx login ls`.
@@ -148,7 +154,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.4...HEAD
+[0.3.4]: https://github.com/khanakia/agx/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/khanakia/agx/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/khanakia/agx/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/khanakia/agx/compare/v0.3.0...v0.3.1
