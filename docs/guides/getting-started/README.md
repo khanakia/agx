@@ -13,7 +13,7 @@ agx is one command for Claude Code and Codex across every account on your machin
 The release page publishes a SHA-256 for every archive in `checksums.txt`. Checking it proves the archive you got is the one the release workflow built. Pick your platform, then run the whole block:
 
 ```sh
-VERSION=v0.3.3
+VERSION=v0.3.4
 PLATFORM=linux_amd64        # or darwin_arm64, darwin_amd64, linux_arm64
 curl -sLO "https://github.com/khanakia/agx/releases/download/${VERSION}/agx_${VERSION}_${PLATFORM}.tar.gz"
 curl -sLO "https://github.com/khanakia/agx/releases/download/${VERSION}/checksums.txt"
@@ -24,7 +24,7 @@ sudo mv agx /usr/local/bin/
 
 The `grep … | sha256sum -c` line must print `OK`. If it prints `FAILED`, delete the archive and download it again; do not install it.
 
-On Windows, download `agx_v0.3.3_windows_amd64.zip` and its line in `checksums.txt` from the [Releases page](https://github.com/khanakia/agx/releases), check it with `certutil -hashfile agx_v0.3.3_windows_amd64.zip SHA256`, and put `agx.exe` on your `PATH`.
+On Windows, download `agx_v0.3.4_windows_amd64.zip` and its line in `checksums.txt` from the [Releases page](https://github.com/khanakia/agx/releases), check it with `certutil -hashfile agx_v0.3.4_windows_amd64.zip SHA256`, and put `agx.exe` on your `PATH`.
 
 ## Step 2 — Or install with Go
 
