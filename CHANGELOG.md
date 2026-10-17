@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Documentation
+
+- New `docs/` tree: an index with a fourteen-step learning path, a "start from your goal" table and the architecture diagram (`docs/README.md`); 24 step-by-step guides under `docs/guides/` (getting started, usage and diagnostics, running, logins, configuration and shell, the Go library), each with complete snippets, real output and pitfalls traced to the code; four decision pages under `docs/choosing/` (which profile or login, which token source, running and resuming, library or CLI); and a feature index (`docs/reference/features.md`) that points every feature at its guide section and, for 46 of 95, a runnable example.
+- `examples/`: nine Go programs that use the library against temporary homes and `httptest` servers (usage and probe, auto-pick, config resolution, conversations and history moves, launch commands, logins, secrets, session folders, a custom provider). `examples/examples_test.go` builds and runs each one and checks its output, so `go test ./...` fails when an example drifts.
+- Docs tooling in `scripts/docs/`: `task docs:snippets` regenerates the Go code and program output quoted in the docs from the real sources, `task docs:snippets:check` fails when a quote is stale, `task docs:lint` fails on hard-wrapped prose, broken relative links or anchors, machine-local paths and authorship wording, and `task docs:all` runs these with `task docs:check`.
+
 ## [0.3.3] - 2026-10-16
 
 ### Added
@@ -99,7 +105,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- `agx`, a toolkit CLI for AI coding agents (formerly `claude-usage`), built on voltkit (`appdir`, `output`, `versioncmd`) and cobra.
+- `agx`, a toolkit CLI for coding agents (formerly `claude-usage`), built on voltkit (`appdir`, `output`, `versioncmd`) and cobra.
 - Providers behind one interface: Claude Code and OpenAI Codex (`provider`, `provider/claude`, `provider/codex`, all importable).
 - `agx usage` (also bare `agx`): plan usage for every account of every provider, deduplicated per login; `--provider`, `--json`, `--color`, `--timeout`.
 - `agx profiles`: every configured or discovered profile with account, plan and login state.
