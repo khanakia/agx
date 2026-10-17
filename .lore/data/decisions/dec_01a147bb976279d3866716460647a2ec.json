@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-09-24. gopkg.in/yaml.v3 with KnownFields(true) (unknown keys error), located by voltkit appdir (AGX_CONFIG_DIR / AGX_HOME override). Optional: zero-config discovery covers the common case. Why: voltkit ships no loader, the file is hand-edited and holds lists of profiles; strict parsing catches typos. A discovered profile whose name collides with a configured one is renamed <provider>-<name>.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:38.754643000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bb976279d3866716460647a2ec",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "AGX-004: optional strict YAML config at ~/.agx/config.yaml",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:38.754643000Z"
+}

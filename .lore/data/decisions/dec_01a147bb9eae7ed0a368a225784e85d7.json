@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-10-16. Default `agx login add` is a hidden paste; `--setup` runs `claude setup-token`. Why: the owner already had tokens to paste; scraping the vendor TUI for the token is fragile and would hold a copy of the screen.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:40.622970000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bb9eae7ed0a368a225784e85d7",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "Logins D6: login add runs claude setup-token only with --setup",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:40.622970000Z"
+}

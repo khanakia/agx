@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-10-16. A login whose provider does not fit, coming from AGX_LOGIN or a provider default, is skipped with a note (a non-fitting provider default silently); it is an error only when given by --login or a profile's login:. An unknown AGX_LOGIN name is an error. Why: an exported Claude login must not break every Codex command.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:40.777621000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bb9f49797d8e59c356552e13ae",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "Logins D11: wrong-provider login from env/default is skipped",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:40.777621000Z"
+}

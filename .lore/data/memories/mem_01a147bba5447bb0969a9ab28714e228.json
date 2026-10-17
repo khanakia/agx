@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Claude Code data layout: login in <home>/.credentials.json and keychain `Claude Code-credentials-<sha256(home)[:8]>` (default home: bare `Claude Code-credentials`); the freshest expiresAt wins. Identity in <home>/.claude.json (~/.claude.json for the default home) -> oauthAccount.emailAddress. Conversations at <home>/projects/<EncodePath(dir)>/<sessionId>.jsonl. EncodePath is lossy (a_b and a.b collide) exactly like Claude Code's own, so matching it is correct; verified 158/158 against real project dirs 2026-09-24.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:42.308765000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bba5447bb0969a9ab28714e228",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:42.308775000Z",
+  "updated_at": "2026-10-17T02:40:42.308765000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

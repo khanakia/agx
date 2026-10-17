@@ -1,0 +1,22 @@
+{
+  "_table": "rules",
+  "_v": 1,
+  "activation": "always",
+  "applies_to_description": null,
+  "archived_at": null,
+  "body": "Do not loop `agx` / `agx usage` while testing: every call hits each account's undocumented usage endpoint, and both vendors answer HTTP 429 when polled hard (Retry-After ~4 min seen 2026-09-24). Use fixtures (provider/*/testdata) and httptest servers instead.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:37.743426000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "globs": null,
+  "id": "rul_01a147bb936f768786ebb9045d529b7d",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "severity": "should",
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:37.743427000Z"
+}

@@ -1,0 +1,10 @@
+{
+  "_table": "entity_tags",
+  "_v": 1,
+  "created_at": "2026-10-17T02:41:12.571272000Z",
+  "entity_id": "dec_01a147bb95f87dbfb5ec118d5b1ac315",
+  "entity_table": "decisions",
+  "id": "etg_88e2f11da06e75a69a2449961e60708a",
+  "tag_id": "tag_e2859c3464b1743cbf8451510528d701",
+  "updated_at": "2026-10-17T02:41:12.571273000Z"
+}

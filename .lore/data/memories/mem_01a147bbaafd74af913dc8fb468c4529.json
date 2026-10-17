@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Real-machine checks with real setup-tokens, 2026-10-16 (LOGINS_SPEC 12.1): V1 PASS, `claude auth status` reports authMethod oauth_token when CLAUDE_CODE_OAUTH_TOKEN is set, even in a home with its own login, with no prompt. V2 FAIL, setup-tokens are inference-only: /api/oauth/usage and /api/oauth/profile answer 403 permission_error (scope user:profile), but /v1/messages returns anthropic-ratelimit-unified-* headers (led to D14). V3 lifetime one year from creation; revoke at claude.ai Settings > Claude Code / connected apps (not otherwise verified). V4 PASS, no file in the home changes after a run on the env token. V5 (Codex API key env var) not run.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:43.773305000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bbaafd74af913dc8fb468c4529",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:43.773317000Z",
+  "updated_at": "2026-10-17T02:40:43.773306000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

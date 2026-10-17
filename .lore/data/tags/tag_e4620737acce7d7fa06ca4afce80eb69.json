@@ -1,0 +1,10 @@
+{
+  "_table": "tags",
+  "_v": 1,
+  "color": null,
+  "created_at": "2026-10-17T02:41:07.601610000Z",
+  "id": "tag_e4620737acce7d7fa06ca4afce80eb69",
+  "name": "release",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "updated_at": "2026-10-17T02:41:07.601611000Z"
+}

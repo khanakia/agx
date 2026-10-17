@@ -1,0 +1,22 @@
+{
+  "_table": "rules",
+  "_v": 1,
+  "activation": "always",
+  "applies_to_description": null,
+  "archived_at": null,
+  "body": "Every agx picker or command that can act on 'here' or 'everywhere' defaults to the current folder, takes --all for everywhere, and never widens scope on its own: `sessions move -i` lists this folder's chats; a folder with none exits 1 with 'no chats in <dir>; use --all to pick from every folder'. `agx ws` / `resume -b` are global by design. Owner's rule 2026-10-14.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:37.548587000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "globs": null,
+  "id": "rul_01a147bb92ac78fcba9a8d049c7ffd8d",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "severity": "should",
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:37.548588000Z"
+}

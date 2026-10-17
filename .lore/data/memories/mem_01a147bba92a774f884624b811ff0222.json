@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "In the agent's Bash tool on the owner's Mac, chained zsh `for ... do ... done` one-liners fail with '(eval):1: parse error near done'. Wrap loops in bash -c '...' or put them in a script file and run it with bash.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:43.306478000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bba92a774f884624b811ff0222",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:43.306491000Z",
+  "updated_at": "2026-10-17T02:40:43.306478000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

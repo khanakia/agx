@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-09-24. One provider-neutral `agx sessions move` with safety enforced centrally (same provider, different homes, running-process blockers, --dry-run, backup, rollback); providers only plan, and apply is the shared provider.ApplyMovePlan. Claude ships (file renames); Codex is refused with the reason (SQLite index, see rul_01a147bb89e370cf8b115c840e7ca568). Project memory moves only on a full move, not with --only. Released v0.2.0 (retracted) / v0.2.1.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:39.107735000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bb98c37b3e896ea662b157d210",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "AGX-005: sessions move is generic, movers per provider, Codex refused",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:39.107736000Z"
+}

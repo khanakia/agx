@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-09-26 (before v0.3.0). /api/oauth/profile gives plan, subscription status, billing type and subscription_created_at only; the billing endpoint (subscription_details) answers oauth_token_not_accepted on api.anthropic.com and claude.ai is Cloudflare-gated. An estimate from the start day was wrong for a real account (anchor moved), so renewal was removed rather than guessed. Revisit only if an OAuth-accessible billing endpoint appears. Code: internal/cli/plan.go, provider/claude/subscription.go.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:39.459635000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bb9a2379b8be7d473ceb10b607",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "agx plan shows no renewal date",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:39.459635000Z"
+}

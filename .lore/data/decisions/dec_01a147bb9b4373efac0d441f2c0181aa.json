@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-10-14 (dd923c0). ci.yml runs `task check` + golangci-lint on push/PR to main; release.yml runs on a v* tag push (go test -race, then ubgo/volt-action with volt pinned, `volt release --from-tag`), skips a tag that already has a release, and a manual run republishes with clobber. Why: agx is public so Actions minutes are free (the owner's no-metered-CI rule targets private repos), and a laptop release had sat behind testlock. Check a run once with `gh run view`, never `gh run watch`.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:39.747257000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bb9b4373efac0d441f2c0181aa",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "CI and releases run on GitHub Actions (public repo)",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:39.747257000Z"
+}

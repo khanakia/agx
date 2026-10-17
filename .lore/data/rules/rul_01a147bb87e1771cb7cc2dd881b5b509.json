@@ -1,0 +1,22 @@
+{
+  "_table": "rules",
+  "_v": 1,
+  "activation": "always",
+  "applies_to_description": null,
+  "archived_at": null,
+  "body": "Keychain lookups must name the account: claude.Keychain.Get asks `security find-generic-password -s 'Claude Code-credentials' -a <macOS username>` first (what Claude Code writes), then falls back. Never go back to a service-only lookup: stale same-service entries (account `unknown`, empty token, expiresAt 0) exist on real machines and are returned first. Guarded by TestKeychainGet_PrefersAccount (fixed 2026-09-25, 2d59cd2, released v0.2.1). Diagnose with `security dump-keychain | grep -B8 'Claude Code-credentials'`.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:34.785464000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "globs": null,
+  "id": "rul_01a147bb87e1771cb7cc2dd881b5b509",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "severity": "must",
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:34.785465000Z"
+}

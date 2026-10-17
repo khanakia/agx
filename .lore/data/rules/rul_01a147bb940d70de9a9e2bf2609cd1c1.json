@@ -1,0 +1,22 @@
+{
+  "_table": "rules",
+  "_v": 1,
+  "activation": "always",
+  "applies_to_description": null,
+  "archived_at": null,
+  "body": "A release build is not a test run: never wrap `volt release` in testlock (a local release sat queued behind another project's 10-minute gate on 2026-10-14). Normal releases go through the tag-push workflow anyway.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:37.901055000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "globs": null,
+  "id": "rul_01a147bb940d70de9a9e2bf2609cd1c1",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "severity": "should",
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:37.901056000Z"
+}

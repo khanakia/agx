@@ -1,0 +1,22 @@
+{
+  "_table": "rules",
+  "_v": 1,
+  "activation": "always",
+  "applies_to_description": null,
+  "archived_at": null,
+  "body": ".volt.yml must NOT declare ldflags.vars: that replaces volt's default ubgo/buildinfo stamping and `agx version` then reports 'dev'. `.volt.yml` sets only `binary: agx` (since 2026-09-24).",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:35.821055000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "globs": null,
+  "id": "rul_01a147bb8bed70e2af92d5267f6f9c0b",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "severity": "must",
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:35.821056000Z"
+}

@@ -1,0 +1,22 @@
+{
+  "_table": "rules",
+  "_v": 1,
+  "activation": "always",
+  "applies_to_description": null,
+  "archived_at": null,
+  "body": "Never move Codex conversation files between CODEX_HOMEs. Codex indexes them in SQLite with absolute paths (state_5.sqlite table `threads`: rollout_path + cwd), so a move orphans the index, and writing Codex's sqlx-migrated DBs from agx is unsafe. `agx sessions move` refuses Codex on purpose (Codex implements provider.MoveUnsupported with the reason). Revisit only if Codex ships an import/re-index command (decided 2026-09-24, AGX-005).",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:35.299051000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "globs": null,
+  "id": "rul_01a147bb89e370cf8b115c840e7ca568",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "severity": "must",
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:35.299052000Z"
+}

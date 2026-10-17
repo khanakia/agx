@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-09-24. A child process cannot change the parent shell's directory, so `new` / `resume` are two-phase: run with AGX_PLAN_FILE set, the binary writes a plan JSON (dir, profile, resume id; never secrets; mode 0600; `version` must be 1), the generated shell function cds, emits OSC 7, then runs hidden `agx exec --plan` which deletes the plan and execs (syscall.Exec in internal/cli/exec_unix.go; Windows runs a child in exec_other.go). Why: all logic stays in tested Go; the shell layer (internal/shellinit, zsh + bash) is ~20 generated lines.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:38.590831000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bb96be7cb5b74032f9cbbf34eb",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "AGX-003: plan-file shell protocol for new/resume",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:38.590831000Z"
+}

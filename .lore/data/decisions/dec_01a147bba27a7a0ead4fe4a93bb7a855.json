@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-10-16. If a profile's own env:/secrets: set ANY variable the login would set or remove (CLAUDE_CODE_OAUTH_TOKEN, ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN), the login is refused. Why: protects api-billed profiles (e.g. a Moonshot/Kimi profile) whose key would otherwise be unset. Claude oauth-token login sets CLAUDE_CODE_OAUTH_TOKEN and removes ANTHROPIC_API_KEY + ANTHROPIC_AUTH_TOKEN, which would otherwise bill an API key; api-key login is the mirror.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:41.594658000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bba27a7a0ead4fe4a93bb7a855",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "A login is refused on a profile whose env sets the same variables",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:41.594658000Z"
+}

@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-10-16. Raw token values are stored only in ~/.agx/tokens.yaml (0600 in a 0700 dir; agx refuses a file readable by others) and are rejected if found in config.yaml. Why: config.yaml stays safe to sync or share; one enforced place for secrets. `agx doctor` warns if tokens.yaml sits inside a git work tree. A config.yaml created by `login add` is 0600. Code: login/tokens.go, config/logins.go.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:40.374812000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bb9db67c6b9bf643d5d8aa772e",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "Logins D4: raw tokens live only in ~/.agx/tokens.yaml (0600)",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:40.374812000Z"
+}

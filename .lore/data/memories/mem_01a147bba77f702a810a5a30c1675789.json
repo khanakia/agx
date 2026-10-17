@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Gotcha 2026-09-24: check order in sessions move matters. With 'provider cannot move' first, a Claude->Codex request said 'Codex can't move' instead of 'different providers'. Request errors (same provider, different homes) are checked first now; a test caught it.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:42.879010000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bba77f702a810a5a30c1675789",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:42.879023000Z",
+  "updated_at": "2026-10-17T02:40:42.879010000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

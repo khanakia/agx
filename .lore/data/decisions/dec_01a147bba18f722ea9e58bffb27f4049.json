@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-10-16. Nothing a setup-token can call returns the account (/api/oauth/profile answers 403), so a login's account is the user-written `account:` label and is not verified. Consequence: `agx plan --login NAME` cannot work for token logins.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:41.359142000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bba18f722ea9e58bffb27f4049",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "Logins D15: token login identity is the account: label only",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:41.359142000Z"
+}

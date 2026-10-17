@@ -9,7 +9,7 @@ By participating, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md
 ```sh
 git clone https://github.com/khanakia/agx.git
 cd agx
-task check   # gofmt, go vet, staticcheck, go test -race, build (needs Go 1.25+, Task, staticcheck)
+task check   # gofmt, go vet, staticcheck, go test -race, cross-compile, build (needs Go 1.26+, Task, staticcheck)
 ```
 
 ## Ways to contribute
@@ -30,6 +30,7 @@ task check   # gofmt, go vet, staticcheck, go test -race, build (needs Go 1.25+,
 - [ ] `task check` is green (lint, format, race tests, build).
 - [ ] New behavior has tests where it makes sense.
 - [ ] Docs/README/CHANGELOG updated if the change is user-facing.
+- [ ] `task docs:check` reports 0 errors (the README is bound to the code with docsync; CI runs it as the `docs` job).
 - [ ] No unrelated files or formatting churn.
 
 ## Changelog

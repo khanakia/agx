@@ -1,0 +1,12 @@
+{
+  "_table": "cookbook_recipes",
+  "_v": 1,
+  "body": "Only on the owner's explicit go-ahead. 1) Move CHANGELOG Unreleased to '## [X.Y.Z] - YYYY-MM-DD' (PATCH bump by default) and update the README download link. 2) Commit (no AI mention, no trailers), push to main, check CI once: `gh run list --limit 3`. 3) `git tag vX.Y.Z && git push --tags`; release.yml runs tests + `volt release --from-tag`. 4) Check once with `gh run list --workflow release.yml --limit 1`, then `gh release view vX.Y.Z`; verify download + checksum. Local alternative: `volt release . vX.Y.Z` directly (never through testlock; the workflow then skips that tag). `volt release . vX --snapshot` builds dist/ without publishing. A bad release: see rul_01a147bb8a9a7e57bbce58b07e6d8975.",
+  "created_at": "2026-10-17T02:41:21.293726000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "cbr_01a147bc3d8d7b17ab7cb26c6721d516",
+  "language": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "title": "Release agx",
+  "updated_at": "2026-10-17T02:41:21.293726000Z"
+}

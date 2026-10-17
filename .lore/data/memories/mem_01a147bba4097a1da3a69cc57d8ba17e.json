@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Claude profile endpoint GET https://api.anthropic.com/api/oauth/profile (same OAuth auth) returns organization.{organization_type, rate_limit_tier, billing_type, subscription_status, subscription_created_at}; no renewal date or interval. /api/oauth/subscription is 404; /api/organizations/<org>/subscription_details rejects OAuth tokens. Used by `agx plan` (v0.3.0, 2026-09-26).",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:41.993662000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bba4097a1da3a69cc57d8ba17e",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:41.993673000Z",
+  "updated_at": "2026-10-17T02:40:41.993662000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

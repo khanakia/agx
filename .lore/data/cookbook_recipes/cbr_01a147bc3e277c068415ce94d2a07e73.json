@@ -1,0 +1,12 @@
+{
+  "_table": "cookbook_recipes",
+  "_v": 1,
+  "body": "1) `agx sessions move <folder> --to <profile> --from <profile> --dry-run` and read the plan. 2) If blocked by a running Claude (pid N), show the process and ask the owner before stopping it (each pid needs its own approval); SIGTERM, wait for exit. 3) If blocked by 'already exists in the target account', compare the two copies and let the owner choose (see mem_01a147bba8397995b6cab632532cef7e). 4) Run the move, note the backup path. 5) Verify conversation counts in both homes and that `agx resume` in the folder lists them on the target. Codex cannot be moved (rul_01a147bb89e370cf8b115c840e7ca568).",
+  "created_at": "2026-10-17T02:41:21.447787000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "cbr_01a147bc3e277c068415ce94d2a07e73",
+  "language": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "title": "Move a folder's Claude conversations between accounts",
+  "updated_at": "2026-10-17T02:41:21.447787000Z"
+}

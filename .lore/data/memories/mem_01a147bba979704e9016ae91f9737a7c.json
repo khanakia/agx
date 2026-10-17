@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "`rm` is aliased to `rm -I` in the owner's shell and zsh expands aliases inside function bodies, so generated shell code (internal/shellinit) uses `command rm`; ad-hoc deletes use /bin/rm or move to the Trash.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:43.385019000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bba979704e9016ae91f9737a7c",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:43.385029000Z",
+  "updated_at": "2026-10-17T02:40:43.385019000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}
