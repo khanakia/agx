@@ -137,11 +137,8 @@ func (a *app) runBrowse(ctx context.Context, cfg config.Config, o *resumeOpts, q
 			return err
 		}
 		chats := ws[wi].convs
-		items := make([]string, len(chats))
-		for i, v := range chats {
-			items[i] = a.conversationLine(v)
-		}
-		ci, err := a.Picker.Pick("chat (esc: back)", items)
+		// Esc here means "back to the workspaces", so not pickOne.
+		ci, err := a.Picker.Pick("chat (esc: back)", a.conversationItems(chats))
 		if errors.Is(err, ErrCancelled) {
 			continue
 		}
@@ -187,9 +184,5 @@ func (a *app) pickWorkspace(ws []workspace) (int, error) {
 	for i, w := range ws {
 		items[i] = a.workspaceLine(w)
 	}
-	i, err := a.Picker.Pick("workspace", items)
-	if errors.Is(err, ErrCancelled) {
-		return 0, &ExitError{Code: ExitFailure, Err: err}
-	}
-	return i, err
+	return a.pickOne("workspace", items)
 }

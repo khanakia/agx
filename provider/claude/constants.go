@@ -58,9 +58,12 @@ const (
 // Launch flags.
 const resumeFlag = "--resume"
 
-// Credential sources, recorded on Credential.Source for diagnostics.
+// Credential sources, recorded on Credential.Source for diagnostics. They
+// are prefixes: Credential.Source is "<source> <path or keychain service>".
 const (
-	SourceFile     = "file"
+	// SourceFile is the credentials file inside the home (credentialsFile).
+	SourceFile = "file"
+	// SourceKeychain is the macOS login keychain entry Claude Code writes.
 	SourceKeychain = "keychain"
 )
 
@@ -127,5 +130,8 @@ const (
 // the tail.
 const (
 	headScanBytes = 256 << 10
-	tailScanBytes = 256 << 10
+	// scanStartBytes is the line scanner's first buffer: most transcript
+	// lines fit, and the scanner grows it up to headScanBytes for the rest.
+	scanStartBytes = 64 << 10
+	tailScanBytes  = 256 << 10
 )
