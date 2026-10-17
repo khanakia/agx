@@ -59,12 +59,12 @@ tasks:
       - python3 scripts/docs/snippets.py --check
 
   docs:lint:
-    desc: Lint docs/ and examples/ markdown - hard-wrapped prose, broken relative links and anchors, machine-local paths, authorship wording (rules pinned by scripts/docs/test_doclint.py, run first)
+    desc: Lint docs/, examples/ and the root README, CHANGELOG and CONTRIBUTING markdown - hard-wrapped prose, broken relative links and anchors, machine-local paths, authorship wording (rules pinned by scripts/docs/test_doclint.py, run first)
     env:
       PYTHONDONTWRITEBYTECODE: "1"
     cmds:
       - python3 -m unittest -q scripts/docs/test_doclint.py
-      - python3 scripts/docs/doclint.py docs examples
+      - python3 scripts/docs/doclint.py docs examples README.md CHANGELOG.md CONTRIBUTING.md
 
   docs:all:
     desc: Every docs gate in one go - docsync (docs:check), snippet freshness (docs:snippets:check) and the markdown lint (docs:lint)
