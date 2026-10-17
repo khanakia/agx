@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-10-17
+
+### Fixed
+
+- A stored login named `null` or `~` now reads back from `tokens.yaml`: its key is written quoted, where before it decoded as a YAML null and the token was lost.
+- A Claude usage probe whose headers carry a `NaN` or `Inf` utilization is refused, instead of the garbled window being skipped and the account looking idle to auto-pick.
+- `agx sessions gc --yes` no longer lists or counts a folder as removed when its removal failed; the exit code and `--json` output are unchanged.
+- Codex plan names that start with a non-ASCII letter keep valid UTF-8 in their label (the first character, not the first byte, is upper-cased).
+
+### Tests
+
+- Input-space matrix tests across every package (coverage 89.8% to 92.9%), which found the fixes above.
+
 ## [0.3.4] - 2026-10-17
 
 ### Fixed
@@ -154,7 +167,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.4...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.5...HEAD
+[0.3.5]: https://github.com/khanakia/agx/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/khanakia/agx/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/khanakia/agx/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/khanakia/agx/compare/v0.3.1...v0.3.2
