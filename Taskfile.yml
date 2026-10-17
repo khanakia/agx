@@ -48,6 +48,31 @@ tasks:
       - 'command -v ds >/dev/null || { echo "docs:check needs the ds CLI: go install github.com/ubgo/docsync/cli/cmd/ds@latest"; exit 1; }'
       - ds check
 
+  docs:snippets:
+    desc: Regenerate the Go source and program output quoted in docs/ and examples/ (the snip/out markers) from the real example programs
+    cmds:
+      - python3 scripts/docs/snippets.py --write
+
+  docs:snippets:check:
+    desc: Fail when a snippet quoted in docs/ or examples/ no longer matches its Go source or the example program's real output
+    cmds:
+      - python3 scripts/docs/snippets.py --check
+
+  docs:lint:
+    desc: Lint docs/ and examples/ markdown - hard-wrapped prose, broken relative links and anchors, machine-local paths, authorship wording (rules pinned by scripts/docs/test_doclint.py, run first)
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    cmds:
+      - python3 -m unittest -q scripts/docs/test_doclint.py
+      - python3 scripts/docs/doclint.py docs examples
+
+  docs:all:
+    desc: Every docs gate in one go - docsync (docs:check), snippet freshness (docs:snippets:check) and the markdown lint (docs:lint)
+    cmds:
+      - task: docs:check
+      - task: docs:snippets:check
+      - task: docs:lint
+
   install:
     desc: Install agx into $GOBIN (or ~/go/bin) so it is on PATH
     cmds:
