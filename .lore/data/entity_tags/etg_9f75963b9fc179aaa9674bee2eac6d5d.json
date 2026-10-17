@@ -1,0 +1,10 @@
+{
+  "_table": "entity_tags",
+  "_v": 1,
+  "created_at": "2026-10-17T02:41:21.520408000Z",
+  "entity_id": "cbr_01a147bc3e277c068415ce94d2a07e73",
+  "entity_table": "cookbook_recipes",
+  "id": "etg_9f75963b9fc179aaa9674bee2eac6d5d",
+  "tag_id": "tag_775553a57764720abae440b1276137f7",
+  "updated_at": "2026-10-17T02:41:21.520408000Z"
+}

@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "When two profiles share one home (a plan profile and an api-billed profile both on ~/.claude), a conversation cannot be tied to one profile: the resume list shows the config.ForHome winner and --json adds profiles: [...] (v0.3.1). Open as of 2026-10-14: the `sessions move -i` target list still marks the api profile '<- N chat(s) here now' next to the plan profile; picking it is refused by the same-home check. Real fix is giving that profile its own home (needs a fresh login and the owner's approval).",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:43.941440000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bbaba576ba8f6b6ff08c818939",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:43.941453000Z",
+  "updated_at": "2026-10-17T02:40:43.941440000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

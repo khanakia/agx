@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "README flag drift check (added after the owner could not find -p, 2026-09-24): every flag in `agx <cmd> --help` for usage, profiles, run, new, resume, doctor, shell-init, version and the sessions subcommands must appear in README.md, except the internal --plan / --print-dir. Script lives in the HANDOFF cheat-sheet; docsync (`task docs:check`) now binds README sentences too.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:43.468170000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bba9cc729f8e17dc97fcb4e69a",
+  "kind": "procedural",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:43.468185000Z",
+  "updated_at": "2026-10-17T02:40:43.468170000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Root-caused 2026-10-16 (771cccd): a token-login probe on an account at its weekly limit returned 429 and showed as 'rate-limited'. A 429 from /v1/messages still carries the full anthropic-ratelimit-unified-* header set, so the probe now reads it and reports the account as 100% used.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:42.157955000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bba4ad7e96b38f85b2574ed48a",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:42.157966000Z",
+  "updated_at": "2026-10-17T02:40:42.157955000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

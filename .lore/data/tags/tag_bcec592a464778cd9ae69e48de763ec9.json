@@ -1,0 +1,10 @@
+{
+  "_table": "tags",
+  "_v": 1,
+  "color": null,
+  "created_at": "2026-10-17T02:41:06.343870000Z",
+  "id": "tag_bcec592a464778cd9ae69e48de763ec9",
+  "name": "build",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "updated_at": "2026-10-17T02:41:06.343870000Z"
+}

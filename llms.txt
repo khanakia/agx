@@ -1,8 +1,8 @@
 # agx
 
-> Command-line toolkit for AI coding agents (Claude Code, OpenAI Codex): plan usage for every account at once, launch on the account with the most headroom, resume a conversation on the account that stores it (or browse every folder's conversations with `agx ws`), move conversations between accounts, and manage session folders.
+> Command-line toolkit for AI coding agents (Claude Code, OpenAI Codex): plan usage for every account at once, launch on the account with the most headroom, resume a conversation on the account that stores it (or browse every folder's conversations with `agx ws`), move conversations between accounts, run any account's home on another account's quota with named logins (`agx login`, `--login`), and manage session folders.
 
-agx is open source (khanakia/agx), written in Go. It reads the logins the agent CLIs already stored and makes one read-only GET per account to the vendor's own usage endpoint (api.anthropic.com, chatgpt.com); tokens are never refreshed, written or printed, and there is no telemetry.
+agx is open source (khanakia/agx), written in Go. It reads the logins the agent CLIs already stored and makes one read-only GET per account to the vendor's own usage endpoint (api.anthropic.com, chatgpt.com); a vendor CLI's stored login is never refreshed, written or printed. Long-lived tokens you add with `agx login add` are kept in a private 0600 file (or read from your own command or env var), passed only to the agent's environment, and never printed; their usage is read by a tiny model request that runs only on request. There is no telemetry.
 
 ## Docs
 - [README](https://github.com/khanakia/agx/blob/main/README.md): overview, install, usage, FAQ
@@ -11,6 +11,7 @@ agx is open source (khanakia/agx), written in Go. It reads the logins the agent 
 
 ## Install
 - Go: `go install github.com/khanakia/agx@latest`
+- Binaries: https://github.com/khanakia/agx/releases (latest v0.3.3)
 
 ## Links
 - Repository: https://github.com/khanakia/agx

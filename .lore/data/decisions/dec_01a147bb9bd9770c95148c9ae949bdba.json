@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-10-16. `agx login ...`, `--login`, `login:` in config. Why: it is what the vendor CLIs call it (/login, codex login); 'account' clashes with the vendor account itself (one account can have both a home login and a token login); 'auth' reads as a verb.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:39.897461000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bb9bd9770c95148c9ae949bdba",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "Logins D1: the noun is 'login'",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:39.897461000Z"
+}

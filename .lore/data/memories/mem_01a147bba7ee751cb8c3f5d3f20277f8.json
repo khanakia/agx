@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "`agx sessions move` refuses while any Claude process has its cwd in the folder ('Claude is running in this folder (pid N) - exit it first'), because a live session keeps appending to its .jsonl and a move would split the history (provider/claude/alive_*.go). --only <id> may move a conversation while an unrelated one in the folder is live. Fix path: the user exits it with /exit, or with approval send SIGTERM (not SIGKILL) so Claude flushes its transcript; stopping a --remote-control session ends its remote link (seen 2026-09-30).",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:42.990334000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bba7ee751cb8c3f5d3f20277f8",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:42.990343000Z",
+  "updated_at": "2026-10-17T02:40:42.990334000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

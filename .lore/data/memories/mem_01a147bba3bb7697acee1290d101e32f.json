@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Usage endpoints (both undocumented, both 429 when polled): Claude GET https://api.anthropic.com/api/oauth/usage with Bearer + `anthropic-beta: oauth-2025-04-20`; read limits[] (kind session / weekly_all / weekly_scoped, percent, severity, resets_at, scope.model.display_name), fall back to five_hour / seven_day*; extra_usage passed through (becomes a synthetic 'Extra usage' window when enabled). Codex GET https://chatgpt.com/backend-api/wham/usage with Bearer + ChatGPT-Account-Id; rate_limit.{primary,secondary}_window.{used_percent, limit_window_seconds, reset_at}; windows labelled by length (18000 s = 5-hour, 604800 = weekly, 2592000 = 30-day; the free plan has only the 30-day one). First confirmed via the open-source Claude-Usage-Tracker app (2026-09-24).",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:41.915430000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bba3bb7697acee1290d101e32f",
+  "kind": "core",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:41.915442000Z",
+  "updated_at": "2026-10-17T02:40:41.915430000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

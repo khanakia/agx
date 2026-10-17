@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Fixed upstream 2026-10-13: voltkit versioncmd v0.1.0/v0.2.0 required a nonexistent voltkit/output v0.0.0 (a workspace replace leaked into its published go.mod); agx built only because it required output directly (MVS picked the real version). versioncmd v0.2.1 requires output v0.2.0 with no replace, and agx moved to github.com/ubgo/voltkit/... in 8b8877a. The direct output require is now ordinary use (--json envelope), not a workaround.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:43.545039000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bbaa1970a0b67b2fefd2af11bd",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:43.545049000Z",
+  "updated_at": "2026-10-17T02:40:43.545039000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

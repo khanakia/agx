@@ -60,7 +60,7 @@ Claude and Codex subscriptions don't give you a token balance. They give you a *
 - **Session folders that clean up after themselves.** `agx new` makes a timestamped folder; `agx sessions gc` removes the empty ones that have no history; `agx sessions promote` turns one into a project and moves its Claude history with it.
 - **Any history, any account's quota.** `agx login` hands a long-lived token to Claude Code at launch, so your work folder can spend your personal plan (or the other way round) without moving a single conversation.
 - **Your shell habits, kept.** `agx shell-init` generates your old `cl` / `clw` / `clnew` style aliases from config, and lets `new` / `resume` / `ws` leave your shell in the session folder.
-- **Read-only and quota-free.** One GET per account to the vendor's own usage endpoint; logins are never refreshed or printed, and the only token agx ever writes is one you add with `agx login add`, into a private 0600 file.
+- **Read-only and quota-free by default.** One GET per account to the vendor's own usage endpoint; logins are never refreshed or printed, and the only token agx ever writes is one you add with `agx login add`, into a private 0600 file. The one request that spends quota, a token login's usage probe, runs only when you ask for it.
 
 | | **agx** | claude.ai / ChatGPT usage pages | Claude Code `/usage` | Local log analyzers | Hand-written shell aliases |
 |---|---|---|---|---|---|
@@ -476,7 +476,7 @@ A login asked for by name (`--login`, or a profile's `login:`) that does not fit
 
 - [Removing a login from agx does not revoke the token.](ds:block?id=revokehint-ngx5vax3) Revoke it where it was issued, in your claude.ai account settings.
 - The agent receives the token in its environment, so any process it starts (tools, hooks, MCP servers) can read it. Use a login only with agents and projects you would trust with that account.
-- Every probe (`agx usage --logins`, `--login NAME`, `--login auto`, `agx login check`) is a real, if tiny, request on that account: a few tokens of plan quota and one request toward its rate limits. Checking every few seconds in a loop would add up; `agx login add` does not probe.
+- Every probe (`agx usage --logins`, `--login NAME`, `--login auto`, `agx login check`) is a real, if tiny, request on that account: a few tokens of plan quota and one request toward its rate limits. Checking every few seconds in a loop would add up; `agx login add` does not probe. An account at its limit still reports its windows (the API answers 429 with the same headers), so it shows as 100% used with the reset time, not as an error.
 - Codex has no logins yet: its plan login exists only as refreshable tokens in `auth.json` (copying them can log the CLI out), and which API-key variable interactive Codex honours is not verified.
 
 What `agx login add` and `agx login use` write to config.yaml (comments and key order are kept):
@@ -717,7 +717,7 @@ shell:
 
 The top-level keys are [`sessions`](ds:block?id=sessionsspec-yzshjgvk), [`logins`](ds:block?id=loginspec-e68nnxxt), `providers`, [`profiles`](ds:block?id=profilespec-jymp7n69) and [`shell`](ds:block?id=shellspec-nagmshhq) ([schema](ds:block?id=file-charr88x)); `sessions.root` defaults to [`~/agx-sessions`](ds:block?id=defaultsessionsdir-xhtaakn6). A login names exactly one of `token: stored`, `token_cmd` or `token_env`, and [`token:` accepts only the word `stored`](ds:block?id=resolvelogin-6dbygptz): a raw token pasted there makes every command refuse the file, without echoing the token. `providers.<id>.login` and a profile's `login:` name a login of the same provider, or `home` (never `auto`, which is only a flag); see [Logins](#logins--use-any-accounts-quota-from-any-home).
 
-Raw login tokens live in `tokens.yaml` beside config.yaml (0600, never synced). Secrets use [`gopass:<path>` (runs `gopass show -o`) or `env:<NAME>`](ds:block?id=parse-39f37ayc). When a provider has any configured profile, [discovery for that provider is switched off](ds:block?id=resolve-3amwuw3d), so the config is the complete list.
+Raw login tokens live in `tokens.yaml` beside config.yaml (0600, never synced). `AGX_LOGIN=NAME` in the environment picks the login for every run in that shell (what `aglogin` exports); it comes after `--login` and before a profile's `login:`. Secrets use [`gopass:<path>` (runs `gopass show -o`) or `env:<NAME>`](ds:block?id=parse-39f37ayc). When a provider has any configured profile, [discovery for that provider is switched off](ds:block?id=resolve-3amwuw3d), so the config is the complete list.
 
 ## Shell integration
 

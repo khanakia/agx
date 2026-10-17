@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Release history: v0.1.0 2026-09-24 (first, volt release, 5 archives + checksums.txt, no windows/arm64 archive by volt's default list); v0.2.0 2026-09-24 sessions move (retracted, release page deleted, tag kept); v0.2.1 2026-09-25 keychain fix + retract; v0.3.0 2026-09-26 agx plan + Codex JWT expiry; v0.3.1 2026-10-14 pickers + profile column (last laptop release); v0.3.2 2026-10-14 first tag-push CI release; v0.3.3 2026-10-16 logins (PR #1 merged 2026-10-17). No Homebrew tap: .volt.yml has no brew: block. The repo was renamed from claude-usage to agx on 2026-09-24 (GitHub redirects the old URL).",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:44.111525000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bbac4f7806a99ece981a86e6a9",
+  "kind": "episodic",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:44.111538000Z",
+  "updated_at": "2026-10-17T02:40:44.111525000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

@@ -1,0 +1,10 @@
+{
+  "_table": "tags",
+  "_v": 1,
+  "color": null,
+  "created_at": "2026-10-17T02:41:06.930376000Z",
+  "id": "tag_3f6a9089ba5a7dbf99e53448f8c3d615",
+  "name": "git",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "updated_at": "2026-10-17T02:41:06.930376000Z"
+}

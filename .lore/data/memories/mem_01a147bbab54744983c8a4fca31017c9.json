@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Logins CLI facts (v0.3.3, 2026-10-16): `agx profiles` column STATE is the home login state, LOGIN is the login a run spends; --json adds login_name / login_source and keeps login. `aglogin` (shell-init) checks names via hidden `agx login exists`. `login use` on a discovered profile writes every discovered profile of that provider; `login use home -p X` writes `login: home` literally; `rm --force` clears references; `agx plan` accepts only --login home (the profile endpoint refuses setup-tokens); --dry-run never resolves tokens; config.yaml is edited in place by config/edit.go. --cmd needs sh on Windows.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:43.860280000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bbab54744983c8a4fca31017c9",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:43.860291000Z",
+  "updated_at": "2026-10-17T02:40:43.860280000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

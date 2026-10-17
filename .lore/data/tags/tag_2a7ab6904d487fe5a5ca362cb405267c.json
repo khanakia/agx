@@ -1,0 +1,10 @@
+{
+  "_table": "tags",
+  "_v": 1,
+  "color": null,
+  "created_at": "2026-10-17T02:41:07.457535000Z",
+  "id": "tag_2a7ab6904d487fe5a5ca362cb405267c",
+  "name": "public-repo",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "updated_at": "2026-10-17T02:41:07.457536000Z"
+}

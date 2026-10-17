@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Headless TUI testing: fzf writes ESC[6n and Codex writes OSC 10;? / OSC 11;? and wait for replies a runbay PTY never sends; answer them with `runbay session input <id> \"$(printf '\\033[1;1R')\"` or nothing renders. Exit Claude Code with /exit: two ctrl-c did not exit and the next typed line became a prompt. Prefer --dry-run + process inspection (ps, lsof -d cwd). For fzf pickers (agx ws, resume -b, sessions move -i) the fastest check is a fake `fzf` script first on PATH that logs the prompt, flags (--multi) and rows and prints the pick, combined with --dry-run (used for v0.3.1, 2026-10-14). Codex resume was verified at process level only, never on screen.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:43.225241000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bba8d973b192b0b3e225e748df",
+  "kind": "procedural",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:43.225255000Z",
+  "updated_at": "2026-10-17T02:40:43.225241000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

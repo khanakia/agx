@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-09-24. agx never refreshes a vendor login; an expired one is reported with the exact command that makes the vendor CLI refresh it. Why: refreshing rotates the refresh token, the vendor CLI's stored copy becomes invalid and the user is logged out. Consequence: a long-idle account shows 'expired' until used once. Narrowed by LOGINS_SPEC D5. See rule rul_01a147bb852171d080e52ed0d434f505.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:38.392900000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bb95f87dbfb5ec118d5b1ac315",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "AGX-002: credentials are read-only",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:38.392900000Z"
+}

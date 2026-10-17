@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-10-16. Codex keeps a ChatGPT-plan login only as refreshable tokens in <home>/auth.json; copying it to another home risks refresh-token rotation, so `agx login add --provider codex --kind oauth-token` is refused and a plan account stays one profile per home. Codex api-key logins (V5) were not verified on purpose: checking needs a metered OpenAI API call; build only when the owner asks.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:41.754774000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bba31a7bd3933fb9dafa1805ed",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "Codex: no plan-token logins; API-key logins unbuilt",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:41.754774000Z"
+}

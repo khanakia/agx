@@ -1,0 +1,22 @@
+{
+  "_table": "rules",
+  "_v": 1,
+  "activation": "always",
+  "applies_to_description": null,
+  "archived_at": null,
+  "body": "Layering is enforced by internal/archtest: `provider` is stdlib-only; provider/claude and provider/codex import provider + stdlib; config, secret, pick, sessions, login are public libraries (no CLI concerns); internal/cli is the ONLY package importing cobra or voltkit command modules. Everything outside internal/ is an importable library. archtest was verified by adding a forbidden import inside a multi-line import block (3 violations reported).",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:35.984065000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "globs": null,
+  "id": "rul_01a147bb8c90710583a5e3a1d62e23a5",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "severity": "must",
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:35.984066000Z"
+}

@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Root-caused 2026-09-24 (979eb7b): after heavy testing the usage endpoint answered 429 and agx printed 'unexpected HTTP 429: {'. Fix: provider/ratelimit.go maps 429 to provider.ErrRateLimited with the server's Retry-After, error bodies are one line, other accounts keep rendering, and a 429 is never shown as a login problem.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:42.071422000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bba45776748ddf2f1be0e0d369",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:42.071432000Z",
+  "updated_at": "2026-10-17T02:40:42.071422000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

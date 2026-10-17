@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Codex data layout: conversations at <home>/sessions/YYYY/MM/DD/rollout-*.jsonl, first line session_meta with payload.id and payload.cwd (keyed by id, not folder). Index state in state_5.sqlite (threads), thread_history_1.sqlite (turn projections), titles (thread_name) in session_index.jsonl. Not done yet: show Codex titles in `agx resume` from session_index.jsonl (they show as '(untitled)'). Codex HistoryChecker builds an in-memory cwd index per process. Resume = `codex resume <args> <id>`.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:42.384376000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bba59075c0a96880b7ec5e4118",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:42.384386000Z",
+  "updated_at": "2026-10-17T02:40:42.384376000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

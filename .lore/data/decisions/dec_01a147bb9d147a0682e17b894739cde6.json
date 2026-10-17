@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-10-16. A login's token is either pasted and stored (tokens.yaml), produced by any command (token_cmd, e.g. a secret-manager CLI), or read from an env var (token_env). No secret manager is required and no new secret-ref scheme is added: token_cmd covers every store. Why: a machine may not have the owner's secret manager; one mechanism instead of two.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:40.212656000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bb9d147a0682e17b894739cde6",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "Logins D3/D10: token source optional per login (stored, token_cmd, token_env)",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:40.212656000Z"
+}

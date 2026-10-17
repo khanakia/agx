@@ -1,0 +1,22 @@
+{
+  "_table": "rules",
+  "_v": 1,
+  "activation": "always",
+  "applies_to_description": null,
+  "archived_at": null,
+  "body": "README.md is bound by docsync (.ds/, remote defs in a comment block above '## License'); never put ds:def markers in .go files. `task docs:check` must report 0 errors; when it flags a sentence, fix it if untrue, then `ds ack`. CI runs it as the `docs` job (since 566fd28, 2026-10-16).",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:37.434962000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "globs": null,
+  "id": "rul_01a147bb923a7eb597c97dbae6c6456c",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "severity": "should",
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:37.434963000Z"
+}

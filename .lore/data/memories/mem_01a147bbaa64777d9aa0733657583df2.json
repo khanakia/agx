@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Root-caused twice (2026-10-14 TestKeychainGet timeout; 2026-10-16 token_cmd timeout ignored): when a killed child (fake sh) left a grandchild (sleep) holding stdout open, exec.Cmd.Wait blocked past the timeout. Fix in code with cmd.WaitDelay, not by loosening the test. Applies to every adapter that runs an external program (keychain, secret command, token_cmd, fzf).",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:43.620490000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bbaa64777d9aa0733657583df2",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:43.620500000Z",
+  "updated_at": "2026-10-17T02:40:43.620490000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

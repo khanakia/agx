@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-10-16 (built in 252b629). Setup-tokens live one year. A `stored` login past added+lifetime is refused; token_cmd / token_env logins only warn ('approximately'). Why: agx knows when a cmd/env login was registered, not when the token behind it was minted; a token rotated in the secret store would otherwise be blocked while it still works. `agx doctor` warns 30 days before. Code: provider.LoginLifetimer.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:41.473231000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bba201738aa9624deb6218246e",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "Logins D13: refuse only stored logins past expiry",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:41.473231000Z"
+}

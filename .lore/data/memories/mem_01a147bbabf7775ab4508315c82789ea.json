@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "v0.3.1 (dfff39c, 2026-10-14): `agx resume --list` and the picker show provider AND profile columns (the first version replaced 'claude' with the profile and the owner asked 'is it claude, codex or what'), one line per row (8-char id, '.../<last segment>' past 28 columns). `agx ws` / `resume --browse` group conversations by folder and hide folders that no longer exist (internal/cli/browse.go loadWorkspaces / pickWorkspace, shared with `sessions move -i --all`); TerminalPicker.PickMany adds fzf --multi. v0.3.2 (7b125e9): resume stays in this folder; the child-session marker was dropped.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:44.023481000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bbabf7775ab4508315c82789ea",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:44.023494000Z",
+  "updated_at": "2026-10-17T02:40:44.023481000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

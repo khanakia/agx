@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "2026-09-24. cobra for the command tree; voltkit appdir (config location), output (--json envelope) and versioncmd (`agx version`); volt for CI/release. Why: voltkit is the owner's standard kit for Go CLIs and agx grows many subcommands; consistent --json and version provenance with every other voltkit CLI. Consequence: agx was the first external consumer and surfaced the versioncmd output@v0.0.0 packaging bug. Since 8b8877a (2026-10-13) the import path is github.com/ubgo/voltkit/...",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:38.232396000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "dec_01a147bb955876129fb989a843a110d2",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "AGX-001: build on voltkit + cobra",
+  "trust_score": 0.5,
+  "updated_at": "2026-10-17T02:40:38.232396000Z"
+}

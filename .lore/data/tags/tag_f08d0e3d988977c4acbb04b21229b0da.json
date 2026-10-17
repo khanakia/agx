@@ -1,0 +1,10 @@
+{
+  "_table": "tags",
+  "_v": 1,
+  "color": null,
+  "created_at": "2026-10-17T02:41:07.967174000Z",
+  "id": "tag_f08d0e3d988977c4acbb04b21229b0da",
+  "name": "testing",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "updated_at": "2026-10-17T02:41:07.967174000Z"
+}

@@ -1,0 +1,10 @@
+{
+  "_table": "entity_tags",
+  "_v": 1,
+  "created_at": "2026-10-17T02:41:21.053622000Z",
+  "entity_id": "mem_01a147bbac4f7806a99ece981a86e6a9",
+  "entity_table": "memories",
+  "id": "etg_5a9ff4dfbce47902bd0e78fdf17fb472",
+  "tag_id": "tag_69b0cfe401ed74e0a8d444665ef3bbc8",
+  "updated_at": "2026-10-17T02:41:21.053622000Z"
+}

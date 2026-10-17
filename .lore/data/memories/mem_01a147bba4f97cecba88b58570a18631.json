@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Codex access tokens (<home>/auth.json tokens.access_token, tokens.account_id) are JWTs; agx reads the `exp` claim locally so an expired Codex login says 'expired' instead of failing with a 401 (v0.3.0, 2026-09-26). Codex stores no email/plan locally: they are only known after a usage fetch, so `agx profiles` shows them blank. Running `codex` once refreshes an expired login.",
+  "confidence": null,
+  "created_at": "2026-10-17T02:40:42.233846000Z",
+  "created_by_actor_id": "act_596bcaa243e17d28b4dbc5c959064ac5",
+  "id": "mem_01a147bba4f97cecba88b58570a18631",
+  "kind": "retrieved",
+  "last_validated_at": null,
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "docsi",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-10-17T02:40:42.233856000Z",
+  "updated_at": "2026-10-17T02:40:42.233846000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}
