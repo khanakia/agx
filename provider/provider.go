@@ -21,8 +21,10 @@ type ID string
 
 // Built-in provider IDs.
 const (
+	// Claude is Anthropic's Claude Code CLI (package provider/claude).
 	Claude ID = "claude"
-	Codex  ID = "codex"
+	// Codex is OpenAI's Codex CLI (package provider/codex).
+	Codex ID = "codex"
 )
 
 // Billing says how a profile is paid for, which decides whether it has usage
@@ -45,7 +47,10 @@ var BillingValues = []Billing{BillingPlan, BillingAPI}
 type Source string
 
 const (
-	SourceConfig     Source = "config"
+	// SourceConfig is a profile written in config.yaml.
+	SourceConfig Source = "config"
+	// SourceDiscovered is a profile a provider found on disk (a home with
+	// a login); it is dropped once the provider has any configured profile.
 	SourceDiscovered Source = "discovered"
 )
 
@@ -136,8 +141,11 @@ const (
 type Severity string
 
 const (
-	SeverityNormal    Severity = "normal"
-	SeverityWarning   Severity = "warning"
+	// SeverityNormal: comfortably under the cap.
+	SeverityNormal Severity = "normal"
+	// SeverityWarning: close to the cap; render colours its bar.
+	SeverityWarning Severity = "warning"
+	// SeverityExhausted: the cap is reached until the window resets.
 	SeverityExhausted Severity = "exhausted"
 )
 
@@ -264,11 +272,22 @@ type HistoryChecker interface {
 	HasHistory(home, dir string) bool
 }
 
-// Sentinel errors shared by all providers.
+// Sentinel errors shared by all providers. Callers branch on them with
+// errors.Is, so providers wrap them (fmt.Errorf("%w ...")) and never
+// replace them with look-alike messages.
 var (
-	ErrAPIBilled    = errors.New("billed per token: no usage windows")
-	ErrNotLoggedIn  = errors.New("not logged in")
-	ErrExpired      = errors.New("login expired")
+	// ErrAPIBilled means the profile pays per token, so there are no usage
+	// windows to show. It is an answer, not a failure: callers do not count
+	// it towards a non-zero exit.
+	ErrAPIBilled = errors.New("billed per token: no usage windows")
+	// ErrNotLoggedIn means the home holds no usable credential.
+	ErrNotLoggedIn = errors.New("not logged in")
+	// ErrExpired means the local credential is past its expiry. agx never
+	// refreshes it (that would log the vendor CLI out); one interactive run
+	// lets the vendor CLI refresh.
+	ErrExpired = errors.New("login expired")
+	// ErrUnauthorized means the server refused the credential (HTTP 401 /
+	// 403) although it looked valid locally.
 	ErrUnauthorized = errors.New("login rejected by the server")
 	// ErrRateLimited means the usage endpoint answered 429. It is transient
 	// (usually from polling usage many times a minute) and never a login

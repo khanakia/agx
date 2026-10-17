@@ -3,8 +3,10 @@ package cli
 import (
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -40,6 +42,17 @@ const areaWidth = 18
 
 // gitDirName marks a git work tree when walking up from sessions.root.
 const gitDirName = ".git"
+
+// Doctor areas: the first column of the text report and `area` in JSON.
+// Scripts filter on them, so they are fixed names; per-item areas are the
+// prefix plus the profile or login name.
+const (
+	areaConfig       = "config"
+	areaSessionsRoot = "sessions.root"
+	areaShell        = "shell"
+	areaProfilePfx   = "profile "
+	areaLoginPfx     = "login "
+)
 
 // finding is one doctor check result.
 type finding struct {
@@ -89,41 +102,42 @@ func (a *app) doctor() []finding {
 
 	path, rung, err := a.ConfigPath()
 	if err != nil {
-		add("config", levelFail, err.Error())
+		add(areaConfig, levelFail, err.Error())
 		return out
 	}
 	cfg, err := a.config()
 	if err != nil {
-		add("config", levelFail, err.Error())
+		add(areaConfig, levelFail, err.Error())
 		return out
 	}
 	if cfg.Found {
-		add("config", levelOK, fmt.Sprintf("%s (decided by %s)", render.ShortenHome(path, a.UserHome), rung))
+		add(areaConfig, levelOK, fmt.Sprintf("%s (decided by %s)", render.ShortenHome(path, a.UserHome), rung))
 	} else {
-		add("config", levelInfo, fmt.Sprintf("no file at %s — using discovered profiles and defaults", render.ShortenHome(path, a.UserHome)))
+		add(areaConfig, levelInfo, fmt.Sprintf("no file at %s — using discovered profiles and defaults", render.ShortenHome(path, a.UserHome)))
 	}
 
 	switch info, err := os.Stat(cfg.SessionsRoot); {
 	case err != nil:
-		add("sessions.root", levelInfo, render.ShortenHome(cfg.SessionsRoot, a.UserHome)+" does not exist yet (created by `agx new`)")
+		add(areaSessionsRoot, levelInfo, render.ShortenHome(cfg.SessionsRoot, a.UserHome)+" does not exist yet (created by `agx new`)")
 	case !info.IsDir():
-		add("sessions.root", levelFail, cfg.SessionsRoot+" is not a directory")
+		add(areaSessionsRoot, levelFail, cfg.SessionsRoot+" is not a directory")
 	default:
 		if repo := enclosingRepo(cfg.SessionsRoot); repo != "" {
-			add("sessions.root", levelWarn, "inside git repo "+repo+" — Claude Code would pool every session's memory into it")
+			add(areaSessionsRoot, levelWarn, "inside git repo "+repo+" — Claude Code would pool every session's memory into it")
 		} else {
-			add("sessions.root", levelOK, render.ShortenHome(cfg.SessionsRoot, a.UserHome))
+			add(areaSessionsRoot, levelOK, render.ShortenHome(cfg.SessionsRoot, a.UserHome))
 		}
 	}
 
 	now := a.Now()
 	for _, p := range cfg.Profiles {
-		area := "profile " + p.Name
+		area := areaProfilePfx + p.Name
 		// Config-only checks first (secrets): they do not depend on the
 		// binary or home, and must be reported even when those are broken —
 		// the later checks `continue` on the first failure.
-		for name, raw := range p.Secrets {
-			ref, err := secret.Parse(raw)
+		// Sorted: map order would shuffle the report (and its JSON) run to run.
+		for _, name := range slices.Sorted(maps.Keys(p.Secrets)) {
+			ref, err := secret.Parse(p.Secrets[name])
 			if err != nil {
 				add(area, levelFail, name+": "+err.Error())
 				continue
@@ -169,9 +183,9 @@ func (a *app) doctor() []finding {
 	out = append(out, a.doctorLogins(cfg)...)
 
 	if v, ok := a.LookupEnv(appmeta.EnvShellInit); ok && v != "" {
-		add("shell", levelOK, "shell layer active ("+v+")")
+		add(areaShell, levelOK, "shell layer active ("+v+")")
 	} else {
-		add("shell", levelInfo, fmt.Sprintf("shell layer not loaded — add `eval \"$(%s shell-init %s)\"` to your shell rc so new/resume can cd", appmeta.Name, shellinit.Zsh))
+		add(areaShell, levelInfo, fmt.Sprintf("shell layer not loaded — add `eval \"$(%s shell-init %s)\"` to your shell rc so new/resume can cd", appmeta.Name, shellinit.Zsh))
 	}
 	return out
 }
@@ -224,7 +238,7 @@ func (a *app) doctorLogins(cfg config.Config) []finding {
 	}
 	now := a.Now()
 	for _, l := range cfg.Logins {
-		area := "login " + l.Name
+		area := areaLoginPfx + l.Name
 		switch l.Source {
 		case login.SourceStored:
 			if refused {
@@ -264,8 +278,8 @@ func (a *app) doctorLogins(cfg config.Config) []finding {
 	return out
 }
 
-// areaTokens is the doctor area for tokens.yaml.
-const areaTokens = "tokens.yaml"
+// areaTokens is the doctor area for tokens.yaml (login.TokenFileName).
+const areaTokens = login.TokenFileName
 
 // tokenDirOtherBits are the group/other bits that should be clear on the
 // dir holding tokens.yaml (agx's config dir, 0700 by the logins spec §4.1).
