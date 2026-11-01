@@ -56,7 +56,7 @@ Every user-facing feature of agx, built from the code (`internal/cli`, `config`,
 | Newest match without a picker (`--last`) | `internal/cli` | [Resume: skip the picker](../guides/running/resume.md#step-3--skip-the-picker-with---last) | — |
 | Search every folder (`--all`) and cap the scan (`--limit`, default 50) | `internal/cli` | [Resume: search every folder](../guides/running/resume.md#step-4--search-every-folder-with---all) | [conversations](../../examples/conversations/) |
 | Print instead of launching (`--list`, `--list --json`) | `internal/cli` | [Resume: print instead of launching](../guides/running/resume.md#step-5--print-instead-of-launching-with---list) | — |
-| Override the resuming profile (`resume -p`) | `internal/cli` | [Resume: override the profile](../guides/running/resume.md#step-7--override-the-profile-with--p-advanced) | — |
+| Override the resuming profile (`resume -p`) | `internal/cli` | [Resume: override the profile](../guides/running/resume.md#step-8--override-the-profile-with--p-advanced) | — |
 | Workspace picker: any folder with chats, then a chat (`agx ws`, `resume -b/--browse`, `ws --list`) | `internal/cli` | [Workspace picker](../guides/running/workspace-picker.md) | — |
 | Several profiles sharing one home: launch-profile choice and `profiles` in JSON | `config`, `internal/cli` | [Resume: which profile](../guides/running/resume.md#step-6--know-which-profile-a-conversation-resumes-on) | [config-resolve](../../examples/config-resolve/) |
 | Fast transcript reading (folder from the head, title from the tail) | `provider/claude` | [Workspace picker: pitfalls](../guides/running/workspace-picker.md#pitfalls) | [conversations](../../examples/conversations/) |

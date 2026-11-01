@@ -70,7 +70,30 @@ The list, the picker and the launch all use this same rule (`config.ForHome`), s
 
 A [project binding](../projects/overview.md) does not change this: its profile half is ignored by `resume`, because the conversation can only continue in the home that stores it. Its login half does apply, and the binding that counts is the one covering the conversation's folder, so `agx resume --all` typed anywhere follows the client repo's binding. To continue a conversation on another login, exit the agent and run `agx resume --last --login NAME`.
 
-## Step 7 — Override the profile with `-p` (advanced)
+## Step 7 — Resume on another login with `--login`
+
+```sh
+agx resume --login erman            # pick a conversation in this folder, run it on that login
+agx resume --last --login erman     # the newest one here, no picker
+agx resume --all --login erman      # pick from every folder
+agx ws --login erman                # pick a workspace, then a chat
+clr --login erman                   # the same through a shell alias (clr = resume)
+```
+
+`--login NAME` keeps the conversation in the home that stores it, so its history is intact, and changes only the token, and so whose quota the run spends. `--login home` runs it on the home's own login, and `--login auto` probes every login and picks the one with the most headroom. A running agent keeps the token it started with: to switch in the middle of a chat, `/exit` it and run `agx resume --last --login NAME` in the same folder. Add `--dry-run` to see what would run without starting anything:
+
+```text
+$ agx resume --last --login erman --dry-run
+profile: personal (claude, /home/you/.claude)
+login:   erman (--login)
+dir:     /home/you/code/app
+env:     CLAUDE_CODE_OAUTH_TOKEN=<token:env>
+exec:    claude --resume dbcaeaf2-7d1c-4e8b-b3a4-2c5f9e8d7a33
+```
+
+The token value is never printed; `<token:env>` names where it comes from (`stored`, `cmd` or `env`). Adding and choosing logins: [Logins](../logins/overview.md).
+
+## Step 8 — Override the profile with `-p` (advanced)
 
 ```sh
 agx resume -p work 2bec3f80 --dry-run
