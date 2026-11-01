@@ -686,8 +686,8 @@ func TestLoginKind_Commands(t *testing.T) {
 		add  []string
 		want string
 	}{
-		{[]string{"login", "add", "r1", "--env", "REFRESH"}, "login r1: claude: this token cannot run Claude: it is an OAuth refresh token"},
-		{[]string{"login", "add", "r2", "--env", "APIVAL"}, "login r2 is kind oauth-token, but its token is an api-key by its prefix — re-add it with `agx login add r2 --replace --kind api-key`"},
+		{[]string{"login", "add", "r1", "--env", "REFRESH"}, "claude: this token cannot run Claude: it is an OAuth refresh token"},
+		{[]string{"login", "add", "r2", "--env", "APIVAL"}, "kind oauth-token, but its token is an api-key by its prefix — re-add it with `agx login add r2 --replace --kind api-key`"},
 		{[]string{"login", "add", "r3", "--cmd", "printf sk-ant-admin01-DUMMY"}, "Admin API key"},
 	} {
 		// The add keeps the login (the env or command may hand back another
