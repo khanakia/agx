@@ -74,27 +74,27 @@ Open a new terminal afterwards; `agx doctor` then shows `✓ shell  shell layer 
 
 ## Try it
 
-Checking and installing the Linux amd64 archive of v0.3.5:
+Checking and installing the Linux amd64 archive of v0.3.6:
 
 ```text
 $ grep "agx_${VERSION}_${PLATFORM}.tar.gz" checksums.txt | sha256sum -c
-agx_v0.3.5_linux_amd64.tar.gz: OK
+agx_v0.3.6_linux_amd64.tar.gz: OK
 $ agx version
-agx v0.3.5
+agx v0.3.6
   source:      ldflags
-  commit:      f2c5427ad65ed9fc5709acfb4ed8d51d9d33832c
-  built:       2026-10-17T05:35:49Z
+  commit:      20a22679c2bb21b25cbe410dbd4d01af4783215e
+  built:       2026-11-01T16:20:24Z
   go:          go1.26.4
   platform:    linux/amd64
 $ agx --version
-agx version v0.3.5
+agx version v0.3.6
 ```
 
 The same version built with `go install` reports where its version came from differently, because `go install` does not stamp a commit or build time:
 
 ```text
 $ agx version
-agx v0.3.5
+agx v0.3.6
   source:      module
   commit:      unknown
   built:       unknown
