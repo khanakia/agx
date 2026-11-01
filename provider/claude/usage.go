@@ -2,6 +2,7 @@ package claude
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -81,14 +82,36 @@ func (c *UsageClient) get(ctx context.Context, endpoint, accessToken string) ([]
 		return nil, fmt.Errorf("claude: read response: %w", err)
 	}
 	switch {
+	case resp.StatusCode == http.StatusForbidden && scopeInsufficient(body):
+		return nil, provider.ErrInferenceOnly
 	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
-		return nil, fmt.Errorf("%w (HTTP %d)", provider.ErrUnauthorized, resp.StatusCode)
+		return nil, fmt.Errorf("%w (HTTP %d%s)", provider.ErrUnauthorized, resp.StatusCode, apiMessage(body, accessToken))
 	case resp.StatusCode == http.StatusTooManyRequests:
 		return nil, provider.RateLimitError(resp.Header)
 	case resp.StatusCode != http.StatusOK:
 		return nil, fmt.Errorf("claude: unexpected HTTP %d: %s", resp.StatusCode, snippet(body))
 	}
 	return body, nil
+}
+
+// scopeErrorCode is error.details.error_code on a 403 whose token is valid
+// but lacks the scope (real sample, 2026-11-01:
+// {"type":"error","error":{"type":"permission_error","message":"OAuth token
+// does not meet scope requirement any_of(user:profile, user:office)",
+// "details":{"error_code":"oauth_scope_insufficient",…}}}).
+const scopeErrorCode = "oauth_scope_insufficient"
+
+// scopeInsufficient reports whether body is that scope refusal, as opposed
+// to a revoked or foreign token, which also answers 403.
+func scopeInsufficient(body []byte) bool {
+	var w struct {
+		Error struct {
+			Details struct {
+				ErrorCode string `json:"error_code"`
+			} `json:"details"`
+		} `json:"error"`
+	}
+	return json.Unmarshal(body, &w) == nil && w.Error.Details.ErrorCode == scopeErrorCode
 }
 
 // snippet trims an error body for inclusion in an error message. The cut

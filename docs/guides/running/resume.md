@@ -68,6 +68,8 @@ The conversation's home decides it. A conversation stored in `~/.claude-work` re
 
 The list, the picker and the launch all use this same rule (`config.ForHome`), so the profile column always names the profile the launch will use. `--json` adds `profiles` with every candidate.
 
+A [project binding](../projects/overview.md) does not change this: its profile half is ignored by `resume`, because the conversation can only continue in the home that stores it. Its login half does apply, and the binding that counts is the one covering the conversation's folder, so `agx resume --all` typed anywhere follows the client repo's binding. To continue a conversation on another login, exit the agent and run `agx resume --last --login NAME`.
+
 ## Step 7 — Override the profile with `-p` (advanced)
 
 ```sh

@@ -289,6 +289,11 @@ var (
 	// ErrUnauthorized means the server refused the credential (HTTP 401 /
 	// 403) although it looked valid locally.
 	ErrUnauthorized = errors.New("login rejected by the server")
+	// ErrInferenceOnly means the server accepted the token but it lacks the
+	// scope for account, plan and usage endpoints: a Claude `setup-token`
+	// can run Claude and nothing else. It is not a login problem, so callers
+	// must not suggest logging in again.
+	ErrInferenceOnly = errors.New("this token can only run Claude: it has no profile scope (a `claude setup-token` token), so its account, plan and usage cannot be read")
 	// ErrRateLimited means the usage endpoint answered 429. It is transient
 	// (usually from polling usage many times a minute) and never a login
 	// problem, so callers must not suggest re-logging in for it.

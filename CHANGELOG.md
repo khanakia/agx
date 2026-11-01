@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `agx profile add NAME`: creates the home (`~/.claude-NAME`, or `~/.codex-NAME` with `--provider codex`; `--home` for another folder) with mode 0700 and adds the profile to config.yaml, keeping comments. A new Claude home links `CLAUDE.md`, `skills` and `settings.json` from `~/.claude` when they exist there; nothing is ever overwritten, `--bare` links nothing, and a home that already exists is adopted untouched. `--login` sets the profile's login, `--setup` runs `claude auth login` (or `codex login`) for the new home, `--dry-run` prints the plan.
+- `agx project use [-p PROFILE] [--login LOGIN]`, `show`, `ls`, `rm`: folder bindings, stored in config.yaml under `projects:` keyed by the folder's absolute path with symlinks resolved, never in the repo. The longest bound path (by whole folder names) covers a folder and everything under it. Profile and login resolve independently: profile from `-p`, the binding, the default profile; login from `--login`, `AGX_LOGIN`, the binding, the profile's `login:`, the provider default, the home. `resume` keeps the conversation's home and takes only the binding's login, from the conversation's folder. `show` explains which rule chose each part; `ls` and `show` have `--json` (`project.list`, `project.show`).
+- A bare `agx` in a bound folder, with a terminal on stdin and stdout and no flags, starts the agent like `agx run` after one stderr line (`agx: project PATH -> profile NAME, login NAME`). Piped, with flags, or in an unbound folder it shows usage as before; `agx usage` always does.
+- `agx doctor` checks every binding (a removed profile or login, a login that cannot run the bound profile, a folder that no longer exists); `agx login ls` lists bindings under USED-BY, and `agx login rm` refuses while a binding uses the login (`--force` clears it, removing a binding left with nothing to bind).
+- Token kind detection: `agx login add` sets the kind from a Claude token's prefix (`sk-ant-oat…` oauth-token, `sk-ant-api…` api-key), refuses a contradicting `--kind`, and refuses a refresh token (`sk-ant-ort…`) or an Admin API key (`sk-ant-admin…`). The same check runs on every resolution (the add check, `agx login check`, each launch), so `--cmd` and `--env` sources are covered. Library: the optional `provider.LoginKindDetector` upgrade.
+- Library: `config.Project`, `config.MatchProject`, `config.CanonicalPath`, `config.ExpandPath`, `config.ValidProfileName`, `Config.ProjectFor`, `Editor.AddProfile`, `Editor.SetProject`, `Editor.RemoveProject`; `provider.HomeSetup`, `provider.HomeLink`, `provider.PlanHomeLinks`, `provider.ApplyHomeLinks`, `provider.ErrInferenceOnly`; `claude.ErrUnusableToken`.
+
+### Changed
+
+- A 403 from the Claude usage or profile endpoint whose `error.details.error_code` is `oauth_scope_insufficient` (a setup-token) now reports `provider.ErrInferenceOnly` with a hint to use `agx usage --login NAME`, instead of "log in again". Other 401/403 answers carry the server's message, for example `login rejected by the server (HTTP 403: OAuth authentication is currently not allowed for this organization.)`.
+- The login precedence gains the project binding after `AGX_LOGIN`; a launch that a binding chose says so in `--dry-run` (`project:` line, `login: NAME (project binding at PATH)`), and the launch plan of `new` / `resume` / `ws` carries the binding's login.
+
 ## [0.3.5] - 2026-10-17
 
 ### Fixed

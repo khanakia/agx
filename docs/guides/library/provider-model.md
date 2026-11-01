@@ -267,7 +267,11 @@ func (e Echo) Launch(p provider.Profile, req provider.LaunchRequest) (provider.C
 
 ## Step 4 — Add optional upgrades only where they are true
 
-Capabilities beyond the core are separate interfaces that agx detects with a type assertion, so a provider that cannot do something is never forced to pretend. The upgrades are `ConversationLister`, `HistoryChecker`, `HistoryMover`, `ConversationMover` (or `MoveUnsupported` to explain why not), `SubscriptionReader`, `LoginLauncher`, `LoginLifetimer` and `LoginUsageReader`. The example implements only `HistoryChecker`:
+Capabilities beyond the core are separate interfaces that agx detects with a type assertion, so a provider that cannot do something is never forced to pretend. The upgrades are `ConversationLister`, `HistoryChecker`, `HistoryMover`, `ConversationMover` (or `MoveUnsupported` to explain why not), `SubscriptionReader`, `LoginLauncher`, `LoginLifetimer`, `LoginUsageReader`, `LoginKindDetector` and `HomeSetup`.
+
+- `LoginKindDetector.DetectLoginKind(value)` recognises a credential's kind from its shape (a vendor prefix). It returns `("", nil)` for a value it does not recognise, a kind for one it does, and an error for a value it recognises as unusable (Claude: a refresh token or an Admin key). The error must never quote the value. agx calls it on every token it resolves.
+- `HomeSetup` prepares a new home for `agx profile add`: `SharedHomeFiles()` names the entries of the default home to symlink (nil when nothing is safe to share; Codex returns nil), and `LoginCommand(profile, env)` builds the vendor's interactive login for that home. `provider.PlanHomeLinks` and `provider.ApplyHomeLinks` do the linking: a link is made only when its source exists and its target is absent, and `os.Symlink` never replaces a file that appeared in between.
+- `provider.ErrInferenceOnly` is the sentinel for a token the server accepts but that lacks the scope for account, plan and usage endpoints (a Claude setup-token). Return it from `Usage` or `Subscription` instead of `ErrUnauthorized`, so callers do not suggest logging in again. The example implements only `HistoryChecker`:
 
 <!-- snip: examples/custom-provider/main.go func:HasHistory -->
 

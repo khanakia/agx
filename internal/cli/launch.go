@@ -31,6 +31,10 @@ type launchOpts struct {
 	dryRun   bool
 	// login is --login: a login name, "home", or "" for the defaults.
 	login string
+	// providerSet is true when --provider was given. Its default is a real
+	// value, so only this tells "claude by default" from "claude on request",
+	// and only a request overrides a binding to another provider's profile.
+	providerSet bool
 }
 
 func (o *launchOpts) bind(c *cobra.Command) {
@@ -53,11 +57,17 @@ func newRunCmd(a *app) *cobra.Command {
 		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := ctxOf(cmd)
-			p, err := a.resolveProfile(ctx, o)
+			cfg, err := a.config()
 			if err != nil {
 				return err
 			}
 			dir, err := a.Getwd()
+			if err != nil {
+				return err
+			}
+			a.useProject(cfg, dir)
+			o.providerSet = cmd.Flags().Changed(flagProvider)
+			p, err := a.resolveProfile(ctx, o)
 			if err != nil {
 				return err
 			}
@@ -85,6 +95,14 @@ func newNewCmd(a *app) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// The binding of the folder `new` was invoked from: the session
+			// folder it creates is usually outside any binding.
+			invokedFrom, err := a.Getwd()
+			if err != nil {
+				return err
+			}
+			a.useProject(cfg, invokedFrom)
+			o.providerSet = cmd.Flags().Changed(flagProvider)
 			p, err := a.resolveProfile(ctx, o)
 			if err != nil {
 				return err
@@ -250,6 +268,9 @@ func (a *app) resumeConversation(ctx context.Context, cfg config.Config, o *resu
 	if !ok {
 		return fmt.Errorf("no profile uses %s (%s); add one to the config", chosen.Home, chosen.Provider)
 	}
+	// The conversation's folder decides, not where `resume --all` was typed.
+	// Only the binding's login applies: the conversation lives in its home.
+	a.useProject(cfg, chosen.Dir)
 	req := provider.LaunchRequest{Dir: chosen.Dir, ResumeID: chosen.ID, Args: o.agentArgs}
 	if o.dryRun {
 		return a.launch(ctx, p, req, true, o.login)
@@ -428,6 +449,15 @@ func (a *app) resolveProfile(ctx context.Context, o *launchOpts) (provider.Profi
 	}
 	switch o.profile {
 	case "":
+		if name := a.project.Profile; name != "" {
+			p, ok := cfg.ByName(name)
+			if !ok {
+				return provider.Profile{}, errBrokenBinding(a.project, profileGone(name))
+			}
+			if !o.providerSet || p.Provider == id {
+				return p, nil
+			}
+		}
 		p, ok := cfg.Default(id)
 		if !ok {
 			return provider.Profile{}, usageErr(fmt.Errorf("no %s profile found (run `agx doctor`)", id))
@@ -521,7 +551,7 @@ func (a *app) launch(ctx context.Context, p provider.Profile, req provider.Launc
 	if dryRun {
 		return a.printDryRun(p, cmd, secretNames, lc, loginLines)
 	}
-	if lc.Login != nil {
+	if lc.Login != nil && !a.announced {
 		a.warn(p.Name + " · login " + lc.Login.Name)
 	}
 	return a.Exec(cmd)
@@ -531,6 +561,9 @@ func (a *app) launch(ctx context.Context, p provider.Profile, req provider.Launc
 // agx changed are listed, and secrets appear as NAME=<secret:scheme>.
 func (a *app) printDryRun(p provider.Profile, cmd provider.Command, secretNames []string, lc loginChoice, loginLines []string) error {
 	var b strings.Builder
+	if a.project.Path != "" {
+		fmt.Fprintf(&b, "project: %s (%s)\n", a.project.Path, bindingSummary(a.project))
+	}
 	fmt.Fprintf(&b, "profile: %s (%s, %s)\n", p.Name, p.Provider, p.Home)
 	fmt.Fprintf(&b, "login:   %s\n", lc.describe())
 	fmt.Fprintf(&b, "dir:     %s\n", cmd.Dir)
@@ -572,8 +605,9 @@ type plan struct {
 	Profile  string   `json:"profile"`
 	ResumeID string   `json:"resume_id,omitempty"`
 	Args     []string `json:"args,omitempty"`
-	// Login is the --login value the user gave (a name or "home"), so exec
-	// launches on the same login; never a token.
+	// Login is the --login value the user gave, or what the folder's binding
+	// chose (a name or "home"), so exec launches on the same login; never a
+	// token.
 	Login string `json:"login,omitempty"`
 }
 
@@ -590,6 +624,21 @@ func (a *app) launchOrPlan(ctx context.Context, pl plan, p provider.Profile, req
 	path, ok := a.LookupEnv(appmeta.EnvPlanFile)
 	if !ok || path == "" {
 		return a.launch(ctx, p, req, false, pl.Login)
+	}
+	// exec runs after the shell has moved, in a folder that may match another
+	// binding or none, so what the binding chose travels in the plan.
+	if pl.Login == "" && a.project.Login != "" {
+		cfg, err := a.config()
+		if err != nil {
+			return err
+		}
+		lc, err := a.chooseLogin(ctx, cfg, p, "")
+		if err != nil {
+			return err
+		}
+		if strings.HasPrefix(lc.Source, srcBinding) {
+			pl.Login = lc.name()
+		}
 	}
 	pl.Version = planVersion
 	raw, err := json.Marshal(pl)

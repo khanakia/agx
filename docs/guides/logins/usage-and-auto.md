@@ -81,7 +81,7 @@ Each exits 2.
 
 - **Probing in a loop adds up.** Each probe is a real request on that account. A status bar that runs `agx usage --logins` every few seconds spends quota and rate limit on every account it lists; use plain `agx usage` (homes only, free) for that, and probe on demand.
 - **`auto` is only a flag.** It is refused in `AGX_LOGIN`, in a profile's or provider's `login:`, by `agx login use` and by `agx usage --login` (`config/logins.go`, `ErrAutoLogin`; `internal/cli/usage.go`, `usageLogin`), so probing never becomes a silent default.
-- **A probed login has no account email.** The profile endpoint refuses setup-tokens, so a probed row knows only that the token works; the `account` shown is the label you gave with `--account` (`provider/claude/login.go`, `LoginUsage`).
+- **A probed login has no account email.** The profile endpoint refuses setup-tokens (HTTP 403 with `error_code` `oauth_scope_insufficient`, which agx reports as `this token can only run Claude: it has no profile scope …`), so a probed row knows only that the token works; the `account` shown is the label you gave with `--account` (`provider/claude/login.go`, `LoginUsage`).
 - **An api-key login is reported as billed per token, never probed.** It has no plan windows to compare, and `--login auto` treats it like any api-billed candidate, which auto-pick never chooses.
 - **An expired stored login drops out of auto.** Past its expiry it fails to resolve (see [Add and manage logins](add-and-manage.md#step-8--renew-before-expiry)), so `--login auto` leaves it out with that reason rather than probing it.
 

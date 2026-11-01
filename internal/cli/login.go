@@ -81,6 +81,14 @@ type loginChoice struct {
 	Source string
 }
 
+// name is the login's name, or "home" for the home login.
+func (c loginChoice) name() string {
+	if c.Login == nil {
+		return login.Home
+	}
+	return c.Login.Name
+}
+
 // describe renders the choice for --dry-run and `agx profiles`.
 func (c loginChoice) describe() string {
 	if c.Login == nil {
@@ -92,7 +100,10 @@ func (c loginChoice) describe() string {
 	return c.Login.Name + " (" + c.Source + ")"
 }
 
-// chooseLogin applies the precedence of logins spec §5.4. A wrong-provider
+// chooseLogin applies the precedence of logins spec §5.4, with the folder's
+// project binding after AGX_LOGIN: --login, AGX_LOGIN, binding, profile,
+// provider, home. AGX_LOGIN stays above the binding because `aglogin` is a
+// choice made for this terminal just now. A wrong-provider
 // or incompatible login from AGX_LOGIN is skipped with a note (an exported
 // Claude login must not break Codex or kimi runs); from --login or the
 // profile it is an error, because it was asked for explicitly.
@@ -153,11 +164,16 @@ func (a *app) pickLogin(cfg config.Config, p provider.Profile, flag string) (log
 			return loginChoice{}, "", usageErr(fmt.Errorf("%s=%s: unknown login (see `agx login ls`; `aglogin` with no argument unsets it)", appmeta.EnvLogin, name))
 		}
 		if err := a.loginFits(p, l); err != nil {
-			return a.defaultLogin(cfg, p), fmt.Sprintf("%s=%s skipped for profile %s: %v", appmeta.EnvLogin, name, p.Name, err), nil
+			lc, note, err2 := a.bindingLogin(cfg, p)
+			skipped := fmt.Sprintf("%s=%s skipped for profile %s: %v", appmeta.EnvLogin, name, p.Name, err)
+			if note != "" {
+				skipped += "; " + note
+			}
+			return lc, skipped, err2
 		}
 		return loginChoice{Login: &l, Source: loginSrcEnv}, "", nil
 	}
-	return a.defaultLogin(cfg, p), "", nil
+	return a.bindingLogin(cfg, p)
 }
 
 // defaultLogin covers steps 3–5: the profile's login (validated at load),
@@ -244,7 +260,7 @@ func (a *app) expiry(l login.Login) (time.Time, bool) {
 	return login.ExpiresAt(l, lt.LoginLifetime(l.Kind))
 }
 
-// resolveLoginValue resolves l's token. Past expiry a stored login is
+// resolveLoginValue resolves l's token and checks its kind. Past expiry a stored login is
 // refused; a cmd/env login only warns, because agx knows when it was
 // registered, not when the token behind it was minted — a token rotated in
 // the user's store keeps working (logins spec §14 D13). Never falls back to
@@ -260,7 +276,59 @@ func (a *app) resolveLoginValue(ctx context.Context, l login.Login) (string, err
 	if err != nil {
 		return "", err
 	}
-	return r.Resolve(ctx, l)
+	val, err := r.Resolve(ctx, l)
+	if err != nil {
+		return "", err
+	}
+	// Every use (launch, check, probe) goes through here, so a --cmd/--env
+	// source handing back the wrong kind of token is caught before it is used.
+	if ll, lerr := a.loginLauncher(l.Provider); lerr == nil {
+		if err := checkLoginKind(ll, l, val); err != nil {
+			return "", err
+		}
+	}
+	return val, nil
+}
+
+// detectedKind checks val's shape against kind when the provider can
+// recognise it. An explicit --kind (flagKind) that contradicts the prefix is
+// refused, since the token would launch under the wrong variable; without
+// one the prefix wins over the default or a kind inherited by --replace. A
+// value the provider does not recognise keeps kind unchanged.
+func detectedKind(ll provider.LoginLauncher, kind provider.LoginKind, flagKind, val string) (provider.LoginKind, error) {
+	d, ok := ll.(provider.LoginKindDetector)
+	if !ok {
+		return kind, nil
+	}
+	got, err := d.DetectLoginKind(val)
+	switch {
+	case err != nil:
+		return "", err
+	case got == "":
+		return kind, nil
+	case flagKind != "" && got != kind:
+		return "", fmt.Errorf("--kind %s does not match the token, which is an %s by its prefix", kind, got)
+	}
+	return got, nil
+}
+
+// checkLoginKind refuses a resolved token whose prefix says it cannot run
+// under l's kind (a --cmd/--env source is only seen at launch). The kind
+// came from the config, not from a --kind the user just typed, so the
+// mismatch error names the login and how to re-add it.
+func checkLoginKind(ll provider.LoginLauncher, l login.Login, val string) error {
+	d, ok := ll.(provider.LoginKindDetector)
+	if !ok {
+		return nil
+	}
+	got, err := d.DetectLoginKind(val)
+	switch {
+	case err != nil:
+		return fmt.Errorf("login %s: %w", l.Name, err)
+	case got != "" && got != l.Kind:
+		return fmt.Errorf("login %s is kind %s, but its token is an %s by its prefix — re-add it with `agx login add %s --replace --kind %s` and the same source", l.Name, l.Kind, got, l.Name, got)
+	}
+	return nil
 }
 
 // applyLogin resolves lc's token and applies its env to env.
@@ -393,9 +461,6 @@ func (a *app) runLoginAdd(ctx context.Context, o *loginAddOpts, name string) err
 		return usageErr(err)
 	}
 	spec := config.LoginSpec{Name: name, Provider: string(id), Account: account, Added: a.Now().Format(time.DateOnly)}
-	if kind != ll.LoginKinds()[0] {
-		spec.Kind = string(kind)
-	}
 	tf, err := a.tokenFile()
 	if err != nil {
 		return err
@@ -412,6 +477,9 @@ func (a *app) runLoginAdd(ctx context.Context, o *loginAddOpts, name string) err
 		if err != nil {
 			return err
 		}
+		if kind, err = detectedKind(ll, kind, o.kind, val); err != nil {
+			return usageErr(err)
+		}
 		// Keep what tokens.yaml held under this name, so a refused config
 		// edit can put it back: losing a rotated-out token that config
 		// still points at would break the login.
@@ -422,6 +490,9 @@ func (a *app) runLoginAdd(ctx context.Context, o *loginAddOpts, name string) err
 			return err
 		}
 		spec.Token, stored = login.StoredMarker, true
+	}
+	if kind != ll.LoginKinds()[0] {
+		spec.Kind = string(kind)
 	}
 	ed := a.editor(cfg)
 	if err := ed.AddLogin(spec, o.replace); err != nil {
@@ -727,7 +798,7 @@ func (a *app) runLoginRm(name string, force bool) error {
 		return errUnknownLogin(name)
 	}
 	if used := cfg.UsedBy(name); len(used) > 0 && !force {
-		return fmt.Errorf("login %s is used by %s — point them elsewhere (`agx login use home -p NAME`) or pass --force", name, strings.Join(used, ", "))
+		return fmt.Errorf("login %s is used by %s — point them elsewhere (`agx login use home -p NAME`, `agx project rm PATH`) or pass --force", name, strings.Join(used, ", "))
 	}
 	ed := a.editor(cfg)
 	cleared, err := ed.RemoveLogin(name)

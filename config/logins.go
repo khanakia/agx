@@ -172,7 +172,8 @@ func (c Config) LoginByName(name string) (login.Login, bool) {
 }
 
 // UsedBy lists what points at login name: profile names, then
-// "providers.<id>" for a provider default — what breaks if it is removed.
+// "providers.<id>" for a provider default, then "project <path>" for a folder
+// binding — what breaks if it is removed.
 func (c Config) UsedBy(name string) []string {
 	var out []string
 	for _, p := range c.Profiles {
@@ -187,7 +188,13 @@ func (c Config) UsedBy(name string) []string {
 		}
 	}
 	slices.Sort(ids)
-	return append(out, ids...)
+	out = append(out, ids...)
+	for _, pr := range c.Projects {
+		if pr.Login == name {
+			out = append(out, "project "+pr.Path)
+		}
+	}
+	return out
 }
 
 // ValidLoginName checks a new login's name: the profile-name pattern and

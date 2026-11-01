@@ -234,6 +234,8 @@ func withHint(err error, p provider.Profile) error {
 	switch {
 	case err == nil:
 		return nil
+	case errors.Is(err, provider.ErrInferenceOnly):
+		return fmt.Errorf("%w — add it as a login and read its usage with `agx usage --login NAME` (a small probe)", err)
 	case errors.Is(err, provider.ErrExpired), errors.Is(err, provider.ErrUnauthorized), errors.Is(err, provider.ErrNotLoggedIn):
 		return fmt.Errorf("%w — run `agx run -p %s` once to log in / refresh", err, p.Name)
 	default:
