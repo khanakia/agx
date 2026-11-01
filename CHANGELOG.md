@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-11-01
+
 ### Added
 
 - `agx profile add NAME`: creates the home (`~/.claude-NAME`, or `~/.codex-NAME` with `--provider codex`; `--home` for another folder) with mode 0700 and adds the profile to config.yaml, keeping comments. A new Claude home links `CLAUDE.md`, `skills` and `settings.json` from `~/.claude` when they exist there; nothing is ever overwritten, `--bare` links nothing, and a home that already exists is adopted untouched. `--login` sets the profile's login, `--setup` runs `claude auth login` (or `codex login`) for the new home, `--dry-run` prints the plan.
@@ -19,6 +21,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - A 403 from the Claude usage or profile endpoint whose `error.details.error_code` is `oauth_scope_insufficient` (a setup-token) now reports `provider.ErrInferenceOnly` with a hint to use `agx usage --login NAME`, instead of "log in again". Other 401/403 answers carry the server's message, for example `login rejected by the server (HTTP 403: OAuth authentication is currently not allowed for this organization.)`.
 - The login precedence gains the project binding after `AGX_LOGIN`; a launch that a binding chose says so in `--dry-run` (`project:` line, `login: NAME (project binding at PATH)`), and the launch plan of `new` / `resume` / `ws` carries the binding's login.
+
+### Fixed
+
+- `agx login check` and the check after `agx login add` name a failing login once (`login NAME: failed: reason`); every login resolution error now reads `login NAME: reason`.
 
 ## [0.3.5] - 2026-10-17
 
@@ -181,7 +187,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.5...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.6...HEAD
+[0.3.6]: https://github.com/khanakia/agx/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/khanakia/agx/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/khanakia/agx/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/khanakia/agx/compare/v0.3.2...v0.3.3
