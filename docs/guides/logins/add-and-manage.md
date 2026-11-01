@@ -66,6 +66,8 @@ The default kind is `oauth-token`: plan quota, delivered as `CLAUDE_CODE_OAUTH_T
 pbpaste | agx login add billing --stdin --kind api-key --account billing@example.com
 ```
 
+For a pasted or piped Claude token you rarely need `--kind`: agx reads the prefix (`sk-ant-oat…` is an `oauth-token`, `sk-ant-api…` an `api-key`) and sets the kind itself, refuses a `--kind` that contradicts it (`--kind oauth-token does not match the token, which is an api-key by its prefix`), and refuses a refresh token (`sk-ant-ort…`) or an Admin API key (`sk-ant-admin…`), which cannot run Claude. A `--cmd` or `--env` source is checked the same way each time it resolves (the add check, `agx login check`, every launch), so a store that hands back the wrong kind fails with `login NAME is kind oauth-token, but its token is an api-key by its prefix — re-add it with …`. A value with no known prefix keeps the default or the `--kind` you gave. The full table is in [Projects overview: token kinds](../projects/overview.md#step-7--recognise-a-token-by-its-prefix).
+
 ## Step 5 — List and check
 
 ```sh
@@ -200,6 +202,8 @@ see its usage with `agx login check ci` (one probe: a few tokens of its quota)
 - **Adding an existing name needs `--replace`.** Otherwise: `login "personal" already exists (use --replace to rotate its token)`.
 - **Multi-line input is refused.** `printf 'a\nb\n' | agx login add two --stdin` fails with `login: token has more than one line`; the same check (`login.ErrMultiline`) applies to pasted, stored, command and env tokens.
 - **A token command has 10 seconds.** A store that waits for a passphrase nobody types fails the launch with `timed out after 10s` (`login/login.go`, `cmdTimeout`).
+- **`--replace` inherits the old kind unless the new token says otherwise.** Rotating an api-key login with a setup-token turns it into an `oauth-token` login, because the prefix wins over the inherited kind; an explicit `--kind` that contradicts the prefix is refused.
+- **`login rm` counts project bindings.** A login named by `agx project use --login` is listed in USED-BY as `project <path>`; `login rm` refuses while one uses it, and `--force` clears it from every binding (a binding left with nothing to bind is removed).
 - **`login use` and `login rm` edit config.yaml in place.** Comments and key order are kept, but blank lines between sections are not (`config/edit.go`).
 
 ## Related

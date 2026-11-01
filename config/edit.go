@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -20,6 +21,9 @@ const (
 	keyLogins    = "logins"
 	keyProfiles  = "profiles"
 	keyProviders = "providers"
+	keyProjects  = "projects"
+	keyProfile   = "profile"
+	keyPath      = "path"
 	keyLogin     = "login"
 	keyName      = "name"
 	keyProvider  = "provider"
@@ -169,7 +173,8 @@ func loginNode(s LoginSpec) *yaml.Node {
 }
 
 // RemoveLogin deletes login name and clears every `login:` that points at
-// it (profiles and provider defaults), returning what was cleared.
+// it (profiles, provider defaults and project bindings), returning what was
+// cleared. A binding left with nothing to bind is removed.
 func (e Editor) RemoveLogin(name string) ([]string, error) {
 	var cleared []string
 	err := e.edit(func(root *yaml.Node) error {
@@ -204,9 +209,36 @@ func (e Editor) RemoveLogin(name string) ([]string, error) {
 			}
 			pruneEmptyProviders(root)
 		}
+		cleared = append(cleared, clearProjectLogin(root, name)...)
 		return nil
 	})
 	return cleared, err
+}
+
+// clearProjectLogin removes login name from every binding under root and
+// returns the keys it cleared.
+func clearProjectLogin(root *yaml.Node, name string) []string {
+	seq := mapGet(root, keyProjects)
+	if seq == nil || seq.Kind != yaml.SequenceNode {
+		return nil
+	}
+	var cleared []string
+	kept := seq.Content[:0]
+	for _, item := range seq.Content {
+		if scalar(item, keyLogin) == name {
+			mapDelete(item, keyLogin)
+			cleared = append(cleared, "projects["+scalar(item, keyPath)+"].login")
+			if scalar(item, keyProfile) == "" {
+				continue
+			}
+		}
+		kept = append(kept, item)
+	}
+	seq.Content = kept
+	if len(seq.Content) == 0 {
+		mapDelete(root, keyProjects)
+	}
+	return cleared
 }
 
 // SetProfileLogin sets `login:` on profile p to name ("home" is written
@@ -219,20 +251,7 @@ func (e Editor) SetProfileLogin(cfg Config, p provider.Profile, name string) (Ch
 	err := e.edit(func(root *yaml.Node) error {
 		profs := ensureSeq(root, keyProfiles)
 		if p.Source == provider.SourceDiscovered {
-			for _, d := range cfg.Profiles {
-				if d.Provider != p.Provider || d.Source != provider.SourceDiscovered {
-					continue
-				}
-				m := &yaml.Node{Kind: yaml.MappingNode}
-				setScalar(m, keyName, d.Name)
-				setScalar(m, keyProvider, string(d.Provider))
-				setScalar(m, keyHome, tildePath(d.Home, e.UserHome))
-				if d.Default {
-					setScalar(m, keyDefault, "true")
-				}
-				profs.Content = append(profs.Content, m)
-				ch.Notes = append(ch.Notes, "wrote discovered profile "+d.Name+" into the config")
-			}
+			ch.Notes = e.writeDiscovered(profs, cfg, p.Provider)
 		}
 		for _, item := range profs.Content {
 			if scalar(item, keyName) != p.Name {
@@ -247,6 +266,117 @@ func (e Editor) SetProfileLogin(cfg Config, p provider.Profile, name string) (Ch
 		return fmt.Errorf("profile %q is not in %s", p.Name, e.Path)
 	})
 	return ch, err
+}
+
+// writeDiscovered appends every discovered profile of id to profs and returns
+// a note for each.
+func (e Editor) writeDiscovered(profs *yaml.Node, cfg Config, id provider.ID) []string {
+	var notes []string
+	for _, d := range cfg.Profiles {
+		if d.Provider != id || d.Source != provider.SourceDiscovered {
+			continue
+		}
+		m := &yaml.Node{Kind: yaml.MappingNode}
+		setScalar(m, keyName, d.Name)
+		setScalar(m, keyProvider, string(d.Provider))
+		setScalar(m, keyHome, tildePath(d.Home, e.UserHome))
+		if d.Default {
+			setScalar(m, keyDefault, "true")
+		}
+		profs.Content = append(profs.Content, m)
+		notes = append(notes, "wrote discovered profile "+d.Name+" into the config")
+	}
+	return notes
+}
+
+// AddProfile appends spec to `profiles:`. The provider's discovered profiles
+// are written with it, for the reason SetProfileLogin gives. When spec adopts
+// a discovered profile, that entry gains spec's login instead of a duplicate.
+func (e Editor) AddProfile(cfg Config, spec ProfileSpec) ([]string, error) {
+	var notes []string
+	err := e.edit(func(root *yaml.Node) error {
+		profs := ensureSeq(root, keyProfiles)
+		id := provider.ID(spec.Provider)
+		if slices.ContainsFunc(cfg.Profiles, func(p provider.Profile) bool {
+			return p.Provider == id && p.Source == provider.SourceDiscovered
+		}) {
+			notes = e.writeDiscovered(profs, cfg, id)
+		}
+		for _, item := range profs.Content {
+			if scalar(item, keyName) != spec.Name {
+				continue
+			}
+			if spec.Login != "" {
+				setScalar(item, keyLogin, spec.Login)
+			}
+			return nil
+		}
+		m := &yaml.Node{Kind: yaml.MappingNode}
+		setScalar(m, keyName, spec.Name)
+		setScalar(m, keyProvider, spec.Provider)
+		setScalar(m, keyHome, tildePath(spec.Home, e.UserHome))
+		if spec.Login != "" {
+			setScalar(m, keyLogin, spec.Login)
+		}
+		profs.Content = append(profs.Content, m)
+		return nil
+	})
+	return notes, err
+}
+
+// SetProject writes pr, replacing the binding stored for the same path. An
+// existing entry is edited key by key so its comments survive; a new one is a
+// flow mapping, one line per binding.
+func (e Editor) SetProject(pr Project) error {
+	return e.edit(func(root *yaml.Node) error {
+		seq := ensureSeq(root, keyProjects)
+		var entry *yaml.Node
+		for _, item := range seq.Content {
+			if expand(scalar(item, keyPath), e.UserHome) == pr.Path {
+				entry = item
+				break
+			}
+		}
+		if entry == nil {
+			entry = &yaml.Node{Kind: yaml.MappingNode, Style: yaml.FlowStyle}
+			setScalar(entry, keyPath, pr.Path)
+			seq.Content = append(seq.Content, entry)
+		}
+		// A profile added to a login-only entry must land before the login, so
+		// every line in the file reads in the same order.
+		if mapGet(entry, keyProfile) == nil {
+			mapDelete(entry, keyLogin)
+		}
+		for _, kv := range [][2]string{{keyProfile, pr.Profile}, {keyLogin, pr.Login}} {
+			if kv[1] == "" {
+				mapDelete(entry, kv[0])
+				continue
+			}
+			setScalar(entry, kv[0], kv[1])
+		}
+		return nil
+	})
+}
+
+// RemoveProject deletes the binding stored for path, and `projects:` itself
+// when it was the last one.
+func (e Editor) RemoveProject(path string) error {
+	return e.edit(func(root *yaml.Node) error {
+		seq := mapGet(root, keyProjects)
+		if seq != nil && seq.Kind == yaml.SequenceNode {
+			for i, item := range seq.Content {
+				if expand(scalar(item, keyPath), e.UserHome) != path {
+					continue
+				}
+				seq.Content = append(seq.Content[:i], seq.Content[i+1:]...)
+				if len(seq.Content) == 0 {
+					mapDelete(root, keyProjects)
+				}
+				return nil
+			}
+		}
+		return fmt.Errorf("no project binding for %s in %s", path, e.Path)
+	})
 }
 
 // SetProviderLogin sets providers.<id>.login to name; "home" removes the

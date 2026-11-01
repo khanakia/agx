@@ -38,6 +38,8 @@ CLAUDE_CONFIG_DIR=~/.claude-work claude
 
 Log in with the second account inside Claude Code, then quit it with `/exit`. Claude Code has now written its files into `~/.claude-work`, so the next `agx profiles` lists a `work` profile. Nothing else is needed while you have no config file. From now on start that account with `agx run -p work` rather than setting the variable by hand.
 
+Or let agx do it: `agx profile add work --setup` creates `~/.claude-work` (mode 0700), links your `CLAUDE.md`, `skills` and `settings.json` from `~/.claude` when they exist, adds the profile to config.yaml and runs `claude auth login` for the new home. `--dry-run` shows the plan first, `--bare` links nothing, and `--provider codex` makes `~/.codex-work` and runs `codex login`. To make a folder always use the new account, bind it with `agx project use -p work` ([Projects](../projects/overview.md)).
+
 ## Step 3 — Add a second Codex account
 
 Codex keeps one account per `CODEX_HOME`, but agx discovers only `~/.codex`. Log in on a second home, then list both Codex homes in `~/.agx/config.yaml`:
@@ -132,4 +134,5 @@ work       claude    ~/.claude-work  you@work.example · Max (20x)  expired     
 - [Usage, plans and profiles](../usage/usage-and-plans.md): what the STATE and LOGIN columns mean.
 - [Config reference](../config-shell/config-reference.md): every profile key.
 - [Environment variables](../config-shell/environment.md): `AGX_CONFIG_DIR` and `AGX_HOME`.
+- [Bind a folder, step by step](../projects/bind-a-folder.md): `agx profile add` and `agx project use` with real output.
 - [Logins](../logins/overview.md): spend one account's quota from another account's home.

@@ -78,6 +78,8 @@ exec:    claude
 - **The agent can read the token.** It is in the agent's environment, so every tool, hook or MCP server the agent starts can read it too. Use a login only with projects you would trust with that account.
 - **agx never falls back to the home's login on its own.** A missing, empty or multi-line token, a failing `--cmd`, or an unset `--env` variable stops the launch with the reason (`internal/cli/login.go`, `resolveLoginValue`; `login/login.go`, `Resolve`). You asked for a specific account, so agx does not quietly pick another.
 - **Removing a login does not revoke the token.** `agx login rm` says so every time (`revokeHint` in `internal/cli/login.go`). Revoke it in your claude.ai account settings.
+- **A setup-token is inference-only.** It runs Claude, but the account, plan and usage endpoints refuse it, so `agx plan` and `agx profiles` cannot show its account; its usage comes only from a probe. If such a token sits in a home's place, agx says `this token can only run Claude: it has no profile scope …` with the `agx usage --login NAME` hint instead of telling you to log in again ([token kinds](../projects/overview.md#step-7--recognise-a-token-by-its-prefix)).
+- **To make a folder always use a login, bind it.** `agx project use --login NAME` in that folder; see [Projects](../projects/overview.md).
 - **A login cannot ride on a profile that already has a credential.** An api-billed profile, or one whose `env:` / `secrets:` sets any of the three variables above, is refused (`login/login.go`, `Compatible`); see [Choosing a login](choosing-a-login.md#pitfalls).
 
 ## Related

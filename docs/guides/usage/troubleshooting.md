@@ -53,6 +53,16 @@ The message never repeats the token value.
 | `"auto" is accepted only as --login on run, new, resume and ws (it probes every login, spending a few tokens of each account's quota)` | `--login auto` belongs on a launch command |
 | ``--login auto chooses a login for a launch; to compare every login use `agx usage --logins` `` | use `agx usage --logins` |
 | ``unknown login "NAME" (see `agx login ls`)`` | use a name from `agx login ls` |
+| ``project binding PATH: profile "NAME" no longer exists — remove it with `agx project rm PATH`, or run `agx project use` in that folder`` (or `login "NAME"`) | the folder's binding points at something removed; rebind with `agx project use`, remove it, or pass `-p` / `--login` for the missing half |
+| `give -p PROFILE, --login LOGIN, or both` | `agx project use` needs at least one |
+| ``no project binding for PATH (see `agx project ls`)`` | `agx project rm` removes the binding of exactly that folder; a parent's binding is removed from the parent folder, or by naming its path |
+| `project show reads the config only; "auto" is decided at launch from live usage` | drop `-p auto` / `--login auto` from `project show` |
+| ``profile "NAME" already exists (home PATH; see `agx profiles`)`` | `agx profile add` needs a new name, or the name of a discovered profile at the same home to adopt it |
+| `PATH exists and is not a folder` | `agx profile add --home` points at a file; choose another path |
+| `--setup is not known for PROVIDER` | that provider has no interactive login agx can run; log the home in yourself |
+| `claude: this token cannot run Claude: it is an OAuth refresh token (sk-ant-ort…); use the token `claude setup-token` prints` | you pasted the refresh token; paste the one `claude setup-token` prints (`sk-ant-oat…`). An Admin API key (`sk-ant-admin…`) is refused the same way |
+| `--kind oauth-token does not match the token, which is an api-key by its prefix` | drop `--kind`; the prefix decides |
+| ``login NAME is kind oauth-token, but its token is an api-key by its prefix — re-add it with `agx login add NAME --replace --kind api-key` and the same source`` | a `--cmd` / `--env` source handed back another kind of token than the login was added as |
 
 ## Step 5 — Usage shows an error for one account
 
@@ -61,6 +71,8 @@ The other accounts still print and the command exits 1.
 | Row | Fix |
 |---|---|
 | `error: usage endpoint rate-limited this account; try again shortly (retry after 2m0s)` | the vendor answered HTTP 429, usually because something polls agx too often. Wait the time shown and poll every few minutes at most (`watch -n 300 agx`) |
+| ``error: this token can only run Claude: it has no profile scope (a `claude setup-token` token), so its account, plan and usage cannot be read — add it as a login and read its usage with `agx usage --login NAME` (a small probe)`` | the home's credential is a setup-token (often `CLAUDE_CODE_OAUTH_TOKEN` exported in your shell). Logging in again does not help: add the token as a login and read its usage with a probe |
+| `error: login rejected by the server (HTTP 403: OAuth authentication is currently not allowed for this organization.)` | the server refused the login and said why; the text after `HTTP 403:` is the server's own message. Fix it on the account side (here: the organization's settings) |
 | `billed per token — no usage windows` (dim) | not an error: an API-billed profile, or a Codex home logged in with an API key only |
 | a request or timeout error | the account did not answer within `--timeout` (15s by default) or the network failed; try `agx usage NAME --timeout 30s` |
 

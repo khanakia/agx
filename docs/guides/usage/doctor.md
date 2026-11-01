@@ -79,6 +79,16 @@ One or two lines per login in `config.yaml`: the token source first, then the ex
 | ✗ | `expired 2026-10-01; renew: agx login add NAME --setup --replace` | a stored setup-token past its date; runs on it are refused until renewed |
 | ! | `past its approximate expiry 2026-09-01; runs go ahead — if the token was not rotated, renew: agx login add NAME --replace` | a `token_cmd` / `token_env` login past its approximate date; it is a reminder, runs still work if your store holds a newer token |
 
+### project
+
+One line per [project binding](../projects/overview.md), in config order.
+
+| Level | Detail | Meaning and fix |
+|---|---|---|
+| ✓ | `PATH -> profile NAME, login NAME` | the binding names a profile and login that exist and fit together |
+| ✗ | ``project binding PATH: profile "NAME" no longer exists — remove it with `agx project rm PATH`, or run `agx project use` in that folder`` | the binding names a profile or login that was removed (or a login that cannot run its profile); a run in that folder stops with the same message. Doctor exits 1 |
+| ! | ``PATH does not exist — remove it with `agx project rm PATH` `` | the folder was moved or deleted, so the binding can never match |
+
 ### shell
 
 | Level | Detail | Meaning and fix |

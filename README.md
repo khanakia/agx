@@ -106,6 +106,7 @@ agx new pglite spike     # new session folder pglite_spike_YYYYMMDD_HHMMSS, star
 agx resume               # pick a conversation from this folder and continue it
 agx ws                   # pick any folder with conversations, then a chat in it
 agx run -p work --login personal   # work history, personal quota (after `agx login add personal`)
+agx project use -p work --login personal   # this folder: always that home and that quota; then just `agx`
 ```
 
 No config is needed: agx discovers `~/.claude` (profile `personal`), every `~/.claude-<name>` (profile `<name>`), and `~/.codex` (profile `codex`). Add a config file when you want named profiles, extra flags, secrets or aliases.
@@ -114,7 +115,7 @@ No config is needed: agx discovers `~/.claude` (profile `personal`), every `~/.c
 
 Step-by-step guides, decision pages and runnable examples live in [`docs/`](docs/README.md):
 
-- [Learning path](docs/README.md#learning-path): fourteen steps from install to the full setup (accounts, usage, run and auto-pick, resume, session folders, moving history, logins, config, shell integration, doctor, scripting, the Go library), each with its guide and example.
+- [Learning path](docs/README.md#learning-path): fifteen steps from install to the full setup (accounts, usage, run and auto-pick, resume, session folders, moving history, logins, projects, config, shell integration, doctor, scripting, the Go library), each with its guide and example.
 - [Start from your goal](docs/README.md#start-from-your-goal): "I want to …" → the page that does it.
 - [Choosing guides](docs/choosing/README.md): which profile or login, which token source, which run or resume command, library or CLI.
 - [Feature index](docs/reference/features.md): every feature, the package that implements it, its guide section and its example.
@@ -470,9 +471,10 @@ work      claude    oauth-token  cmd     —                2026-10-16  ~2027-10
 
 1. `--login NAME` on the command line (or `--login auto`, below);
 2. `AGX_LOGIN` in the environment (what `aglogin` sets);
-3. the profile's `login:` in config.yaml;
-4. the provider's `providers.<id>.login:`;
-5. the home's own login.
+3. the login of the [project binding](#projects--bind-a-folder-to-a-home-and-a-login) that covers the folder;
+4. the profile's `login:` in config.yaml;
+5. the provider's `providers.<id>.login:`;
+6. the home's own login.
 
 A login asked for by name (`--login`, or a profile's `login:`) that does not fit the profile is an error: another provider's login, a profile billed per token, or a profile that sets a credential of its own in `env:` / `secrets:`. One that comes from `AGX_LOGIN` is skipped with a one-line note and a provider default is skipped silently, so an exported Claude login never breaks a Codex or Kimi run. `agx profiles` shows the login each profile would use and why (`personal (profile)`, `work (AGX_LOGIN)`, `home`), and every launch on a login prints `agx: <profile> · login <name>`, which is the only record of which account paid: transcripts do not keep it.
 
@@ -512,6 +514,35 @@ profiles:
   - { name: personal, provider: claude, home: ~/.claude, login: home }      # pinned to its own login
   - { name: work, provider: claude, home: ~/.claude-work, login: personal }
 ```
+
+### Projects — bind a folder to a home and a login
+
+A **home** (`~/.claude-client`) is where a conversation's history lives; a **login** decides whose quota a run spends. `agx project use` remembers both for a folder, so every run there (and in its subfolders) needs no flags, and a bare `agx` at the terminal starts the agent. `agx profile add` creates a new home in one step.
+
+```sh
+agx profile add client                     # ~/.claude-client, linked CLAUDE.md / skills / settings.json, added to config.yaml
+agx profile add client --setup             # same, then `claude auth login` for the new home
+cd ~/code/client-app
+agx project use -p client --login work     # this folder: client home, work quota
+agx project use --login work               # or keep the usual home, change only the quota
+agx project show                           # what a run here would use, and which rule chose it
+agx                                        # at a terminal: starts the agent (prints the binding on stderr)
+agx project ls                             # every binding, with problems in STATE
+agx project rm                             # remove this folder's binding
+```
+
+```text
+$ agx run --dry-run
+project: /home/you/code/client-app (profile client, login work)
+profile: client (claude, /home/you/.claude-client)
+login:   work (project binding at /home/you/code/client-app)
+dir:     /home/you/code/client-app/src
+env:     CLAUDE_CODE_OAUTH_TOKEN=<token:stored>
+env:     CLAUDE_CONFIG_DIR=/home/you/.claude-client
+exec:    claude
+```
+
+Flags still win (`-p` for the home, `--login` or `AGX_LOGIN` for the quota), `resume` keeps the conversation's home and takes only the binding's login, and an alias that names a profile (`cl: run -p personal`) keeps its home. Bindings live in `~/.agx/config.yaml` keyed by absolute path, so they are per machine and never travel with a clone. `agx login add` reads a Claude token's prefix (`sk-ant-oat…` setup-token, `sk-ant-api…` API key) and refuses refresh tokens and Admin keys; a setup-token is inference-only, so its account and usage come only from a probe, and agx now says that instead of "log in again". Guides: [Projects overview](docs/guides/projects/overview.md) and [Bind a folder, step by step](docs/guides/projects/bind-a-folder.md).
 
 ### Health check: `agx doctor`
 
@@ -619,10 +650,10 @@ A fixed account-and-quota pair is just an alias: `clwp: run -p work --login pers
 
 | Command | Does |
 |---|---|
-| `agx` / `agx usage [profile…]` | Plan usage bars for every plan-billed login; `--provider`, `--json`, `--color`, `--timeout` |
+| `agx` / `agx usage [profile…]` | Plan usage bars for every plan-billed login; `--provider`, `--json`, `--color`, `--timeout`. A bare `agx` in a folder bound with `agx project use`, at a terminal and with no flags, starts the agent instead |
 | `agx plan [profile…]` | Plan, subscription status and start date for every account; `--json`, `--timeout` |
 | `agx profiles` | Every profile: provider, home, account, plan, login state, the login a run spends, billing, source |
-| `agx run [-p profile\|auto] [-- args…]` | Start the agent in the current folder with the profile's flags, env and secrets |
+| `agx run [-p profile\|auto] [-- args…]` | Start the agent in the current folder with the profile's flags, env and secrets (the folder's project binding, when no `-p` / `--login` is given) |
 | `agx new [-p profile\|auto] [slug…] [-- agent-args…]` | Create `sessions.root/[slug_]YYYYMMDD_HHMMSS`, enter it, start the agent |
 | `agx resume [query…] [-- agent-args…]` | Pick a conversation (this folder, or every folder with `--all`) and continue it on its own account; `--last`, `--all`, `--list`, `--json`, `-b/--browse` |
 | `agx ws [query…] [-- agent-args…]` | Pick a workspace (any folder with conversations), then a chat in it, and resume it; `--list`, `--json` |
@@ -631,6 +662,8 @@ A fixed account-and-quota pair is just an alias: `clwp: run -p work --login pers
 | `agx sessions promote <folder> <name>` | Move a session folder into a project, taking its Claude history along; `--dry-run`, `--git-init` |
 | `agx sessions move [folder] --to <profile>` | Move a folder's conversations to another account of the same provider (e.g. personal → work); `--from`, `--only`, `-i/--pick`, `--all`, `--dry-run`, `--no-backup`, `--json` |
 | `agx login add\|ls\|check\|use\|rm` | Named logins: run any home on any account's quota ([Logins](#logins--use-any-accounts-quota-from-any-home)) |
+| `agx profile add NAME` | Create a home (`~/.claude-NAME`) and add it as a profile, linking `CLAUDE.md`, `skills`, `settings.json` ([Projects](#projects--bind-a-folder-to-a-home-and-a-login)) |
+| `agx project use\|show\|ls\|rm` | Bind a folder to a profile and/or login, so runs there need no flags ([Projects](#projects--bind-a-folder-to-a-home-and-a-login)) |
 | `agx doctor` | Local health checks (no network, never resolves secret or token values) |
 | `agx shell-init [zsh\|bash]` | Print the shell layer (see below) |
 | `agx version` | Version, commit and build provenance |
@@ -670,6 +703,11 @@ agx new -p auto --provider codex my spike   # auto-pick among Codex accounts
 | `agx login check` `[NAME]` | `--no-probe` |
 | `agx login use` `NAME\|home` | `-p/--profile <profile>` or `--provider <id>` |
 | `agx login rm` `NAME` | `--force` (alias: `agx login remove`) |
+| `agx profile add` `NAME` | `--provider` · `--home <path>` · `--login NAME\|home` · `--setup` · `--bare` · `--dry-run` |
+| `agx project use` | `-p/--profile` · `--login NAME\|home` (at least one) |
+| `agx project show` | `-p/--profile` · `--provider` · `--login NAME\|home` · `--json` |
+| `agx project ls` | `--json` (alias: `agx project list`) |
+| `agx project rm` `[PATH]` | (alias: `agx project remove`) |
 | [`agx doctor`](ds:block?id=newdoctorcmd-ndsdf4zg) | `--json` |
 | [`agx shell-init`](ds:block?id=newshellinitcmd-3fw2m4vd) | `zsh` (default) or `bash` |
 | `agx version` / `agx --version` | `--json` (on `version`) |
@@ -678,7 +716,7 @@ agx new -p auto --provider codex my spike   # auto-pick among Codex accounts
 
 ## Configuration
 
-Optional, at `~/.agx/config.yaml` (override the directory with [`AGX_CONFIG_DIR` or `AGX_HOME`](ds:block?id=appidentity-65c6dy83); `agx doctor` shows which one decided). [Unknown keys are an error](ds:block?id=decode-qymvq95s), so typos are caught.
+Optional, at `~/.agx/config.yaml` (override it with [`AGX_CONFIG_DIR=<dir>`, which reads `<dir>/config.yaml`, or `AGX_HOME=<dir>`, which reads `<dir>/config/config.yaml`](ds:block?id=appidentity-65c6dy83); `agx doctor` shows which one decided). [Unknown keys are an error](ds:block?id=decode-qymvq95s), so typos are caught.
 
 ```yaml
 sessions:
@@ -727,9 +765,9 @@ shell:
     clr: resume
 ```
 
-The top-level keys are [`sessions`](ds:block?id=sessionsspec-yzshjgvk), [`logins`](ds:block?id=loginspec-e68nnxxt), `providers`, [`profiles`](ds:block?id=profilespec-jymp7n69) and [`shell`](ds:block?id=shellspec-nagmshhq) ([schema](ds:block?id=file-charr88x)); `sessions.root` defaults to [`~/agx-sessions`](ds:block?id=defaultsessionsdir-xhtaakn6). A login names exactly one of `token: stored`, `token_cmd` or `token_env`, and [`token:` accepts only the word `stored`](ds:block?id=resolvelogin-6dbygptz): a raw token pasted there makes every command refuse the file, without echoing the token. `providers.<id>.login` and a profile's `login:` name a login of the same provider, or `home` (never `auto`, which is only a flag); see [Logins](#logins--use-any-accounts-quota-from-any-home).
+The top-level keys are [`sessions`](ds:block?id=sessionsspec-yzshjgvk), [`logins`](ds:block?id=loginspec-e68nnxxt), `providers`, [`profiles`](ds:block?id=profilespec-jymp7n69), [`shell`](ds:block?id=shellspec-nagmshhq) and `projects` (folder bindings written by `agx project use`) ([schema](ds:block?id=file-charr88x)); `sessions.root` defaults to [`~/agx-sessions`](ds:block?id=defaultsessionsdir-xhtaakn6). A login names exactly one of `token: stored`, `token_cmd` or `token_env`, and [`token:` accepts only the word `stored`](ds:block?id=resolvelogin-6dbygptz): a raw token pasted there makes every command refuse the file, without echoing the token. `providers.<id>.login` and a profile's `login:` name a login of the same provider, or `home` (never `auto`, which is only a flag); see [Logins](#logins--use-any-accounts-quota-from-any-home).
 
-Raw login tokens live in `tokens.yaml` beside config.yaml (0600, never synced). `AGX_LOGIN=NAME` in the environment picks the login for every run in that shell (what `aglogin` exports); it comes after `--login` and before a profile's `login:`. Secrets use [`gopass:<path>` (runs `gopass show -o`) or `env:<NAME>`](ds:block?id=parse-39f37ayc). When a provider has any configured profile, [discovery for that provider is switched off](ds:block?id=resolve-3amwuw3d), so the config is the complete list.
+Raw login tokens live in `tokens.yaml` beside config.yaml (0600, never synced). `AGX_LOGIN=NAME` in the environment picks the login for every run in that shell (what `aglogin` exports); it comes after `--login` and before a project binding's or a profile's `login:`. Secrets use [`gopass:<path>` (runs `gopass show -o`) or `env:<NAME>`](ds:block?id=parse-39f37ayc). When a provider has any configured profile, [discovery for that provider is switched off](ds:block?id=resolve-3amwuw3d), so the config is the complete list.
 
 ## Shell integration
 
@@ -749,7 +787,7 @@ Every listing command has `--json`, emitting a stable envelope:
 { "schema_version": 1, "kind": "usage.list", "count": 3, "data": [ … ] }
 ```
 
-[Kinds](ds:block?id=jsonkinds-gqp2ydfe): `usage.list`, [`plan.list`](ds:block?id=kindplanlist-pkqtaqac), `profile.list`, `conversation.list`, `workspace.list`, `session.list`, `session.gc`, `session.promote`, [`session.move`](ds:block?id=kindsessionmove-kyhtpccm), [`login.list`](ds:block?id=kindloginlist-g3cessw2), `doctor.report`, `version.show`. A `login.list` row never carries a token value.
+[Kinds](ds:block?id=jsonkinds-gqp2ydfe): `usage.list`, [`plan.list`](ds:block?id=kindplanlist-pkqtaqac), `profile.list`, `conversation.list`, `workspace.list`, `session.list`, `session.gc`, `session.promote`, [`session.move`](ds:block?id=kindsessionmove-kyhtpccm), [`login.list`](ds:block?id=kindloginlist-g3cessw2), `project.list`, `project.show`, `doctor.report`, `version.show`. A `login.list` row never carries a token value.
 
 ```sh
 agx usage --json | jq '.data[] | {profile, windows: [.windows[] | {label, percent}]}'
@@ -856,6 +894,10 @@ Yes, as a `billing: api` profile with its own `env` and `secrets`. Those launch 
 **Does it work on Linux or Windows?**
 
 On Linux, logins are read from the credential files, so it works. The Keychain lookup is macOS-only and is skipped elsewhere. It compiles for Windows, where launching runs the agent as a child process; Windows is otherwise untested.
+
+**Can a folder always use the same account without typing `-p` or `--login`?**
+
+Yes: run `agx project use -p PROFILE --login NAME` in it. Every `agx run`, `agx new` and `agx resume` there (and in its subfolders) follows the binding, and a bare `agx` at the terminal starts the agent. Bindings are stored per machine in `~/.agx/config.yaml`; see [Projects](#projects--bind-a-folder-to-a-home-and-a-login).
 
 **Can my work folder spend my personal account's quota?**
 

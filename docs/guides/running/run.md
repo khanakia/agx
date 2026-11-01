@@ -46,7 +46,7 @@ The `*` marks each provider's default profile. Output on this page was captured 
 
 ## Step 1 — Run on the default profile
 
-With no `-p`, agx launches the default profile of `--provider`, which is `claude` unless you say otherwise. The default is the profile with `default: true`, or the first profile of that provider in the config.
+With no `-p`, agx launches the profile of the [project binding](../projects/overview.md) that covers the current folder, if any; otherwise the default profile of `--provider`, which is `claude` unless you say otherwise. The default is the profile with `default: true`, or the first profile of that provider in the config. A `--provider` that differs from the bound profile's provider overrides the binding. `--dry-run` shows a `project:` line first when a binding applies, and its login rules are in [Choosing a login](../logins/choosing-a-login.md#step-1--learn-the-precedence).
 
 ```sh
 agx run
@@ -173,6 +173,7 @@ exec:    claude
 - **The agent must be on `PATH`.** Otherwise the launch fails with `agx: claude not found on PATH: exec: "claude": executable file not found in $PATH`, exit 1 (`internal/cli/exec_unix.go`).
 - **agx replaces itself with the agent.** On macOS and Linux it calls `exec`, so no agx process stays behind, and the exit status, signals and job control are the agent's own (`internal/cli/exec_unix.go`, `execReplace`).
 - **An unknown profile is a usage error.** `agx run -p nope` prints ``agx: unknown profile "nope" (see `agx profiles`)`` and exits 2; an unknown `--provider` prints `agx: unknown provider "gemini"` and exits 2 even when `-p` names a valid profile (`internal/cli/launch.go`, `resolveProfile`).
+- **A broken binding stops the run.** In a folder bound to a profile or login that no longer exists, `agx run` fails with `project binding PATH: profile "NAME" no longer exists — remove it with `agx project rm PATH`, or run `agx project use` in that folder` and exit 2, rather than running on another account. `-p` (or `--login`) for the dangling half still works.
 - **`auto` is not a profile name.** It is reserved for auto-pick, and a config that names a profile `auto` is rejected (`config/config.go`, `resolveProfile`).
 
 ## Related

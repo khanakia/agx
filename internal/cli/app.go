@@ -101,6 +101,9 @@ type Deps struct {
 	RunInteractive func(cmd provider.Command) error
 	// PromptSecret shows prompt and reads one line without echo.
 	PromptSecret func(prompt string) (string, error)
+	// Interactive reports whether stdin and stdout are both terminals,
+	// which decides whether a bare `agx` may start an agent. nil is false.
+	Interactive func() bool
 }
 
 // SystemDeps wires the real machine.
@@ -142,6 +145,7 @@ func SystemDeps() (Deps, error) {
 
 		RunInteractive: runInteractive,
 		PromptSecret:   promptSecret,
+		Interactive:    interactive,
 	}, nil
 }
 
@@ -154,6 +158,13 @@ type app struct {
 	// noteMu serialises stderr lines: probes and usage fetches run
 	// concurrently and may each warn (e.g. an approximate expiry).
 	noteMu sync.Mutex
+	// project is the binding this invocation's launch answers to, zero when
+	// none covers it (see useProject). Commands that do not launch never set
+	// it, so `agx profiles` and doctor describe a profile, not this folder.
+	project config.Project
+	// announced means the launch was already explained on stderr, so it
+	// does not repeat its own login line.
+	announced bool
 }
 
 // config loads the config once per invocation.

@@ -98,11 +98,23 @@ Every user-facing feature of agx, built from the code (`internal/cli`, `config`,
 | Run on a login's quota (`--login NAME\|home` on run, new, resume, ws) | `internal/cli`, `provider` | [Use a login for one run](../guides/logins/choosing-a-login.md#step-2--use-a-login-for-one-run) | [launch-command](../../examples/launch-command/) |
 | Auto-pick a login by probing (`--login auto`) | `internal/cli`, `pick`, `provider/claude` | [Let agx pick the login](../guides/logins/usage-and-auto.md#step-5--let-agx-pick-the-login-for-a-run) | — |
 | Per-terminal login (`AGX_LOGIN`, `aglogin NAME`) | `internal/shellinit`, `internal/cli` | [Switch one terminal](../guides/logins/choosing-a-login.md#step-5--switch-one-terminal) | — |
-| Login precedence: flag, `AGX_LOGIN`, profile, provider, home | `internal/cli` | [Learn the precedence](../guides/logins/choosing-a-login.md#step-1--learn-the-precedence) | — |
+| Token kind from the prefix (`sk-ant-oat` oauth-token, `sk-ant-api` api-key; refresh and Admin keys refused) on add, check and every launch | `provider/claude`, `provider`, `internal/cli` | [Recognise a token by its prefix](../guides/projects/overview.md#step-7--recognise-a-token-by-its-prefix) | — |
+| Inference-only tokens reported as such (403 `oauth_scope_insufficient` → `provider.ErrInferenceOnly`); other 403s carry the server's message | `provider/claude`, `provider`, `internal/cli` | [Troubleshooting: usage errors](../guides/usage/troubleshooting.md#step-5--usage-shows-an-error-for-one-account) | — |
+| Login precedence: flag, `AGX_LOGIN`, project binding, profile, provider, home | `internal/cli` | [Learn the precedence](../guides/logins/choosing-a-login.md#step-1--learn-the-precedence) | — |
 | Login usage by probe (`agx usage --logins`, `agx usage --login NAME`) | `provider/claude`, `internal/cli` | [See every login's usage](../guides/logins/usage-and-auto.md#step-2--see-every-logins-usage) | [usage-fake-server](../../examples/usage-fake-server/) |
 | Private token file `~/.agx/tokens.yaml` (0600 in 0700, refused when readable by others) | `login` | [Keep tokens.yaml private](../guides/logins/add-and-manage.md#step-7--keep-tokensyaml-private) | [login-resolve](../../examples/login-resolve/) |
 | Setup-token expiry: listed, warned 30 days ahead, stored logins refused when past | `login`, `provider/claude`, `internal/cli` | [Renew before expiry](../guides/logins/add-and-manage.md#step-8--renew-before-expiry) | [login-resolve](../../examples/login-resolve/) |
 | Credential environment switch (`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`, the others removed) | `provider/claude`, `provider` | [What changes in the agent's environment](../guides/logins/overview.md#step-4--understand-what-changes-in-the-agents-environment) | [launch-command](../../examples/launch-command/) |
+
+## Projects and profiles
+
+| Feature | Package | Guide | Example |
+|---|---|---|---|
+| Create a home and its profile (`agx profile add NAME`, `--provider`, `--home`, `--login`, `--setup`, `--bare`, `--dry-run`); links `CLAUDE.md`, `skills`, `settings.json`; adopts an existing home | `internal/cli`, `provider`, `provider/claude`, `provider/codex`, `config` | [Create a home](../guides/projects/bind-a-folder.md#step-1--create-a-home-with-agx-profile-add) | — |
+| Bind a folder to a profile and/or login (`agx project use`, `show`, `ls`, `rm`, `--json`) | `config`, `internal/cli` | [Bind the folder](../guides/projects/bind-a-folder.md#step-3--bind-the-folder-with-agx-project-use) | — |
+| Longest path-segment match, symlinks resolved; per machine, never in the repo | `config` | [Projects: the precedence](../guides/projects/overview.md#step-3--learn-the-precedence) | — |
+| Bare `agx` starts the agent in a bound folder at a terminal | `internal/cli` | [When a bare agx starts the agent](../guides/projects/overview.md#step-4--know-when-a-bare-agx-starts-the-agent) | — |
+| Bindings in `doctor`, `login ls` USED-BY and `login rm` | `internal/cli`, `config` | [Health check: project](../guides/usage/doctor.md#project) | — |
 
 ## Configuration
 
@@ -116,7 +128,8 @@ Every user-facing feature of agx, built from the code (`internal/cli`, `config`,
 | Secrets resolved at launch (`secrets:` with `gopass:<path>` or `env:<NAME>`) | `secret`, `config` | [Config reference: profiles](../guides/config-shell/config-reference.md#profiles) | [secret-refs](../../examples/secret-refs/) |
 | Logins in config (`name`, `provider`, `kind`, `token: stored`, `token_cmd`, `token_env`, `account`, `added`); raw tokens rejected | `config`, `login` | [Config reference: logins](../guides/config-shell/config-reference.md#logins) | — |
 | Discovery switched off per provider once a profile is configured; config order breaks auto-pick ties | `config`, `pick` | [Config reference: discovery](../guides/config-shell/config-reference.md#step-3--understand-discovery), [Auto-pick: ties](../guides/running/auto-pick.md#step-4--steer-ties-with-config-order) | [config-resolve](../../examples/config-resolve/), [autopick](../../examples/autopick/) |
-| Comment- and order-preserving config edits by `agx login add` / `use` / `rm` | `config` | [Config reference: let agx edit the file](../guides/config-shell/config-reference.md#step-4--let-agx-edit-the-file-for-you) | — |
+| Folder bindings (`projects:` with `path`, `profile`, `login`) | `config` | [Config reference: projects](../guides/config-shell/config-reference.md#step-5--bind-folders-projects) | — |
+| Comment- and order-preserving config edits by `agx login add` / `use` / `rm`, `agx profile add`, `agx project use` / `rm` | `config` | [Config reference: let agx edit the file](../guides/config-shell/config-reference.md#step-4--let-agx-edit-the-file-for-you) | — |
 | Ready-made recipes (two accounts, extra accounts, Kimi, aliases) | `config` | [Config reference: a complete file](../guides/config-shell/config-reference.md#step-1--start-from-a-complete-file) | — |
 
 ## Shell integration
@@ -147,7 +160,7 @@ Every user-facing feature of agx, built from the code (`internal/cli`, `config`,
 | Feature | Package | Guide | Example |
 |---|---|---|---|
 | Stable JSON envelope (`schema_version`, `kind`, `count`, `data`) on every listing | `internal/cli` | [JSON: know the envelope](../guides/usage/json-and-scripting.md#step-1--know-the-envelope) | — |
-| JSON kinds: `usage.list`, `plan.list`, `profile.list`, `conversation.list`, `workspace.list`, `session.list`, `session.gc`, `session.promote`, `session.move`, `login.list`, `doctor.report`, `version.show` | `internal/cli` | [JSON: read the kind you need](../guides/usage/json-and-scripting.md#step-2--read-the-kind-you-need) | — |
+| JSON kinds: `usage.list`, `plan.list`, `profile.list`, `conversation.list`, `workspace.list`, `session.list`, `session.gc`, `session.promote`, `session.move`, `login.list`, `project.list`, `project.show`, `doctor.report`, `version.show` | `internal/cli` | [JSON: read the kind you need](../guides/usage/json-and-scripting.md#step-2--read-the-kind-you-need) | — |
 | `jq` recipes for status bars and scripts | — | [JSON: the jq recipes](../guides/usage/json-and-scripting.md#step-3--use-the-jq-recipes) | — |
 | `--help` with examples on every command | `internal/cli` | [Troubleshooting: a command refuses its arguments](../guides/usage/troubleshooting.md#step-4--a-command-refuses-its-arguments) | — |
 

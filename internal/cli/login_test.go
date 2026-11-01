@@ -25,9 +25,12 @@ const (
 	tokEnv    = "sk-ant-api03-FAKE-env-3333"
 	tokPrompt = "sk-ant-oat01-FAKE-prompt-4444"
 	tokRaw    = "sk-ant-oat01-FAKE-raw-5555"
+	// tokEnvOAT is an env-sourced setup-token: an oauth-token login must
+	// hold one, since the prefix check refuses an api key under that kind.
+	tokEnvOAT = "sk-ant-oat01-FAKE-envo-6666"
 )
 
-var fakeTokens = []string{tokStored, tokCmd, tokEnv, tokPrompt, tokRaw}
+var fakeTokens = []string{tokStored, tokCmd, tokEnv, tokPrompt, tokRaw, tokEnvOAT}
 
 // loginProv is a fake provider that runs on logins with Claude's real
 // variable mapping and lifetimes.
@@ -39,6 +42,12 @@ func (loginProv) LoginEnv(k provider.LoginKind, v string) (map[string]string, []
 }
 func (loginProv) LoginLifetime(k provider.LoginKind) time.Duration {
 	return (&claude.Provider{}).LoginLifetime(k)
+}
+
+// DetectLoginKind uses Claude's real prefix rules, so kind detection and
+// the refresh/admin refusals run through every login test.
+func (loginProv) DetectLoginKind(v string) (provider.LoginKind, error) {
+	return (&claude.Provider{}).DetectLoginKind(v)
 }
 
 // LoginUsage answers from probeUsage / probeErrs by token value and counts
@@ -229,12 +238,12 @@ func envOf(c provider.Command, key string) (string, bool) {
 // credential, keeps the profile's home, and prints the launch line.
 func TestLogin_LaunchEnv(t *testing.T) {
 	t.Parallel()
-	h := loginHarness(t, strings.Replace(loginConfig, "logins:\n", "logins:\n  - {name: k, provider: claude, kind: api-key, token_cmd: \"printf '%s\\\\n' "+tokCmd+"\"}\n", 1))
+	h := loginHarness(t, strings.Replace(loginConfig, "logins:\n", "logins:\n  - {name: k, provider: claude, kind: api-key, token_cmd: \"printf '%s\\\\n' "+tokEnv+"\"}\n", 1))
 	h.storeToken("p", tokStored)
 	h.env[claude.OAuthTokenEnv] = "inherited-oauth"
 	h.env[claude.APIKeyEnv] = "inherited-key"
 	h.env[claude.AuthTokenEnv] = "inherited-auth"
-	h.env["W_TOKEN"] = tokEnv
+	h.env["W_TOKEN"] = tokEnvOAT
 	for _, c := range []struct {
 		args        []string
 		setVar, val string
@@ -242,8 +251,8 @@ func TestLogin_LaunchEnv(t *testing.T) {
 		line        string
 	}{
 		{[]string{"-p", "work"}, claude.OAuthTokenEnv, tokStored, ".claude-work", "work · login p"},
-		{[]string{"-p", "personal"}, claude.OAuthTokenEnv, tokEnv, ".claude", "personal · login w"},
-		{[]string{"-p", "work", "--login", "k"}, claude.APIKeyEnv, tokCmd, ".claude-work", "work · login k"},
+		{[]string{"-p", "personal"}, claude.OAuthTokenEnv, tokEnvOAT, ".claude", "personal · login w"},
+		{[]string{"-p", "work", "--login", "k"}, claude.APIKeyEnv, tokEnv, ".claude-work", "work · login k"},
 	} {
 		if code := h.run(append([]string{"run"}, c.args...)...); code != ExitOK {
 			t.Fatalf("%v: exit %d: %s", c.args, code, h.stderr.String())
@@ -526,8 +535,8 @@ func TestLogin_DoctorExpiry(t *testing.T) {
 	h := loginHarness(t, loginConfig+"")
 	h.storeToken("p", tokStored)
 	h.storeToken("c", tokStored)
-	h.env["W_TOKEN"] = tokEnv
-	h.env["C_TOKEN"] = tokEnv
+	h.env["W_TOKEN"] = tokEnvOAT
+	h.env["C_TOKEN"] = tokEnvOAT
 	loginLine := func(name string) string {
 		for _, line := range strings.Split(h.stdout.String(), "\n") {
 			if f := strings.Fields(line); len(f) > 2 && f[1] == "login" && f[2] == name {
@@ -682,7 +691,7 @@ func TestLogin_ReplaceStoredDropsToken(t *testing.T) {
 	t.Parallel()
 	for _, src := range [][]string{{"--cmd", "printf " + tokCmd}, {"--env", "P_TOKEN"}} {
 		h := loginHarness(t, "profiles:\n  - {name: personal, provider: claude, home: HOME/.claude}\n")
-		h.env["P_TOKEN"] = tokEnv
+		h.env["P_TOKEN"] = tokEnvOAT
 		h.stdin = tokStored + "\n"
 		if code := h.run("login", "add", "p", "--stdin"); code != ExitOK {
 			t.Fatalf("add: %d %s", code, h.stderr.String())
@@ -811,7 +820,7 @@ func TestDoctor_APIKeyEnvWarning(t *testing.T) {
 		h := loginHarness(t, loginConfig)
 		h.storeToken("p", tokStored)
 		h.storeToken("c", tokStored)
-		h.env["W_TOKEN"] = tokEnv
+		h.env["W_TOKEN"] = tokEnvOAT
 		if c.env != "" {
 			h.env[c.env] = c.val
 		}

@@ -17,11 +17,12 @@ Follow the steps in order the first time; each builds on the one before. "Exampl
 | 7 | Session folders | `agx new`, `agx sessions ls`, `gc`, `promote` | [Session folders](guides/running/new-and-sessions.md) | [sessions-gc](../examples/sessions-gc/) |
 | 8 | Move history | moving a folder's conversations to another Claude account, backup, rollback, undo; why Codex is refused | [Move a folder's history](guides/running/move-history.md) | [conversations](../examples/conversations/) |
 | 9 | Logins | home vs login, adding token and API-key logins, precedence, `aglogin`, login usage by probe, `--login auto` | [Logins overview](guides/logins/overview.md), then [Add and manage](guides/logins/add-and-manage.md), [Choosing a login](guides/logins/choosing-a-login.md), [Usage and auto](guides/logins/usage-and-auto.md) | [login-resolve](../examples/login-resolve/), [launch-command](../examples/launch-command/) |
-| 10 | Config reference | every key of `~/.agx/config.yaml`, discovery, secrets, edits by `agx login`, the environment variables | [Config reference](guides/config-shell/config-reference.md), [Environment variables](guides/config-shell/environment.md) | [config-resolve](../examples/config-resolve/), [secret-refs](../examples/secret-refs/) |
-| 11 | Shell integration | landing in the session folder, the launch-plan protocol, aliases, `aglogin`, completion | [Shell integration](guides/config-shell/shell-integration.md) | — |
-| 12 | Doctor and troubleshooting | every `agx doctor` check and its fix, the error messages and what they mean | [Health check](guides/usage/doctor.md), [Troubleshooting](guides/usage/troubleshooting.md) | — |
-| 13 | Scripting | the JSON envelope and every kind, `jq` recipes, exit codes | [JSON output and scripting](guides/usage/json-and-scripting.md) | — |
-| 14 | Library | the packages, the layering, implementing your own provider | [Use agx as a Go library](guides/library/README.md), then [Provider model](guides/library/provider-model.md) | [custom-provider](../examples/custom-provider/) and [all examples](../examples/README.md) |
+| 10 | Projects | home vs login in plain words, `agx profile add`, binding a folder with `agx project use`, the precedence, when a bare `agx` starts the agent, where every credential lives, token kinds | [Projects overview](guides/projects/overview.md), then [Bind a folder, step by step](guides/projects/bind-a-folder.md) | — |
+| 11 | Config reference | every key of `~/.agx/config.yaml`, discovery, secrets, edits by `agx login`, the environment variables | [Config reference](guides/config-shell/config-reference.md), [Environment variables](guides/config-shell/environment.md) | [config-resolve](../examples/config-resolve/), [secret-refs](../examples/secret-refs/) |
+| 12 | Shell integration | landing in the session folder, the launch-plan protocol, aliases, `aglogin`, completion | [Shell integration](guides/config-shell/shell-integration.md) | — |
+| 13 | Doctor and troubleshooting | every `agx doctor` check and its fix, the error messages and what they mean | [Health check](guides/usage/doctor.md), [Troubleshooting](guides/usage/troubleshooting.md) | — |
+| 14 | Scripting | the JSON envelope and every kind, `jq` recipes, exit codes | [JSON output and scripting](guides/usage/json-and-scripting.md) | — |
+| 15 | Library | the packages, the layering, implementing your own provider | [Use agx as a Go library](guides/library/README.md), then [Provider model](guides/library/provider-model.md) | [custom-provider](../examples/custom-provider/) and [all examples](../examples/README.md) |
 
 Unsure which of two similar options you need? The [choosing guides](choosing/README.md) compare them side by side.
 
@@ -43,6 +44,8 @@ The numbered flow: ① a shell alias or ② an `agx` command → ③ config, log
 | Keep experiments out of my projects | [Session folders](guides/running/new-and-sessions.md#step-1--start-in-a-new-folder) |
 | Turn an experiment into a project | [Promote a folder](guides/running/new-and-sessions.md#step-4--promote-a-folder-into-a-project) |
 | Move a project's chats from my personal to my work account | [Move history](guides/running/move-history.md#step-1--see-the-plan-with---dry-run) |
+| Make a client repo always use its own account, without flags | [Projects overview](guides/projects/overview.md) and [Bind a folder](guides/projects/bind-a-folder.md) |
+| Create a new Claude or Codex home in one command | [Create a home with agx profile add](guides/projects/bind-a-folder.md#step-1--create-a-home-with-agx-profile-add) |
 | Keep my home but spend another account's quota | [Logins overview](guides/logins/overview.md) and [Which profile, which login](choosing/which-profile-or-login.md) |
 | Keep tokens in my password manager | [Which token source](choosing/which-token-source.md) |
 | Use Kimi or another per-token backend | [Run an api-billed profile](guides/running/run.md#step-6--run-an-api-billed-profile) |
@@ -83,6 +86,11 @@ The numbered flow: ① a shell alias or ② an `agx` command → ③ config, log
 - [Add and manage logins](guides/logins/add-and-manage.md): sources, kinds, `ls`, `check`, rotation, `tokens.yaml`, expiry, removal.
 - [Choosing a login](guides/logins/choosing-a-login.md): the precedence, per-run, per-profile, per-provider and per-terminal choices.
 - [Login usage and --login auto](guides/logins/usage-and-auto.md): what a probe costs, `agx usage --logins`, `--login auto`.
+
+### Projects
+
+- [Projects overview](guides/projects/overview.md): home vs login, what each command uses, the precedence, bare `agx`, what a new home shares, where credentials live, token kinds.
+- [Bind a folder, step by step](guides/projects/bind-a-folder.md): `agx profile add`, `agx project use`, `show`, `ls`, `rm`, with real output.
 
 ### Configuration and shell
 

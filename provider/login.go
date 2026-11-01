@@ -37,6 +37,16 @@ type LoginLauncher interface {
 	LoginEnv(kind LoginKind, value string) (set map[string]string, unset []string)
 }
 
+// LoginKindDetector is an optional upgrade that recognises a credential's
+// kind from its shape (a vendor prefix), so `agx login add` need not be told
+// --kind and a value pasted under the wrong kind is caught before it is
+// stored or launched. It returns ("", nil) for a value it cannot recognise,
+// and an error for a value it recognises as unusable for a login (a refresh
+// token, an admin key). The error must never quote the value.
+type LoginKindDetector interface {
+	DetectLoginKind(value string) (LoginKind, error)
+}
+
 // LoginLifetimer is an optional upgrade reporting how long a credential of
 // kind stays valid after it was issued, so `agx login ls` and `agx doctor`
 // can warn before it stops working. Zero means it does not expire.

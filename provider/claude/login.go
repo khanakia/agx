@@ -2,6 +2,9 @@ package claude
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/khanakia/agx/provider"
@@ -29,17 +32,54 @@ const (
 // on the login is refused after it (logins spec §9) with the renew command.
 const SetupTokenLifetime = 365 * 24 * time.Hour
 
+// Prefixes Anthropic puts on its credentials. A setup-token and the access
+// token a home login stores share the OAuth access prefix, so the prefix
+// tells the kind, never whose token it is or how long it lives.
+const (
+	// oauthAccessPrefix starts an OAuth access token (`claude setup-token`).
+	oauthAccessPrefix = "sk-ant-oat"
+	// oauthRefreshPrefix starts an OAuth refresh token: it cannot run
+	// Claude, and using it elsewhere would rotate the owner's login away.
+	oauthRefreshPrefix = "sk-ant-ort"
+	// apiKeyPrefix starts a console API key (pay per token).
+	apiKeyPrefix = "sk-ant-api"
+	// adminKeyPrefix starts an Admin API key, which cannot run inference.
+	adminKeyPrefix = "sk-ant-admin"
+)
+
+// ErrUnusableToken means a value was recognised as an Anthropic credential
+// that no login can run Claude with.
+var ErrUnusableToken = errors.New("claude: this token cannot run Claude")
+
 // Compile-time checks that the login upgrades stay implemented.
 var (
-	_ provider.LoginLauncher    = (*Provider)(nil)
-	_ provider.LoginLifetimer   = (*Provider)(nil)
-	_ provider.LoginUsageReader = (*Provider)(nil)
+	_ provider.LoginKindDetector = (*Provider)(nil)
+	_ provider.LoginLauncher     = (*Provider)(nil)
+	_ provider.LoginLifetimer    = (*Provider)(nil)
+	_ provider.LoginUsageReader  = (*Provider)(nil)
 )
 
 // LoginKinds implements provider.LoginLauncher; oauth-token first, so a
 // plain `agx login add` spends plan quota rather than an API key.
 func (p *Provider) LoginKinds() []provider.LoginKind {
 	return []provider.LoginKind{provider.LoginOAuthToken, provider.LoginAPIKey}
+}
+
+// DetectLoginKind implements provider.LoginKindDetector from the token's
+// prefix. Surrounding whitespace (a pasted newline) is ignored.
+func (p *Provider) DetectLoginKind(value string) (provider.LoginKind, error) {
+	v := strings.TrimSpace(value)
+	switch {
+	case strings.HasPrefix(v, oauthAccessPrefix):
+		return provider.LoginOAuthToken, nil
+	case strings.HasPrefix(v, apiKeyPrefix):
+		return provider.LoginAPIKey, nil
+	case strings.HasPrefix(v, oauthRefreshPrefix):
+		return "", fmt.Errorf("%w: it is an OAuth refresh token (%s…); use the token `claude setup-token` prints", ErrUnusableToken, oauthRefreshPrefix)
+	case strings.HasPrefix(v, adminKeyPrefix):
+		return "", fmt.Errorf("%w: it is an Admin API key (%s…); use a regular API key or a setup-token", ErrUnusableToken, adminKeyPrefix)
+	}
+	return "", nil
 }
 
 // LoginEnv implements provider.LoginLauncher. An unknown kind sets nothing,

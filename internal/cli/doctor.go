@@ -52,6 +52,7 @@ const (
 	areaConfig       = "config"
 	areaSessionsRoot = "sessions.root"
 	areaShell        = "shell"
+	areaProject      = "project"
 	areaProfilePfx   = "profile "
 	areaLoginPfx     = "login "
 )
@@ -186,6 +187,7 @@ func (a *app) doctor() []finding {
 	}
 
 	out = append(out, a.doctorLogins(cfg)...)
+	out = append(out, a.doctorProjects(cfg)...)
 
 	if v, ok := a.LookupEnv(appmeta.EnvShellInit); ok && v != "" {
 		add(areaShell, levelOK, "shell layer active ("+v+")")
