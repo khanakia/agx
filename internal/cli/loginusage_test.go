@@ -304,7 +304,7 @@ profiles:
 `)
 	h.storeToken("st-old", tokStored)
 	h.storeToken("st-new", tokStored)
-	h.env["E_TOK"] = tokEnv
+	h.env["E_TOK"] = tokEnvOAT
 	for _, c := range []struct {
 		login     string
 		runs      bool

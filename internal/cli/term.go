@@ -23,6 +23,13 @@ func isTerminal(w io.Writer) bool {
 	return err == nil && info.Mode()&os.ModeCharDevice != 0
 }
 
+// interactive reports whether a person is at both ends. It asks the terminal
+// itself, not isTerminal: /dev/null is a character device too, and an agent
+// must not start with its screen going there.
+func interactive() bool {
+	return term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
+}
+
 // lookPath is exec.LookPath, named for injection.
 func lookPath(name string) (string, error) { return exec.LookPath(name) }
 

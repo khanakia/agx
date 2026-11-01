@@ -27,6 +27,8 @@ agx new -p auto
 agx new -p work pglite -- --model opus
 ```
 
+In a folder bound with [`agx project use`](../projects/overview.md), `agx new` takes the binding of the folder you typed it in (the new session folder is elsewhere, usually unbound), and the launch plan the shell layer runs carries the binding's login.
+
 The folder is named `[slug_]YYYYMMDD_HHMMSS` in local time. The slug is your words lowercased, with every run of characters other than `a-z` and `0-9` turned into one `_` and leading or trailing `_` trimmed, so `Fix: Login/Redirect!` becomes `fix_login_redirect`. Two folders created in the same second get `_2`, `_3` and so on instead of sharing one.
 
 ## Step 2 — List the folders

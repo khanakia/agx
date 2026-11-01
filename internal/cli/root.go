@@ -35,7 +35,8 @@ func NewRoot(d Deps) *cobra.Command {
 			"plan usage for all accounts at once, launching on the account with the most headroom,\n" +
 			"resuming a conversation on the account that holds it, running any home on another\n" +
 			"account's quota (logins), and managing session folders.\n\n" +
-			"Run with no command to show usage for every account.",
+			"Run with no command to show usage for every account; in a folder bound with\n" +
+			"`agx project use`, at a terminal and with no flags, it starts the agent instead.",
 		Version:       versioncmd.Collect(appmeta.Name).Version,
 		Args:          usageArgs(cobra.NoArgs),
 		SilenceErrors: true,
@@ -53,7 +54,12 @@ func NewRoot(d Deps) *cobra.Command {
 	usage := newUsageCmd(a)
 	// The bare command shows usage, sharing the usage command's flags.
 	root.Flags().AddFlagSet(usage.Flags())
-	root.RunE = usage.RunE
+	root.RunE = func(cmd *cobra.Command, args []string) error {
+		if a.autoStartable(cmd) {
+			return a.autoStart(ctxOf(cmd))
+		}
+		return usage.RunE(cmd, args)
+	}
 
 	add := func(group string, cmds ...*cobra.Command) {
 		for _, c := range cmds {
@@ -63,7 +69,7 @@ func NewRoot(d Deps) *cobra.Command {
 	}
 	add(groupAgents, usage, newPlanCmd(a), newProfilesCmd(a), newRunCmd(a), newNewCmd(a), newResumeCmd(a), newWsCmd(a))
 	add(groupSessions, newSessionsCmd(a))
-	add(groupSetup, newLoginCmd(a), newDoctorCmd(a), newShellInitCmd(a),
+	add(groupSetup, newLoginCmd(a), newProfileCmd(a), newProjectCmd(a), newDoctorCmd(a), newShellInitCmd(a),
 		versioncmd.New(versioncmd.WithBinaryName(appmeta.Name)))
 	root.AddCommand(newExecCmd(a)) // hidden plumbing for the shell layer
 	return root

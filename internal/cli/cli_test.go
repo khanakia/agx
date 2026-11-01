@@ -170,6 +170,8 @@ type harness struct {
 	// commands run attached to the terminal (`claude setup-token`).
 	secretInput string
 	interactive []provider.Command
+	// tty is what Deps.Interactive answers: a person at both ends.
+	tty bool
 }
 
 func newHarness(t *testing.T, configYAML string) *harness {
@@ -251,6 +253,7 @@ func (h *harness) deps() Deps {
 			return nil
 		},
 		PromptSecret: func(string) (string, error) { return h.secretInput, nil },
+		Interactive:  func() bool { return h.tty },
 	}
 }
 

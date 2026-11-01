@@ -67,7 +67,7 @@ shell:
 
 ## Step 2 — Look up a key
 
-All paths accept a leading `~`, are made absolute, and are cleaned. Top-level keys: `sessions`, `providers`, `logins`, `profiles`, `shell` (`config/config.go`, `File`).
+All paths accept a leading `~`, are made absolute, and are cleaned. Top-level keys: `sessions`, `providers`, `logins`, `profiles`, `shell`, `projects` (`config/config.go`, `File`; `projects` is in [Step 5](#step-5--bind-folders-projects)).
 
 ### sessions
 
@@ -83,7 +83,7 @@ Keyed by provider id: `claude` or `codex`. Any other id is an error.
 | Key | Type | Default | Notes |
 |---|---|---|---|
 | `providers.<id>.args` | list of strings | none | Prepended to every profile of that provider, including discovered ones. A profile with `args_replace: true` drops them. |
-| `providers.<id>.login` | string | none | Default login for every profile of that provider (step 4 of [the login precedence](../logins/choosing-a-login.md#step-1--learn-the-precedence)). A login name of the same provider, or `home`; never `auto`. Skipped for a profile it does not fit. |
+| `providers.<id>.login` | string | none | Default login for every profile of that provider (step 5 of [the login precedence](../logins/choosing-a-login.md#step-1--learn-the-precedence)). A login name of the same provider, or `home`; never `auto`. Skipped for a profile it does not fit. |
 
 ### logins
 
@@ -138,11 +138,30 @@ With no profile configured for a provider, agx discovers that provider's homes (
 
 ## Step 4 — Let agx edit the file for you
 
-`agx login add`, `agx login use` and `agx login rm` edit config.yaml in place through the YAML node API: your comments and key order survive, and every edit is fully validated before it is written, so agx never writes a file it would then refuse (`config/edit.go`, `Editor`). A new file is created with mode 0600 in a 0700 folder; an existing file keeps its mode. Each edit prints what changed:
+`agx login add`, `agx login use`, `agx login rm`, `agx profile add`, `agx project use` and `agx project rm` edit config.yaml in place through the YAML node API: your comments and key order survive, and every edit is fully validated before it is written, so agx never writes a file it would then refuse (`config/edit.go`, `Editor`). A new file is created with mode 0600 in a 0700 folder; an existing file keeps its mode. Each edit prints what changed:
 
 ```sh
 agx login use personal -p work
 ```
+
+## Step 5 — Bind folders: `projects`
+
+`agx project use` writes one line per folder under `projects:` (`config/projects.go`, `Project`); [Projects overview](../projects/overview.md) explains what a binding does.
+
+```yaml
+projects:
+  - {path: /home/you/code/client-app, profile: client, login: work}
+  - {path: /home/you/code/side, login: work}
+  - {path: ~/code/scratch, profile: personal}   # written by hand: ~ is expanded at load
+```
+
+| Key | Value |
+|---|---|
+| `path` | an absolute folder, or `~/…`; agx writes it with symlinks resolved. It covers the folder and every folder under it; the longest matching path wins |
+| `profile` | a profile name; the binding's choice of home |
+| `login` | a login name or `home`; never `auto` |
+
+Each entry needs `path` and at least one of `profile` and `login`; a relative path, `login: auto`, or two entries for the same folder (`/w` and `/w/`, or `~/w` and its expansion) make the file refuse to load. The names are deliberately not checked at load, so a binding left dangling by a removed profile or login still loads: `agx project ls` and `agx doctor` report it, and a run in that folder stops with the fix.
 
 ## Try it
 

@@ -12,10 +12,11 @@ agx has four ways to start an agent (`run`, `run -p auto`, `new`, `resume` / `ws
 
 | You want to | Command | Folder | Home (account) | Guide | Example |
 |---|---|---|---|---|---|
-| Start in the folder you are in, on the default account | `agx run` | current | default profile of `--provider` (default `claude`) | [Run](../guides/running/run.md#step-1--run-on-the-default-profile) | [launch-command](../../examples/launch-command/) |
+| Start in the folder you are in, on the default account | `agx run` | current | the [project binding](../guides/projects/overview.md)'s profile, else the default profile of `--provider` (default `claude`) | [Run](../guides/running/run.md#step-1--run-on-the-default-profile) | [launch-command](../../examples/launch-command/) |
 | Start here on a named account | `agx run -p work` | current | that profile's | [Pick a profile](../guides/running/run.md#step-2--pick-a-profile-with--p) | [launch-command](../../examples/launch-command/) |
 | Start here on whichever plan has the most room | `agx run -p auto` | current | lowest highest-window percent; api-billed never | [Auto-pick](../guides/running/auto-pick.md) | [autopick](../../examples/autopick/) |
 | Try something without cluttering a project | `agx new [slug words]` | a fresh `sessions.root/[slug_]YYYYMMDD_HHMMSS` | default, `-p NAME` or `-p auto` | [Session folders](../guides/running/new-and-sessions.md#step-1--start-in-a-new-folder) | [sessions-gc](../../examples/sessions-gc/) |
+| Start in a bound folder without typing anything else | `agx` (at a terminal, no flags) | current | the binding's profile and login | [Projects: bare agx](../guides/projects/overview.md#step-4--know-when-a-bare-agx-starts-the-agent) | — |
 | Continue a chat started in this folder | `agx resume [words]` | the conversation's folder | the home that stores the conversation | [Resume](../guides/running/resume.md) | [conversations](../../examples/conversations/) |
 | Continue a chat but you do not remember where | `agx ws` (or `agx resume -b`) | the chosen workspace | the home that stores the conversation | [Workspace picker](../guides/running/workspace-picker.md) | [conversations](../../examples/conversations/) |
 | Continue the newest matching chat with no picker (scripts, ssh) | `agx resume --last [words]` (add `--all` for every folder) | the conversation's folder | the home that stores it | [Skip the picker](../guides/running/resume.md#step-3--skip-the-picker-with---last) | [conversations](../../examples/conversations/) |
@@ -33,6 +34,7 @@ If X then Y:
 | You want | Use | Not |
 |---|---|---|
 | Same chat, same account | `agx resume` | — |
+| Same chat, the login the folder is bound to | `agx resume` (a binding's login applies; its profile does not) | — |
 | Same chat, another account's quota | `agx resume --login NAME` | `resume -p OTHER`, which starts in the other home where the transcript does not exist |
 | The chat itself to belong to another account from now on | `agx sessions move --to OTHER`, then `agx resume` | `resume -p` |
 | Auto-pick | `agx resume --login auto` | `resume -p auto`, which is refused |

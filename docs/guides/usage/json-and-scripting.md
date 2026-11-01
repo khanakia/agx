@@ -23,7 +23,7 @@ Every agx command that lists something takes `--json` and prints one stable enve
 | `schema_version` | `1`. It versions the envelope itself (these four fields) and is bumped only when they change; the fields inside `data` are described per kind below. Ignore keys you do not know, so a new field never breaks your script. |
 | `kind` | what `data` holds (table below) |
 | `count` | the number of entries in `data`; absent when `data` is a single object, and also when a list is empty |
-| `data` | a list of entries, or one object for `session.promote` and `version.show` (which have no `count`) |
+| `data` | a list of entries, or one object for `session.promote`, `project.show` and `version.show` (which have no `count`) |
 
 Optional fields are left out when empty (an account without an error has no `error` key), so test for them with `jq`'s `//` or `select(.error)` rather than comparing to `""`. A `login.list` row never carries a token value, and `profile.list` lists secret variable names, never their values.
 
@@ -39,6 +39,8 @@ Optional fields are left out when empty (an account without an error has no `err
 | [`session.promote`](#sessionpromote) | `agx sessions promote … --json` |
 | [`session.move`](#sessionmove) | `agx sessions move … --json` |
 | [`login.list`](#loginlist) | `agx login ls --json` |
+| [`project.list`](#projectlist) | `agx project ls --json` |
+| [`project.show`](#projectshow) | `agx project show --json` |
 | [`doctor.report`](#doctorreport) | `agx doctor --json` |
 | [`version.show`](#versionshow) | `agx version --json` |
 
@@ -383,6 +385,58 @@ Never contains a token. `expires` is set for setup-token logins (counted from `a
   ]
 }
 ```
+
+### project.list
+
+One row per folder binding: `path`, and `profile` / `login` when set. `problems` is present only for a binding that cannot be used as written (a removed profile or login, a login that cannot run the bound profile).
+
+```json
+{
+  "schema_version": 1,
+  "kind": "project.list",
+  "count": 2,
+  "data": [
+    {
+      "path": "/home/you/code/client-app",
+      "profile": "personal"
+    },
+    {
+      "path": "/home/you/code/gone",
+      "profile": "old",
+      "problems": [
+        "profile \"old\" no longer exists"
+      ]
+    }
+  ]
+}
+```
+
+### project.show
+
+One object: what a run in the current folder would use and which rule chose each part. `project` is `null` outside any binding. Names and paths only; never a token.
+
+```json
+{
+  "schema_version": 1,
+  "kind": "project.show",
+  "data": {
+    "folder": "/home/you/code/client-app/src",
+    "project": {
+      "path": "/home/you/code/client-app",
+      "profile": "personal"
+    },
+    "profile": "personal",
+    "profile_source": "project binding at /home/you/code/client-app",
+    "provider": "claude",
+    "home": "/home/you/.claude",
+    "home_source": "profile personal",
+    "login": "home",
+    "login_source": "the home's own login"
+  }
+}
+```
+
+`profile_source` is `--profile`, `default profile` or `project binding at PATH`; `login_source` is `--login`, `AGX_LOGIN`, `project binding at PATH`, `profile login`, `provider default` or `the home's own login`.
 
 ### doctor.report
 
