@@ -39,8 +39,8 @@ func TestLogin_ExpiryBoundary(t *testing.T) {
 		warn  string
 	}{
 		{"stored, 1ns before", "st", at.Add(-time.Nanosecond), true, ""},
-		{"stored, at expiry", "st", at, false, "login st expired on 2027-09-01"},
-		{"stored, a day after", "st", at.Add(24 * time.Hour), false, "login st expired on 2027-09-01"},
+		{"stored, at expiry", "st", at, false, "login st: expired on 2027-09-01"},
+		{"stored, a day after", "st", at.Add(24 * time.Hour), false, "login st: expired on 2027-09-01"},
 		{"cmd, 1ns before", "cm", at.Add(-time.Nanosecond), true, ""},
 		{"cmd, at expiry", "cm", at, true, "login cm is past its approximate expiry (2027-09-01"},
 		{"stored, other zone same instant", "st", at.In(time.FixedZone("UTC+14", 14*3600)), false, "expired on"},
@@ -184,7 +184,7 @@ func TestLogin_CheckRefusals(t *testing.T) {
 	}{
 		{name: "nosuch", code: ExitUsage, err: `unknown login "nosuch"`},
 		{name: "Ünïcode", code: ExitUsage, err: "unknown login"},
-		{name: "st", code: ExitFailure, out: "login st: failed: login st expired on 2027-09-01"},
+		{name: "st", code: ExitFailure, out: "login st: failed: expired on 2027-09-01"},
 	} {
 		code := h.run("login", "check", c.name)
 		if code != c.code || !strings.Contains(h.stdout.String(), c.out) || !strings.Contains(h.stderr.String(), c.err) {
