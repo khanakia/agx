@@ -62,7 +62,7 @@ The message never repeats the token value.
 | `--setup is not known for PROVIDER` | that provider has no interactive login agx can run; log the home in yourself |
 | `claude: this token cannot run Claude: it is an OAuth refresh token (sk-ant-ort…); use the token `claude setup-token` prints` | you pasted the refresh token; paste the one `claude setup-token` prints (`sk-ant-oat…`). An Admin API key (`sk-ant-admin…`) is refused the same way |
 | `--kind oauth-token does not match the token, which is an api-key by its prefix` | drop `--kind`; the prefix decides |
-| ``login NAME is kind oauth-token, but its token is an api-key by its prefix — re-add it with `agx login add NAME --replace --kind api-key` and the same source`` | a `--cmd` / `--env` source handed back another kind of token than the login was added as |
+| ``login NAME: kind oauth-token, but its token is an api-key by its prefix — re-add it with `agx login add NAME --replace --kind api-key` and the same source`` | a `--cmd` / `--env` source handed back another kind of token than the login was added as |
 
 ## Step 5 — Usage shows an error for one account
 

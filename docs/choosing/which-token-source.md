@@ -72,7 +72,7 @@ login team: resolved ok (not probed)
 see its usage with `agx login check team` (one probe: a few tokens of its quota)
 $ agx login add ci --env CI_CLAUDE_TOKEN
 added login ci (claude, oauth-token, env)
-login ci: failed: login ci: env CI_CLAUDE_TOKEN is not set
+login ci: failed: env CI_CLAUDE_TOKEN is not set
 $ printf 'sk-ant-api03-FAKE-billing-2222222222\n' | agx login add billing --stdin --kind api-key
 added login billing (claude, api-key, stored)
 agx: tokens.yaml holds raw tokens: never sync, share or commit it (~/.agx/tokens.yaml)

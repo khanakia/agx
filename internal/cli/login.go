@@ -268,7 +268,7 @@ func (a *app) expiry(l login.Login) (time.Time, bool) {
 func (a *app) resolveLoginValue(ctx context.Context, l login.Login) (string, error) {
 	if at, ok := a.expiry(l); ok && !a.Now().Before(at) {
 		if login.Owned(l) {
-			return "", fmt.Errorf("login %s expired on %s; renew: agx login add %s --setup --replace", l.Name, at.Format(time.DateOnly), l.Name)
+			return "", fmt.Errorf("login %s: expired on %s; renew: agx login add %s --setup --replace", l.Name, at.Format(time.DateOnly), l.Name)
 		}
 		a.warn(fmt.Sprintf("login %s is past its approximate expiry (%s, counted from when it was added); running anyway — if the token was not rotated, renew: agx login add %s --replace", l.Name, at.Format(time.DateOnly), l.Name))
 	}
@@ -326,7 +326,7 @@ func checkLoginKind(ll provider.LoginLauncher, l login.Login, val string) error 
 	case err != nil:
 		return fmt.Errorf("login %s: %w", l.Name, err)
 	case got != "" && got != l.Kind:
-		return fmt.Errorf("login %s is kind %s, but its token is an %s by its prefix — re-add it with `agx login add %s --replace --kind %s` and the same source", l.Name, l.Kind, got, l.Name, got)
+		return fmt.Errorf("login %s: kind %s, but its token is an %s by its prefix — re-add it with `agx login add %s --replace --kind %s` and the same source", l.Name, l.Kind, got, l.Name, got)
 	}
 	return nil
 }
@@ -749,7 +749,11 @@ func (a *app) checkOne(ctx context.Context, name string, probe bool) error {
 		return errUnknownLogin(name)
 	}
 	if _, err := a.resolveLoginValue(ctx, l); err != nil {
-		if _, werr := fmt.Fprintf(a.Stdout, "login %s: failed: %v\n", name, err); werr != nil {
+		// Resolution errors lead with "login NAME: " (launches print them
+		// too, where the name is needed); drop it so the check line names
+		// the login once.
+		reason := strings.TrimPrefix(err.Error(), "login "+name+": ")
+		if _, werr := fmt.Fprintf(a.Stdout, "login %s: failed: %s\n", name, reason); werr != nil {
 			return werr
 		}
 		return errPartial
