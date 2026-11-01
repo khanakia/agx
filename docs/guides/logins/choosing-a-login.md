@@ -14,12 +14,13 @@ The first match wins (`internal/cli/login.go`, `pickLogin` and `defaultLogin`):
 | # | Where | Set with | If the login does not fit the profile |
 |---|---|---|---|
 | 1 | `--login NAME`, `--login home` or `--login auto` on the command | the flag | error, exit 2 |
-| 2 | `AGX_LOGIN` in the environment | `aglogin NAME` or `export AGX_LOGIN=NAME` | skipped with a one-line note; steps 3 to 5 apply |
-| 3 | the profile's `login:` in config.yaml | `agx login use NAME -p PROFILE` | config refused at load |
-| 4 | `providers.<id>.login:` in config.yaml | `agx login use NAME --provider ID` | skipped silently |
-| 5 | the home's own login | nothing | — |
+| 2 | `AGX_LOGIN` in the environment | `aglogin NAME` or `export AGX_LOGIN=NAME` | skipped with a one-line note; steps 3 to 6 apply |
+| 3 | the login of the [project binding](../projects/overview.md) covering the folder | `agx project use --login NAME` | error when the binding's own profile is running; skipped with a note under a profile you chose with `-p` |
+| 4 | the profile's `login:` in config.yaml | `agx login use NAME -p PROFILE` | config refused at load |
+| 5 | `providers.<id>.login:` in config.yaml | `agx login use NAME --provider ID` | skipped silently |
+| 6 | the home's own login | nothing | — |
 
-`home` is a valid value at steps 1 to 4 and means "stop here and use the home's own login". A profile with `login: home` therefore ignores a provider default. `auto` is accepted only at step 1; see [Login usage and `--login auto`](usage-and-auto.md).
+`home` is a valid value at steps 1 to 5 and means "stop here and use the home's own login". A profile with `login: home` therefore ignores a provider default, and a binding with `login: home` ignores the profile's own login. `auto` is accepted only at step 1; see [Login usage and `--login auto`](usage-and-auto.md). A binding that names a login which no longer exists stops the run instead of falling through. The binding's profile half is resolved separately (after `-p`, before the default profile); see [Projects overview](../projects/overview.md#step-3--learn-the-precedence).
 
 "Does not fit" means: a login of another provider, a profile with `billing: api`, or a profile whose own `env:` or `secrets:` sets a credential variable the login would set or remove (`login/login.go`, `Compatible`). That is why an exported Claude login never breaks a Codex or Kimi run.
 

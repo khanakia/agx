@@ -52,7 +52,7 @@ shell:
     clr: resume
 ```
 
-Each entry becomes a function that calls the `agx` function, so `clnew` lands in the new folder and every extra argument passes through (`clw --login personal`, `clr --last`). Names match `^[A-Za-z_][A-Za-z0-9_-]*$`; values use only letters, digits, spaces and `_./:=@+-`, because they are pasted into shell code as they are (`config/config.go`, `aliasArgsPattern`). The functions are emitted sorted by name.
+Each entry becomes a function that calls the `agx` function, so `clnew` lands in the new folder and every extra argument passes through (`clw --login personal`, `clr --last`). An alias that names a profile keeps it in a folder bound with `agx project use`: `cl` still runs the `personal` home there and takes only the binding's login. Plain `agx run`, or a bare `agx` at the terminal, uses the binding's profile too ([Projects overview](../projects/overview.md#pitfalls)). Names match `^[A-Za-z_][A-Za-z0-9_-]*$`; values use only letters, digits, spaces and `_./:=@+-`, because they are pasted into shell code as they are (`config/config.go`, `aliasArgsPattern`). The functions are emitted sorted by name.
 
 ## Step 4 — Switch logins per terminal with `aglogin`
 

@@ -13,7 +13,7 @@ Three read commands tell you where every account stands: `agx` / `agx usage` sho
 agx
 ```
 
-`agx` with no command is `agx usage`. It fetches every account at once, one read-only request each, and prints one block per account:
+`agx` with no command is `agx usage`, with one exception: in a folder bound with [`agx project use`](../projects/overview.md#step-4--know-when-a-bare-agx-starts-the-agent), at a terminal and with no flags, it starts the agent instead. `agx usage` always shows usage. It fetches every account at once, one read-only request each, and prints one block per account:
 
 ```text
 you@example.com  Max (20x)  personal · claude  ~/.claude

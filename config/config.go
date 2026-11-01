@@ -64,6 +64,7 @@ type File struct {
 	Providers map[string]ProviderDefaultsSpec `yaml:"providers"`
 	Profiles  []ProfileSpec                   `yaml:"profiles"`
 	Shell     ShellSpec                       `yaml:"shell"`
+	Projects  []Project                       `yaml:"projects"`
 }
 
 // SessionsSpec configures session folders.
@@ -147,6 +148,9 @@ type Config struct {
 	// ProviderLogins maps a provider to its default login name (never
 	// "home": that is stored as absent).
 	ProviderLogins map[provider.ID]string
+	// Projects are the folder bindings in config order; their paths are
+	// expanded, their names unchecked (see Project).
+	Projects []Project
 }
 
 // ErrInvalid wraps every validation failure.
@@ -206,6 +210,9 @@ func Resolve(f File, userHome string, providers []provider.Provider) (Config, er
 		return Config{}, err
 	}
 	cfg.Logins = logins
+	if cfg.Projects, err = resolveProjects(f.Projects, userHome); err != nil {
+		return Config{}, err
+	}
 	for id, d := range f.Providers {
 		if d.Login == "" || d.Login == login.Home {
 			continue

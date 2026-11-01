@@ -31,7 +31,7 @@ If X then Y:
 
 | Only in the CLI | Only in the library |
 |---|---|
-| Login precedence (`--login`, `AGX_LOGIN`, profile, provider, home) and `--login auto` | Injection points: `claude.UsageClient.Endpoint`, `ProbeClient.Endpoint`, `Provider.Store = nil` (no Keychain), `Provider.Now`, `secret.System.LookupEnv`, `login.Resolver.LookupEnv` / `RunCmd` |
+| Login precedence (`--login`, `AGX_LOGIN`, project binding, profile, provider, home) and `--login auto` | Injection points: `claude.UsageClient.Endpoint`, `ProbeClient.Endpoint`, `Provider.Store = nil` (no Keychain), `Provider.Now`, `secret.System.LookupEnv`, `login.Resolver.LookupEnv` / `RunCmd` |
 | `agx doctor` checks and their levels | Your own `provider.Provider` implementations |
 | The fzf picker and its numbered fallback | `provider.MovePlan` to inspect a move before `ApplyMovePlan` runs it |
 | The shell layer: landing in the folder, OSC 7, aliases, `aglogin`, completion | `config.Editor` for comment-preserving edits of your own |

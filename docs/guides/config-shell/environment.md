@@ -26,7 +26,7 @@ agx doctor
 
 ## Step 2 — Pick a login for a terminal: `AGX_LOGIN`
 
-`AGX_LOGIN=NAME` makes every launch in that environment run on login `NAME`, unless `--login` is given (step 2 of [the login precedence](../logins/choosing-a-login.md#step-1--learn-the-precedence)). `home` means the home's own login; `auto` is refused. Set it with the `aglogin` shell function, which checks the name first, or export it yourself:
+`AGX_LOGIN=NAME` makes every launch in that environment run on login `NAME`, unless `--login` is given (step 2 of [the login precedence](../logins/choosing-a-login.md#step-1--learn-the-precedence)). It also beats a [project binding](../projects/overview.md)'s login, because it is a choice made for this terminal just now. `home` means the home's own login; `auto` is refused. Set it with the `aglogin` shell function, which checks the name first, or export it yourself:
 
 ```sh
 export AGX_LOGIN=personal
@@ -106,6 +106,8 @@ agx: AGX_LOGIN=nope: unknown login (see `agx login ls`; `aglogin` with no argume
 ## Pitfalls
 
 - **A relative `AGX_CONFIG_DIR` follows your current directory.** Run from `/tmp`, `AGX_CONFIG_DIR=alt` reads `/tmp/alt/config.yaml` (seen in a real run: `no file at /tmp/alt/config.yaml`). Always export an absolute path.
+- **`AGX_HOME` is not the config folder itself.** `AGX_HOME=/x` reads `/x/config/config.yaml`; a `config.yaml` placed directly in `/x` is ignored. To point at a folder that holds `config.yaml`, use `AGX_CONFIG_DIR=/x`, which reads `/x/config.yaml`. `agx doctor` prints the file it loaded on its first line.
+- **Setting `HOME` and `AGX_CONFIG_DIR` in one `export` uses the old `HOME`.** In `export HOME="$(mktemp -d)" AGX_CONFIG_DIR="$HOME/.agx"` the second `$HOME` is expanded before the first assignment, so `AGX_CONFIG_DIR` points at your real `~/.agx`. Use two statements.
 - **Moving the folder moves `tokens.yaml`.** A login stored under `~/.agx` is `stored (missing)` when you run with `AGX_HOME` or `AGX_CONFIG_DIR` pointing elsewhere; `AGX_HOME=/home/you/agxhome agx login ls` in that throwaway home printed `no logins`, because it read a different config.
 - **A stale `AGX_LOGIN` breaks every launch in that shell.** An unknown name is an error, not a skip. `aglogin` with no argument, or `unset AGX_LOGIN`, clears it.
 - **`AGX_PLAN_FILE` in your own environment changes `new`, `resume` and `ws`.** With it set, they write a plan and exit 0 without launching anything (`internal/cli/launch.go`, `launchOrPlan`). Never export it in a profile or CI job.

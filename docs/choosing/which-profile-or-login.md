@@ -18,6 +18,7 @@ The question to ask is: should the conversations be kept apart, or only the bill
 | Keep working in this home but spend another plan's quota when this one runs low | a **token login** (`oauth-token`, from `claude setup-token`) | the home and its history stay; only `CLAUDE_CODE_OAUTH_TOKEN` changes | [Add and manage logins](../guides/logins/add-and-manage.md#step-2--add-a-stored-login) | [login-resolve](../../examples/login-resolve/) |
 | Pay per token for this home, for example on a CI box | an **API-key login** (`--kind api-key`) | delivered as `ANTHROPIC_API_KEY`, never expires, has no plan windows | [Add and manage logins](../guides/logins/add-and-manage.md#step-4--pick-a-kind) | [launch-command](../../examples/launch-command/) |
 | A third-party backend such as Kimi that speaks the same API | a **profile** with `billing: api` and its own `env:` / `secrets:` | the backend's key is part of the profile, so no login can be put on it | [Run an api-billed profile](../guides/running/run.md#step-6--run-an-api-billed-profile) | [config-resolve](../../examples/config-resolve/) |
+| One folder (a client repo) should always use a given home, login or both, without flags | a **project binding** (`agx project use -p PROFILE --login NAME`) | stored per folder in config.yaml; `agx run` and a bare `agx` there follow it | [Projects overview](../guides/projects/overview.md) | — |
 | Conversations already made on one account, now wanted on another | neither: **move the history** | a login changes the bill, not where the chats are stored | [Move history](../guides/running/move-history.md) | [conversations](../../examples/conversations/) |
 
 If X then Y:
@@ -42,20 +43,22 @@ The env switch is what makes the choice safe: a token login never leaves a secon
 
 ## Step 3 — Choose where to set it
 
-agx takes the first of five places that names a login (`internal/cli/login.go`, `pickLogin` then `defaultLogin`):
+agx takes the first of six places that names a login (`internal/cli/login.go`, `pickLogin`, then `bindingLogin` in `internal/cli/project.go`, then `defaultLogin`):
 
 | # | Place | Set it when | How | Lasts |
 |---|---|---|---|---|
 | 1 | `--login NAME`, `--login home` or `--login auto` | one run is different | the flag on `run`, `new`, `resume` or `ws` | one command |
 | 2 | `AGX_LOGIN` | one terminal is different (say, a tmux pane for a long job) | `aglogin NAME` from the shell layer, or `export AGX_LOGIN=NAME` | the shell |
-| 3 | the profile's `login:` | this profile should always spend that quota | `agx login use NAME -p PROFILE` | until changed |
-| 4 | `providers.claude.login:` | every Claude profile without its own `login:` | `agx login use NAME --provider claude` | until changed |
-| 5 | the home's own login | nothing set | — | — |
+| 3 | the project binding's `login:` | every run in one folder (and below it) should spend that quota | `agx project use --login NAME` in the folder | until changed; this machine only |
+| 4 | the profile's `login:` | this profile should always spend that quota | `agx login use NAME -p PROFILE` | until changed |
+| 5 | `providers.claude.login:` | every Claude profile without its own `login:` | `agx login use NAME --provider claude` | until changed |
+| 6 | the home's own login | nothing set | — | — |
 
 If X then Y:
 
 - If it is a one-off, use the flag; nothing to undo.
 - If you are about to run several commands on another quota in one terminal, use `aglogin NAME`, and `aglogin` with no argument when done ([Choosing a login: switch one terminal](../guides/logins/choosing-a-login.md#step-5--switch-one-terminal)).
+- If it is about a folder rather than a profile (a client repo that must always bill the client's plan), bind the folder: `agx project use --login NAME`. It follows you into every subfolder and does not travel with a clone.
 - If a profile should never use its home's login, set it on the profile. `login: home` on a profile shields it from a provider default.
 - If you want agx to choose per run, use `--login auto`. It is accepted only as the flag; `AGX_LOGIN=auto`, `login: auto` and `agx login use auto` are refused because every auto run spends a probe on each login (`config/logins.go`, `ErrAutoLogin`).
 
