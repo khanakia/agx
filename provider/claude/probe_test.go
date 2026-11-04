@@ -80,6 +80,36 @@ func TestParseProbeHeaders_Matrix(t *testing.T) {
 		{name: "missing 5h reset", edit: func(h http.Header) { h.Del(pre + "5h-reset") }, err: pre + "5h-reset missing"},
 		{name: "missing 7d utilization", edit: func(h http.Header) { h.Del(pre + "7d-utilization") }, err: pre + "7d-utilization missing"},
 		{name: "missing 7d reset", edit: func(h http.Header) { h.Del(pre + "7d-reset") }, err: pre + "7d-reset missing"},
+		// The real shape a Team seat sent on 2026-11-04: no 5h-* headers at
+		// all, claim seven_day. The 5h window is omitted, never shown as 0%.
+		{name: "no 5h window (account has none)", edit: func(h http.Header) {
+			h.Del(pre + "5h-utilization")
+			h.Del(pre + "5h-reset")
+			h.Del(pre + "5h-status")
+			h.Set(pre+"representative-claim", "seven_day")
+		}, check: func(t *testing.T, u provider.Usage) {
+			if len(u.Windows) != 1 {
+				t.Fatalf("windows = %d, want only the 7d one", len(u.Windows))
+			}
+			w := u.Windows[0]
+			if w.Kind != provider.WindowWeekly || w.Percent != 5 || !w.Active {
+				t.Errorf("7d = %+v", w)
+			}
+		}},
+		{name: "no 7d window", edit: func(h http.Header) {
+			h.Del(pre + "7d-utilization")
+			h.Del(pre + "7d-reset")
+			h.Del(pre + "7d-status")
+		}, check: func(t *testing.T, u provider.Usage) {
+			if len(u.Windows) != 1 || u.Windows[0].Kind != provider.WindowSession {
+				t.Errorf("windows = %+v, want only the 5h one", u.Windows)
+			}
+		}},
+		{name: "neither window", edit: func(h http.Header) {
+			for _, k := range []string{"5h-utilization", "5h-reset", "7d-utilization", "7d-reset"} {
+				h.Del(pre + k)
+			}
+		}, err: pre + "5h-utilization, " + pre + "7d-utilization missing"},
 		{name: "no headers at all", edit: func(h http.Header) {
 			for k := range h {
 				delete(h, k)
@@ -141,8 +171,10 @@ func TestParseProbeHeaders_Matrix(t *testing.T) {
 		case c.err == "" && err != nil:
 			t.Errorf("%s: %v", c.name, err)
 		case c.err == "":
-			if len(u.Windows) != 2 {
-				t.Fatalf("%s: windows = %d", c.name, len(u.Windows))
+			// A nil error always carries at least one window; each check
+			// pins its own count (a plan may lack the 5h or 7d window).
+			if len(u.Windows) == 0 {
+				t.Fatalf("%s: nil error with no windows", c.name)
 			}
 			c.check(t, u)
 		}
