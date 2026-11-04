@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-11-04
+
 ### Added
 
 - `agx usage --logins --table`: one compact row per token login instead of a block of bars, with the columns `#  LOGIN  PROVIDER  ACCOUNT  5H USED  5H RESETS  WEEKLY USED  WEEKLY RESETS  LEFT  STATUS` (plus a `<MODEL> WEEKLY` pair when a probe returns a per-model window). `#` is the login's position in `agx login ls`; a window the account lacks is `—`, never `0%`; LEFT is 100 minus the fullest window; STATUS is `ok`, `limit reached`, `rejected` (with `blocked by org` or the HTTP status), `expired`, `per token` or `error` with a short reason, and the full message of each failed row prints under the table. All logins are probed at once with the per-account `--timeout`; the command exits 1 when any row failed.
@@ -206,7 +208,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.7...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.8...HEAD
+[0.3.8]: https://github.com/khanakia/agx/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/khanakia/agx/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/khanakia/agx/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/khanakia/agx/compare/v0.3.4...v0.3.5
