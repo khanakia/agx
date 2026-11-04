@@ -441,6 +441,9 @@ agx login check                                        # resolve every token and
 agx login check --no-probe                             # only resolve; no request, no quota spent
 agx usage --logins                                     # every home, then one probed row per login
 agx usage --login personal                             # one login's 5-hour and weekly windows
+agx usage --logins --table                             # one row per login: 5H, WEEKLY, LEFT, STATUS
+agx usage --login personal,spare                       # the same table for these logins (all: every login)
+agx usage --pick                                       # mark logins in a checklist, then the table
 agx login add personal --stdin --replace               # rotate a token (kind and account are kept)
 agx login rm personal                                  # refused while a profile uses it; --force clears those too
 ```
@@ -484,7 +487,7 @@ A login asked for by name (`--login`, or a profile's `login:`) that does not fit
 
 **Where tokens live.** Pasted and piped tokens go to `~/.agx/tokens.yaml`, beside config.yaml, [mode 0600 in a 0700 folder](ds:block?id=tokenfile-checkperm-4epx2b72), written atomically. config.yaml only says `token: stored`, so it stays safe to sync or share. tokens.yaml must never be synced, backed up to a shared place or committed: agx prints that warning whenever it stores a token, `agx doctor` warns when the file sits inside a git work tree, and agx refuses to read a tokens.yaml that group or others can access, the way ssh treats a private key. `--cmd` and `--env` logins store nothing; their command or variable is read at each launch.
 
-**Usage of a login, and `--login auto`.** A setup-token cannot read the usage endpoint `agx usage` uses (it answers 403), so agx reads a login's usage with [a probe](ds:block?id=probeclient-probe-i9609s2l): one minimal request to the Messages API ([the smallest model](ds:block?id=defaultprobemodel-g7o7rdkd), one output token) whose response headers carry the account's 5-hour and weekly windows, the same numbers `agx usage` shows for a home (an account whose plan has no 5-hour window shows only the weekly one). A probe spends a few tokens of that login's plan quota and counts toward its rate limits, so agx runs one only when you ask: `agx usage --logins` (one row per login after the homes; in `--json` those rows carry `login`, `account` and `"source": "probe"` instead of `profile` and `home`), `agx usage --login NAME` (that login only), `agx login check` (`--no-probe` only resolves the token) and `--login auto`. A plain `agx` or `agx usage` never probes. [`--login auto`](ds:block?id=app-autologin-a4w0xz3h) on `run`, `new`, `resume` and `ws` compares the home's own login with every login that fits the profile, using the same rule as `-p auto` (lowest fullest window wins; ties go to the home, then config order); a login whose token does not resolve or whose probe fails is left out with its reason, and if nothing is left the run stops. `auto` is accepted only as that flag: in config.yaml, `AGX_LOGIN` or `agx login use` it is refused, so probing never becomes a silent default. An api-key login has no plan windows and is never probed. `agx plan --login NAME` is refused: the plan comes from the profile endpoint, which also refuses setup-tokens.
+**Usage of a login, and `--login auto`.** A setup-token cannot read the usage endpoint `agx usage` uses (it answers 403), so agx reads a login's usage with [a probe](ds:block?id=probeclient-probe-i9609s2l): one minimal request to the Messages API ([the smallest model](ds:block?id=defaultprobemodel-g7o7rdkd), one output token) whose response headers carry the account's 5-hour and weekly windows, the same numbers `agx usage` shows for a home (an account whose plan has no 5-hour window shows only the weekly one). A probe spends a few tokens of that login's plan quota and counts toward its rate limits, so agx runs one only when you ask: `agx usage --logins` (one row per login after the homes; in `--json` those rows carry `login`, `account` and `"source": "probe"` instead of `profile` and `home`), `agx usage --login NAME` (that login only), `agx usage --logins --table`, `--login a,b`, `--login all` and `--pick` (one compact row per login with 5H / WEEKLY USED and RESETS, LEFT and STATUS such as `rejected: blocked by org`; [guide](docs/guides/logins/usage-and-auto.md#step-4--compare-logins-in-one-table)), `agx login check` (`--no-probe` only resolves the token) and `--login auto`. A plain `agx` or `agx usage` never probes. [`--login auto`](ds:block?id=app-autologin-a4w0xz3h) on `run`, `new`, `resume` and `ws` compares the home's own login with every login that fits the profile, using the same rule as `-p auto` (lowest fullest window wins; ties go to the home, then config order); a login whose token does not resolve or whose probe fails is left out with its reason, and if nothing is left the run stops. `auto` is accepted only as that flag: in config.yaml, `AGX_LOGIN` or `agx login use` it is refused, so probing never becomes a silent default. An api-key login has no plan windows and is never probed. `agx plan --login NAME` is refused: the plan comes from the profile endpoint, which also refuses setup-tokens.
 
 **Expiry.** A setup-token is [believed to last one year](ds:block?id=setuptokenlifetime-nebd9cbt) (not verified yet) and is never refreshed. `agx login ls` shows EXPIRES counted from the login's `added` date, with `~` for `--cmd` and `--env` logins, where agx does not hold the value and `added` is when the login was added rather than when the token was minted. `agx doctor` warns [30 days](ds:block?id=expirywarnwindow-fnenahy6) ahead. Past that date [a stored login is refused](ds:block?id=app-resolveloginvalue-10wd6ob4) (doctor fails) with the command that renews it: `agx login add NAME --setup --replace`. A `--cmd` or `--env` login only warns and runs, and doctor warns instead of failing, because the token behind it may have been rotated in your store since the login was added.
 
@@ -492,7 +495,7 @@ A login asked for by name (`--login`, or a profile's `login:`) that does not fit
 
 - [Removing a login from agx does not revoke the token.](ds:block?id=revokehint-ngx5vax3) Revoke it where it was issued, in your claude.ai account settings.
 - The agent receives the token in its environment, so any process it starts (tools, hooks, MCP servers) can read it. Use a login only with agents and projects you would trust with that account.
-- Every probe (`agx usage --logins`, `--login NAME`, `--login auto`, `agx login check`) is a real, if tiny, request on that account: a few tokens of plan quota and one request toward its rate limits. Checking every few seconds in a loop would add up; `agx login add` does not probe. An account at its limit still reports its windows (the API answers 429 with the same headers), so it shows as 100% used with the reset time, not as an error.
+- Every probe (`agx usage --logins`, `--login NAME`, `--login a,b` / `all`, `--pick`, `--login auto`, `agx login check`) is a real, if tiny, request on that account: a few tokens of plan quota and one request toward its rate limits. Checking every few seconds in a loop would add up; `agx login add` does not probe. An account at its limit still reports its windows (the API answers 429 with the same headers), so it shows as 100% used with the reset time, not as an error.
 - Codex has no logins yet: its plan login exists only as refreshable tokens in `auth.json` (copying them can log the CLI out), and which API-key variable interactive Codex honours is not verified.
 
 What `agx login add` and `agx login use` write to config.yaml (comments and key order are kept):
@@ -652,7 +655,7 @@ A fixed account-and-quota pair is just an alias: `clwp: run -p work --login pers
 
 | Command | Does |
 |---|---|
-| `agx` / `agx usage [profile…]` | Plan usage bars for every plan-billed login; `--provider`, `--json`, `--color`, `--timeout`. A bare `agx` in a folder bound with `agx project use`, at a terminal and with no flags, starts the agent instead |
+| `agx` / `agx usage [profile…]` | Plan usage bars for every plan-billed login; `--provider`, `--json`, `--color`, `--timeout`; token logins as one table row each with `--logins --table`, `--login a,b\|all` or `--pick`. A bare `agx` in a folder bound with `agx project use`, at a terminal and with no flags, starts the agent instead |
 | `agx plan [profile…]` | Plan, subscription status and start date for every account; `--json`, `--timeout` |
 | `agx profiles` | Every profile: provider, home, account, plan, login state, the login a run spends, billing, source |
 | `agx whoami` | Which profile, login and home the current session runs on, read from the `AGX_RUN_*` variables agx sets on every launch; token variables only as present or absent; `--json` |
@@ -690,7 +693,7 @@ agx new -p auto --provider codex my spike   # auto-pick among Codex accounts
 
 | Command | Flags |
 |---|---|
-| `agx` / [`agx usage`](ds:block?id=newusagecmd-r3ert49b) | `--provider claude\|codex` · `--json` · `--color auto\|always\|never` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) · `--logins` · `--login NAME\|home` (both probe) |
+| `agx` / [`agx usage`](ds:block?id=newusagecmd-r3ert49b) | `--provider claude\|codex` · `--json` · `--color auto\|always\|never` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) · `--logins` · `--login NAME\|a,b\|all\|home` · `--table` · `--pick` (all but `home` probe) |
 | [`agx plan`](ds:block?id=newplancmd-urn3m4qd) | `[profile…]` · `--json` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) · `--login home` (alias: `agx subscription`) |
 | [`agx profiles`](ds:block?id=newprofilescmd-ndr78yh5) | `--json` (aliases: `agx who`, `agx accounts`) |
 | `agx whoami` | `--json` |
@@ -853,7 +856,7 @@ No tool can. Subscription plans have no fixed token budget, and the servers only
 
 **Does checking usage use up my quota?**
 
-No. `agx` / `agx usage` make one read-only GET per account and never call a model. The exception is a token login, which cannot read that endpoint: `agx usage --logins`, `--login NAME`, `--login auto` and `agx login check` send it one minimal model request (a probe), which spends a few tokens of that login's quota. Nothing probes unless you pass one of those.
+No. `agx` / `agx usage` make one read-only GET per account and never call a model. The exception is a token login, which cannot read that endpoint: `agx usage --logins`, `--login NAME` (or a list, `all`, `--pick`), `--login auto` and `agx login check` send it one minimal model request (a probe), which spends a few tokens of that login's quota. Nothing probes unless you pass one of those.
 
 **Does it send my token or data anywhere?**
 

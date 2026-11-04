@@ -49,7 +49,7 @@ Optional fields are left out when empty (an account without an error has no `err
 
 ### usage.list
 
-One entry per account. `windows` is absent when the account failed; `error` then holds the message the bars view prints. `extra` is the vendor's own extra-usage object, passed through unchanged; `resets_at` is `null` for a window with no scheduled reset. A token-login row (from `--logins` / `--login NAME`) has no `profile` or `home` and adds `login`, `account` and `"source": "probe"`. `data` below holds two of the three entries from that run.
+One entry per account. `windows` is absent when the account failed; `error` then holds the message the bars view prints. `extra` is the vendor's own extra-usage object, passed through unchanged; `resets_at` is `null` for a window with no scheduled reset. A token-login row (from `--logins` / `--login NAME`) has no `profile` or `home` and adds `login`, `account` and `"source": "probe"`. Every entry ends with the verdict the [login table](../logins/usage-and-auto.md#step-4--compare-logins-in-one-table) shows: `status` (`ok`, `limit_reached`, `rejected`, `expired`, `per_token` or `error`), `status_reason` when there is one (`blocked by org`, `HTTP 401`, `timeout`, `rate-limited`, …), and `left_percent` (100 minus the fullest window) with `left_resets_at` (when that window resets), both absent when there are no windows. `--login a,b`, `--login all`, `--pick` and `--table` with `--json` print the same envelope with one entry per login. `data` below holds two of the three entries from that run.
 
 ```json
 {
@@ -108,7 +108,10 @@ One entry per account. `windows` is absent when the account failed; `error` then
         "used_credits": 1210,
         "utilization": 24.2,
         "currency": "USD"
-      }
+      },
+      "status": "limit_reached",
+      "left_percent": 0,
+      "left_resets_at": "2026-10-20T07:00:00Z"
     },
     {
       "profile": "work",
@@ -117,7 +120,9 @@ One entry per account. `windows` is absent when the account failed; `error` then
       "billing": "plan",
       "email": "you@work.example",
       "plan": "Max (5x)",
-      "error": "usage endpoint rate-limited this account; try again shortly (retry after 2m0s)"
+      "error": "usage endpoint rate-limited this account; try again shortly (retry after 2m0s)",
+      "status": "error",
+      "status_reason": "rate-limited"
     }
   ]
 }

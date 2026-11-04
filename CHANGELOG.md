@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `agx usage --logins --table`: one compact row per token login instead of a block of bars, with the columns `#  LOGIN  PROVIDER  ACCOUNT  5H USED  5H RESETS  WEEKLY USED  WEEKLY RESETS  LEFT  STATUS` (plus a `<MODEL> WEEKLY` pair when a probe returns a per-model window). `#` is the login's position in `agx login ls`; a window the account lacks is `—`, never `0%`; LEFT is 100 minus the fullest window; STATUS is `ok`, `limit reached`, `rejected` (with `blocked by org` or the HTTP status), `expired`, `per token` or `error` with a short reason, and the full message of each failed row prints under the table. All logins are probed at once with the per-account `--timeout`; the command exits 1 when any row failed.
+- `agx usage --login a,b` and `--login all` print that table for the named logins (or every login), in `agx login ls` order with duplicates dropped; `home` and `auto` are refused inside a list and an unknown name is a usage error.
+- `agx usage --pick`: choose token logins in a checklist (space marks, `a` all/none, Enter shows, Esc/`q` cancels with exit 1), then the table. It needs a terminal on stdin and stdout.
+- `usage.list` JSON gains `status`, `status_reason`, `left_percent` and `left_resets_at` on every entry, home or login, with or without `--table`.
+
 ## [0.3.7] - 2026-11-04
 
 ### Added
