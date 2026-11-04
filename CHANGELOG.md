@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-11-04
+
 ### Added
 
 - Every launch (`run`, `new`, `resume`, `ws`, a bare `agx` in a bound folder, the shell layer's plan, `profile add --setup`) sets `AGX_RUN_PROFILE`, `AGX_RUN_LOGIN` (a login name, or `home`) and `AGX_RUN_HOME` in the agent's environment, replacing any inherited values so a nested launch reports its own. They are outputs only: agx never reads them, so they cannot change which profile or login a launch picks, and they never hold a token. `--dry-run` lists them with the other environment changes. `AGX_LOGIN` is still never set for the agent.
@@ -197,7 +199,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.6...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.7...HEAD
+[0.3.7]: https://github.com/khanakia/agx/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/khanakia/agx/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/khanakia/agx/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/khanakia/agx/compare/v0.3.3...v0.3.4
