@@ -478,6 +478,8 @@ work      claude    oauth-token  cmd     —                2026-10-16  ~2027-10
 
 A login asked for by name (`--login`, or a profile's `login:`) that does not fit the profile is an error: another provider's login, a profile billed per token, or a profile that sets a credential of its own in `env:` / `secrets:`. One that comes from `AGX_LOGIN` is skipped with a one-line note and a provider default is skipped silently, so an exported Claude login never breaks a Codex or Kimi run. `agx profiles` shows the login each profile would use and why (`personal (profile)`, `work (AGX_LOGIN)`, `home`), and every launch on a login prints `agx: <profile> · login <name>`, which is the only record of which account paid: transcripts do not keep it.
 
+**Which login this session is using.** Every launch sets `AGX_RUN_PROFILE`, `AGX_RUN_LOGIN` (a login name, or `home`) and `AGX_RUN_HOME` in the agent's environment, so anything running inside the session can tell what launched it: run `agx whoami`, or read `$AGX_RUN_LOGIN` (for example in a status line command such as `echo "$AGX_RUN_PROFILE · $AGX_RUN_LOGIN"`). They hold names and a path, never a token, and agx never reads them, so they cannot change which login a launch picks. Outside an agx launch, `agx whoami` says `not inside a session started by agx`.
+
 **How it launches.** [An `oauth-token` login](ds:block?id=provider-loginenv-n8x9u9rf) sets `CLAUDE_CODE_OAUTH_TOKEN` and removes `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from the agent's environment (either would otherwise win and bill an API key); an `api-key` login sets `ANTHROPIC_API_KEY` and removes the other two. `CLAUDE_CONFIG_DIR` is handled exactly as without a login. A token that is missing, empty or more than one line, a `--cmd` that fails or runs longer than [10 seconds](ds:block?id=cmdtimeout-44pfsqzk), or an unset `--env` variable stops the launch with the reason. agx never falls back to the home's login on its own, because you asked for a specific account.
 
 **Where tokens live.** Pasted and piped tokens go to `~/.agx/tokens.yaml`, beside config.yaml, [mode 0600 in a 0700 folder](ds:block?id=tokenfile-checkperm-4epx2b72), written atomically. config.yaml only says `token: stored`, so it stays safe to sync or share. tokens.yaml must never be synced, backed up to a shared place or committed: agx prints that warning whenever it stores a token, `agx doctor` warns when the file sits inside a git work tree, and agx refuses to read a tokens.yaml that group or others can access, the way ssh treats a private key. `--cmd` and `--env` logins store nothing; their command or variable is read at each launch.
@@ -653,6 +655,7 @@ A fixed account-and-quota pair is just an alias: `clwp: run -p work --login pers
 | `agx` / `agx usage [profile…]` | Plan usage bars for every plan-billed login; `--provider`, `--json`, `--color`, `--timeout`. A bare `agx` in a folder bound with `agx project use`, at a terminal and with no flags, starts the agent instead |
 | `agx plan [profile…]` | Plan, subscription status and start date for every account; `--json`, `--timeout` |
 | `agx profiles` | Every profile: provider, home, account, plan, login state, the login a run spends, billing, source |
+| `agx whoami` | Which profile, login and home the current session runs on, read from the `AGX_RUN_*` variables agx sets on every launch; token variables only as present or absent; `--json` |
 | `agx run [-p profile\|auto] [-- args…]` | Start the agent in the current folder with the profile's flags, env and secrets (the folder's project binding, when no `-p` / `--login` is given) |
 | `agx new [-p profile\|auto] [slug…] [-- agent-args…]` | Create `sessions.root/[slug_]YYYYMMDD_HHMMSS`, enter it, start the agent |
 | `agx resume [query…] [-- agent-args…]` | Pick a conversation (this folder, or every folder with `--all`) and continue it on its own account; `--last`, `--all`, `--list`, `--json`, `-b/--browse` |
@@ -690,6 +693,7 @@ agx new -p auto --provider codex my spike   # auto-pick among Codex accounts
 | `agx` / [`agx usage`](ds:block?id=newusagecmd-r3ert49b) | `--provider claude\|codex` · `--json` · `--color auto\|always\|never` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) · `--logins` · `--login NAME\|home` (both probe) |
 | [`agx plan`](ds:block?id=newplancmd-urn3m4qd) | `[profile…]` · `--json` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) · `--login home` (alias: `agx subscription`) |
 | [`agx profiles`](ds:block?id=newprofilescmd-ndr78yh5) | `--json` (aliases: `agx who`, `agx accounts`) |
+| `agx whoami` | `--json` |
 | [`agx run`](ds:block?id=newruncmd-jgrurvce) | `-p/--profile` · `--provider` · `--login NAME\|home\|auto` · `--dry-run` · `-- <args passed to the agent>` |
 | [`agx new`](ds:block?id=newnewcmd-u4uqk853) | `-p/--profile` · `--provider` · `--login NAME\|home\|auto` · `--dry-run` · `[slug words]` · `-- <args passed to the agent>` |
 | [`agx resume`](ds:block?id=newresumecmd-wp72e3ak) | `[query words]` · `--last` · `--all` · `--list` · `--json` (with `--list`) · [`--limit 50`](ds:block?id=defaultresumelimit-zc5uhvc4) · `-b/--browse` · `-p/--profile` · `--login NAME\|home\|auto` · `--dry-run` · `-- <args passed to the agent>` |
@@ -787,7 +791,7 @@ Every listing command has `--json`, emitting a stable envelope:
 { "schema_version": 1, "kind": "usage.list", "count": 3, "data": [ … ] }
 ```
 
-[Kinds](ds:block?id=jsonkinds-gqp2ydfe): `usage.list`, [`plan.list`](ds:block?id=kindplanlist-pkqtaqac), `profile.list`, `conversation.list`, `workspace.list`, `session.list`, `session.gc`, `session.promote`, [`session.move`](ds:block?id=kindsessionmove-kyhtpccm), [`login.list`](ds:block?id=kindloginlist-g3cessw2), `project.list`, `project.show`, `doctor.report`, `version.show`. A `login.list` row never carries a token value.
+[Kinds](ds:block?id=jsonkinds-gqp2ydfe): `usage.list`, [`plan.list`](ds:block?id=kindplanlist-pkqtaqac), `profile.list`, `conversation.list`, `workspace.list`, `session.list`, `session.gc`, `session.promote`, [`session.move`](ds:block?id=kindsessionmove-kyhtpccm), [`login.list`](ds:block?id=kindloginlist-g3cessw2), `project.list`, `project.show`, `doctor.report`, `whoami.report`, `version.show`. A `login.list` row never carries a token value, and `whoami.report` names token variables without their values.
 
 ```sh
 agx usage --json | jq '.data[] | {profile, windows: [.windows[] | {label, percent}]}'
