@@ -53,6 +53,11 @@ The message never repeats the token value.
 | `"auto" is accepted only as --login on run, new, resume and ws (it probes every login, spending a few tokens of each account's quota)` | `--login auto` belongs on a launch command |
 | ``--login auto chooses a login for a launch; to compare every login use `agx usage --logins` `` | use `agx usage --logins` |
 | ``unknown login "NAME" (see `agx login ls`)`` | use a name from `agx login ls` |
+| `--table shows token logins: add --logins, --login a,b (or all) or --pick` | the table lists token logins only; say which ones |
+| `choose the logins one way: --logins, --login or --pick` | keep one of the three |
+| `--login home cannot be part of a list; list token login names or "all"` (or `auto`) | a list holds token login names or `all` only |
+| `--pick needs an interactive terminal (stdin and stdout); name the logins instead: --login a,b or --login all` | in a script or pipe, name the logins |
+| `the login table shows token logins; it cannot be combined with profile names` | drop the profile names, or drop the list for the home view |
 | ``project binding PATH: profile "NAME" no longer exists — remove it with `agx project rm PATH`, or run `agx project use` in that folder`` (or `login "NAME"`) | the folder's binding points at something removed; rebind with `agx project use`, remove it, or pass `-p` / `--login` for the missing half |
 | `give -p PROFILE, --login LOGIN, or both` | `agx project use` needs at least one |
 | ``no project binding for PATH (see `agx project ls`)`` | `agx project rm` removes the binding of exactly that folder; a parent's binding is removed from the parent folder, or by naming its path |
