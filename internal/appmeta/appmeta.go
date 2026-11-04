@@ -30,3 +30,21 @@ const (
 // EnvLogin chooses the login for every run in one terminal (logins spec
 // §5.3); set by the `aglogin` shell function.
 const EnvLogin = EnvPrefix + "_LOGIN"
+
+// Variables agx SETS on every agent it launches so the running session (or a
+// status line, or `agx whoami` inside it) can tell what launched it. They are
+// outputs only: agx never reads them to choose a profile or login, so a value
+// inherited from an outer session can never steer a nested launch, and each
+// launch overwrites whatever the parent had. They carry names and a path,
+// never a token.
+const (
+	// EnvRunProfile is the profile name the session was launched on.
+	EnvRunProfile = EnvPrefix + "_RUN_PROFILE"
+	// EnvRunLogin is the login the session spends: a login name, or "home"
+	// when the home's own login is used.
+	EnvRunLogin = EnvPrefix + "_RUN_LOGIN"
+	// EnvRunHome is the profile's home directory. It is set even for the
+	// vendor's default home, where the vendor's own variable
+	// (CLAUDE_CONFIG_DIR, CODEX_HOME) must stay absent.
+	EnvRunHome = EnvPrefix + "_RUN_HOME"
+)

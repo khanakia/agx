@@ -67,7 +67,7 @@ func NewRoot(d Deps) *cobra.Command {
 			root.AddCommand(c)
 		}
 	}
-	add(groupAgents, usage, newPlanCmd(a), newProfilesCmd(a), newRunCmd(a), newNewCmd(a), newResumeCmd(a), newWsCmd(a))
+	add(groupAgents, usage, newPlanCmd(a), newProfilesCmd(a), newWhoamiCmd(a), newRunCmd(a), newNewCmd(a), newResumeCmd(a), newWsCmd(a))
 	add(groupSessions, newSessionsCmd(a))
 	add(groupSetup, newLoginCmd(a), newProfileCmd(a), newProjectCmd(a), newDoctorCmd(a), newShellInitCmd(a),
 		versioncmd.New(versioncmd.WithBinaryName(appmeta.Name)))
