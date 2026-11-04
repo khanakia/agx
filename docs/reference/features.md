@@ -98,6 +98,7 @@ Every user-facing feature of agx, built from the code (`internal/cli`, `config`,
 | Run on a login's quota (`--login NAME\|home` on run, new, resume, ws) | `internal/cli`, `provider` | [Use a login for one run](../guides/logins/choosing-a-login.md#step-2--use-a-login-for-one-run) | [launch-command](../../examples/launch-command/) |
 | Auto-pick a login by probing (`--login auto`) | `internal/cli`, `pick`, `provider/claude` | [Let agx pick the login](../guides/logins/usage-and-auto.md#step-5--let-agx-pick-the-login-for-a-run) | — |
 | Per-terminal login (`AGX_LOGIN`, `aglogin NAME`) | `internal/shellinit`, `internal/cli` | [Switch one terminal](../guides/logins/choosing-a-login.md#step-5--switch-one-terminal) | — |
+| Which profile, login and home a session runs on (`agx whoami`, `--json`; `AGX_RUN_PROFILE` / `AGX_RUN_LOGIN` / `AGX_RUN_HOME` set on every launch, never read) | `internal/cli`, `internal/appmeta`, `provider` | [See which login a session is using](../guides/logins/choosing-a-login.md#step-7--see-which-login-a-session-is-using) | — |
 | Token kind from the prefix (`sk-ant-oat` oauth-token, `sk-ant-api` api-key; refresh and Admin keys refused) on add, check and every launch | `provider/claude`, `provider`, `internal/cli` | [Recognise a token by its prefix](../guides/projects/overview.md#step-7--recognise-a-token-by-its-prefix) | — |
 | Inference-only tokens reported as such (403 `oauth_scope_insufficient` → `provider.ErrInferenceOnly`); other 403s carry the server's message | `provider/claude`, `provider`, `internal/cli` | [Troubleshooting: usage errors](../guides/usage/troubleshooting.md#step-5--usage-shows-an-error-for-one-account) | — |
 | Login precedence: flag, `AGX_LOGIN`, project binding, profile, provider, home | `internal/cli` | [Learn the precedence](../guides/logins/choosing-a-login.md#step-1--learn-the-precedence) | — |
@@ -160,7 +161,7 @@ Every user-facing feature of agx, built from the code (`internal/cli`, `config`,
 | Feature | Package | Guide | Example |
 |---|---|---|---|
 | Stable JSON envelope (`schema_version`, `kind`, `count`, `data`) on every listing | `internal/cli` | [JSON: know the envelope](../guides/usage/json-and-scripting.md#step-1--know-the-envelope) | — |
-| JSON kinds: `usage.list`, `plan.list`, `profile.list`, `conversation.list`, `workspace.list`, `session.list`, `session.gc`, `session.promote`, `session.move`, `login.list`, `project.list`, `project.show`, `doctor.report`, `version.show` | `internal/cli` | [JSON: read the kind you need](../guides/usage/json-and-scripting.md#step-2--read-the-kind-you-need) | — |
+| JSON kinds: `usage.list`, `plan.list`, `profile.list`, `conversation.list`, `workspace.list`, `session.list`, `session.gc`, `session.promote`, `session.move`, `login.list`, `project.list`, `project.show`, `doctor.report`, `whoami.report`, `version.show` | `internal/cli` | [JSON: read the kind you need](../guides/usage/json-and-scripting.md#step-2--read-the-kind-you-need) | — |
 | `jq` recipes for status bars and scripts | — | [JSON: the jq recipes](../guides/usage/json-and-scripting.md#step-3--use-the-jq-recipes) | — |
 | `--help` with examples on every command | `internal/cli` | [Troubleshooting: a command refuses its arguments](../guides/usage/troubleshooting.md#step-4--a-command-refuses-its-arguments) | — |
 

@@ -166,7 +166,9 @@ func (a *app) runProfileAdd(o *profileAddOpts, name string) error {
 	if !o.setup {
 		return nil
 	}
-	cmd := setup.LoginCommand(spec, provider.UnsetEnv(a.Environ(), childSessionEnv))
+	// The setup logs the new home in itself, so it runs on the home login.
+	env := tagLaunch(provider.UnsetEnv(a.Environ(), childSessionEnv), spec, loginChoice{Source: loginSrcHome})
+	cmd := setup.LoginCommand(spec, env)
 	line := strings.Join(append([]string{cmd.Path}, cmd.Args...), " ")
 	if err := step("running `"+line+"` for "+shown, "run `"+line+"` for "+shown); err != nil {
 		return err
