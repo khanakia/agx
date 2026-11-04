@@ -85,7 +85,7 @@ The numbered flow: ① a shell alias or ② an `agx` command → ③ config, log
 - [Logins overview](guides/logins/overview.md): home vs login, what changes in the agent's environment.
 - [Add and manage logins](guides/logins/add-and-manage.md): sources, kinds, `ls`, `check`, rotation, `tokens.yaml`, expiry, removal.
 - [Choosing a login](guides/logins/choosing-a-login.md): the precedence, per-run, per-profile, per-provider and per-terminal choices.
-- [Login usage and --login auto](guides/logins/usage-and-auto.md): what a probe costs, `agx usage --logins`, `--login auto`.
+- [Login usage and --login auto](guides/logins/usage-and-auto.md): what a probe costs, `agx usage --logins`, the login table (`--table`, `--login a,b`, `--pick`), `--login auto`.
 
 ### Projects
 

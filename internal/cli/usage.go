@@ -50,10 +50,24 @@ type usageOpts struct {
 	login    string
 	// logins adds one probed row per token login (logins spec §14 D14).
 	logins bool
+	// table prints token logins as one compact row each (--table).
+	table bool
+	// pick chooses the token logins interactively, then prints the table.
+	pick bool
 }
 
-// flagLogins is `agx usage --logins`.
-const flagLogins = "logins"
+// Flags of `agx usage` beyond the shared ones.
+const (
+	// flagLogins is `agx usage --logins`.
+	flagLogins = "logins"
+	// flagTable is `agx usage --table`.
+	flagTable = "table"
+	// flagPick is `agx usage --pick`.
+	flagPick = "pick"
+)
+
+// pickPrompt heads the --pick checklist.
+const pickPrompt = "token logins to probe"
 
 func newUsageCmd(a *app) *cobra.Command {
 	o := &usageOpts{}
@@ -63,10 +77,18 @@ func newUsageCmd(a *app) *cobra.Command {
 		Long: "Shows how much of each plan window is used and when it resets, for every plan-billed\n" +
 			"login on this machine (one row set per provider home, even when several profiles share it).\n" +
 			"Token logins are shown only when asked (--logins, --login NAME): their usage is read by a\n" +
-			"probe, one minimal request that spends a few tokens of that login's quota.",
+			"probe, one minimal request that spends a few tokens of that login's quota.\n\n" +
+			"--table prints one row per token login (5H USED, WEEKLY USED, LEFT, RESETS, STATUS) instead\n" +
+			"of bars; --login a,b or --login all prints that table for the named logins, and --pick lets\n" +
+			"you choose them in a checklist (space: mark, a: all/none, enter: show, esc/q: cancel).\n" +
+			"Every login in the table is probed, so each one spends a few tokens of its own quota.",
 		Example: "  agx                      # same as agx usage\n" +
 			"  agx usage work           # one profile\n" +
 			"  agx usage --logins       # homes, then one probed row per token login\n" +
+			"  agx usage --logins --table   # one compact row per token login (probes each)\n" +
+			"  agx usage --login amank,erman  # table for these logins (probes each)\n" +
+			"  agx usage --login all\n" +
+			"  agx usage --pick         # choose logins in a checklist, then the table\n" +
 			"  agx usage --login personal\n" +
 			"  agx usage --provider codex\n" +
 			"  agx usage --json | jq '.data[] | {profile, windows: [.windows[] | {label, percent}]}'",
@@ -78,8 +100,10 @@ func newUsageCmd(a *app) *cobra.Command {
 	f.StringVar(&o.color, flagColor, colorAuto, "colour: auto | always | never")
 	f.DurationVar(&o.timeout, flagTimeout, defaultUsageTimeout, "per-account fetch timeout")
 	f.StringVar(&o.provider, flagProvider, "", "only this provider (claude, codex)")
-	f.StringVar(&o.login, flagLogin, "", "show this token login's usage (probe) instead of the homes; \"home\" = the default")
+	f.StringVar(&o.login, flagLogin, "", "show this token login's usage (probe) instead of the homes; a comma list or \"all\" prints the table; \"home\" = the default")
 	f.BoolVar(&o.logins, flagLogins, false, "add one probed row per token login (each probe spends a few tokens)")
+	f.BoolVar(&o.table, flagTable, false, "print token logins as one row each (with --logins, --login, --pick)")
+	f.BoolVar(&o.pick, flagPick, false, "choose token logins in a checklist, then print their table (each probe spends a few tokens)")
 	return c
 }
 
@@ -101,6 +125,14 @@ type usageJSON struct {
 	Login   string `json:"login,omitempty"`
 	Account string `json:"account,omitempty"`
 	Source  string `json:"source,omitempty"`
+	// Status, StatusReason, LeftPercent and LeftResetsAt are the verdict
+	// the --table view shows (usageVerdictOf), on every row, home or login,
+	// with or without --table. LeftPercent is absent when there are no
+	// windows (never a fake 100).
+	Status       usageStatus `json:"status"`
+	StatusReason string      `json:"status_reason,omitempty"`
+	LeftPercent  *float64    `json:"left_percent,omitempty"`
+	LeftResetsAt *time.Time  `json:"left_resets_at,omitempty"`
 }
 
 func (a *app) runUsage(ctx context.Context, o *usageOpts, names []string) error {
@@ -113,6 +145,9 @@ func (a *app) runUsage(ctx context.Context, o *usageOpts, names []string) error 
 	cfg, err := a.config()
 	if err != nil {
 		return err
+	}
+	if tableMode(o) {
+		return a.runLoginTable(ctx, cfg, o, names)
 	}
 	only, err := usageLogin(cfg, o, names)
 	if err != nil {
@@ -252,6 +287,8 @@ func toUsageJSON(r render.UsageReport) usageJSON {
 		j.Profile, j.Home = "", ""
 		j.Login, j.Account, j.Source = r.Login, r.Account, usageSourceProbe
 	}
+	v := usageVerdictOf(r)
+	j.Status, j.StatusReason, j.LeftPercent, j.LeftResetsAt = v.Status, v.Reason, v.Left, v.ResetsAt
 	if r.Err != nil {
 		j.Error = r.Err.Error()
 		return j

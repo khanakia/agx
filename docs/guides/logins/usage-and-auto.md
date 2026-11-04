@@ -15,6 +15,8 @@ One probe is one request to the Messages API with the smallest current model, a 
 |---|---|
 | `agx usage --logins` | every login, after the home rows |
 | `agx usage --login NAME` | that login only |
+| `agx usage --logins --table`, `--login a,b`, `--login all` | every login listed, one table row each |
+| `agx usage --pick` | every login you mark in the checklist |
 | `agx login check [NAME]` | each login checked (`--no-probe` resolves only) |
 | `--login auto` on `run`, `new`, `resume`, `ws` | every login that fits the profile |
 
@@ -38,9 +40,43 @@ agx usage --logins --json | jq -r '.data[] | select(.source == "probe") | .login
 agx usage --login personal
 ```
 
-`--login home` is the plain home view. `--login NAME` cannot be combined with `--logins` or with profile names.
+`--login home` is the plain home view. `--login NAME` cannot be combined with `--logins` or with profile names. A comma list or `all` prints the [login table](#step-4--compare-logins-in-one-table) instead; `home` and `auto` cannot be part of a list.
 
-## Step 4 — Check a login before relying on it
+## Step 4 — Compare logins in one table
+
+```sh
+agx usage --logins --table        # every token login, one row each
+agx usage --login amank,erman     # only these (a comma list prints the table without --table)
+agx usage --login all             # every token login, same as --logins --table
+agx usage --pick                  # mark logins in a checklist, then the table
+```
+
+Each row is one probe, all run at once with the per-account `--timeout`. Homes are not shown: the table is for token logins. An example with four logins (accounts are placeholders):
+
+```text
+#  LOGIN     PROVIDER  ACCOUNT        5H USED  5H RESETS    WEEKLY USED  WEEKLY RESETS  LEFT  STATUS
+1  khanakia  claude    —              —        —            —            —              —     rejected: blocked by org
+2  erman     claude    e@example.com  0%       1 hr 0 min   98%          2 d 19 hr      2%    ok
+5  ismail    claude    —              100%     1 hr 41 min  53%          3 d 18 hr      0%    limit reached
+7  amank     claude    —              —        —            2%           6 d 22 hr      98%   ok
+  khanakia: login rejected by the server (HTTP 403: OAuth authentication is currently not allowed for this organization.)
+```
+
+- **#** is the login's position in `agx login ls`, so a row keeps its number whatever subset you show.
+- **USED / RESETS** come in a pair per window: the 5-hour window, the weekly window, and a per-model weekly window (for example `FABLE WEEKLY`) only when some probe returned one. A window the account does not have is `—` in both cells, never `0%`: an account whose plan has no 5-hour window is not an idle one.
+- **LEFT** is 100 minus the fullest window, because any one window at its cap blocks the account. It is amber under 20% and red at 0%, and `—` when the probe returned no windows.
+- **STATUS** is `ok`, `limit reached`, `rejected` (the server refused the token; `blocked by org` when the organisation disallows this kind of login, else the HTTP status), `expired`, `per token` (an api-key login, never probed) or `error` with a short reason (`timeout`, `rate-limited`, `inference-only token`, `not logged in`, or the start of the message). The full message of every failed row is printed under the table.
+- The command exits 1 when any row failed, like the rest of `agx usage`.
+
+In the checklist, space marks a login, `a` marks all (again: none), Enter shows the marked ones (or the one under the cursor when none is marked), and Esc or `q` cancels with exit 1. `--pick` needs a terminal on stdin and stdout; in a script, name the logins with `--login a,b`.
+
+`--json` keeps the `usage.list` envelope and gives every row, home or login, with or without `--table`, the same verdict: `status`, `status_reason`, `left_percent` and `left_resets_at` (the last two absent when there are no windows):
+
+```sh
+agx usage --login all --json | jq -r '.data[] | "\(.login) \(.status) \(.left_percent // "-")"'
+```
+
+## Step 5 — Check a login before relying on it
 
 ```sh
 agx login check personal
@@ -52,7 +88,7 @@ This resolves the token from its source and then probes. To confirm only that th
 agx login check personal --no-probe
 ```
 
-## Step 5 — Let agx pick the login for a run
+## Step 6 — Let agx pick the login for a run
 
 ```sh
 agx run -p work --login auto
@@ -75,11 +111,25 @@ $ agx plan --login personal
 agx: plan cannot show a token login: the profile endpoint refuses setup-tokens; use --login home or no --login (see a login's usage with `agx usage --login NAME`)
 ```
 
+```text
+$ agx usage --table
+agx: --table shows token logins: add --logins, --login a,b (or all) or --pick
+
+$ agx usage --pick --logins
+agx: choose the logins one way: --logins, --login or --pick
+
+$ agx usage --login ci,home
+agx: --login home cannot be part of a list; list token login names or "all"
+
+$ agx usage --pick < /dev/null
+agx: --pick needs an interactive terminal (stdin and stdout); name the logins instead: --login a,b or --login all
+```
+
 Each exits 2.
 
 ## Pitfalls
 
-- **Probing in a loop adds up.** Each probe is a real request on that account. A status bar that runs `agx usage --logins` every few seconds spends quota and rate limit on every account it lists; use plain `agx usage` (homes only, free) for that, and probe on demand.
+- **Probing in a loop adds up.** Each probe is a real request on that account. A status bar that runs `agx usage --logins` every few seconds spends quota and rate limit on every account it lists; use plain `agx usage` (homes only, free) for that, and probe on demand. The table is no cheaper: `--login all` and `--pick` probe every login they show.
 - **`auto` is only a flag.** It is refused in `AGX_LOGIN`, in a profile's or provider's `login:`, by `agx login use` and by `agx usage --login` (`config/logins.go`, `ErrAutoLogin`; `internal/cli/usage.go`, `usageLogin`), so probing never becomes a silent default.
 - **A probed login has no account email.** The profile endpoint refuses setup-tokens (HTTP 403 with `error_code` `oauth_scope_insufficient`, which agx reports as `this token can only run Claude: it has no profile scope …`), so a probed row knows only that the token works; the `account` shown is the label you gave with `--account` (`provider/claude/login.go`, `LoginUsage`).
 - **An api-key login is reported as billed per token, never probed.** It has no plan windows to compare, and `--login auto` treats it like any api-billed candidate, which auto-pick never chooses.

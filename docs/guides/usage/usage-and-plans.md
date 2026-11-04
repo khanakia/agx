@@ -51,7 +51,7 @@ agx usage --json                # the usage.list JSON envelope
 
 The profile names are the ones `agx profiles` lists. `--timeout` bounds each account's request separately; a slow account turns into an error row and the others still print. The JSON shape is in [JSON output and scripting](json-and-scripting.md#usagelist).
 
-Token logins (added with `agx login add`) are not shown by default, because reading a login's usage sends it a small model request that spends a few tokens. Ask for them with `agx usage --logins` (every login, after the homes) or `agx usage --login NAME` (just that one); see [Login usage and `--login auto`](../logins/usage-and-auto.md).
+Token logins (added with `agx login add`) are not shown by default, because reading a login's usage sends it a small model request that spends a few tokens. Ask for them with `agx usage --logins` (every login, after the homes) or `agx usage --login NAME` (just that one), or compare them in one compact table with `agx usage --logins --table`, `--login a,b`, `--login all` or `--pick`; see [Login usage and `--login auto`](../logins/usage-and-auto.md).
 
 ## Step 3 — Read the error rows
 
