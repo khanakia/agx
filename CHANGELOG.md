@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Every launch (`run`, `new`, `resume`, `ws`, a bare `agx` in a bound folder, the shell layer's plan, `profile add --setup`) sets `AGX_RUN_PROFILE`, `AGX_RUN_LOGIN` (a login name, or `home`) and `AGX_RUN_HOME` in the agent's environment, replacing any inherited values so a nested launch reports its own. They are outputs only: agx never reads them, so they cannot change which profile or login a launch picks, and they never hold a token. `--dry-run` lists them with the other environment changes. `AGX_LOGIN` is still never set for the agent.
+- `agx whoami`: the profile, login and home of the current session, from those variables, plus the home each provider's CLI would use here and whether a token login variable is present (names only, never values). Outside an agx launch it says `not inside a session started by agx`. Reads no config and no network; `--json` (`whoami.report`).
+- Library: the optional `provider.HomeEnvNamer` upgrade, implemented by `claude` (`CLAUDE_CONFIG_DIR`) and `codex` (`CODEX_HOME`).
+
+### Fixed
+
+- A login probe (`agx usage --login NAME`, `--logins`, `--login auto`, `agx login check`) no longer fails with `anthropic-ratelimit-unified-5h-utilization missing` on an account whose plan has no 5-hour window: a window whose headers are all absent is left out, and the probe errors only when no window comes back at all. A window with only half of its headers is still an error.
+
 ## [0.3.6] - 2026-11-01
 
 ### Added

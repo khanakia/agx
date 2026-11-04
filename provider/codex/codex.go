@@ -142,6 +142,12 @@ func (p *Provider) ID() provider.ID { return provider.Codex }
 // Binary implements provider.Provider.
 func (p *Provider) Binary() string { return Binary }
 
+// Compile-time check that the home variable stays named.
+var _ provider.HomeEnvNamer = (*Provider)(nil)
+
+// HomeEnvName implements provider.HomeEnvNamer.
+func (p *Provider) HomeEnvName() string { return HomeEnv }
+
 // DefaultHome implements provider.Provider.
 func (p *Provider) DefaultHome(userHome string) string {
 	return filepath.Join(userHome, defaultDirName)

@@ -1,6 +1,6 @@
 # Login usage and `--login auto`
 
-A home's usage comes from a free endpoint, but a setup-token cannot read that endpoint (it answers 403). So agx reads a login's usage with a **probe**: one minimal request whose response headers carry the account's 5-hour and weekly windows. A probe costs a little of that account's quota, so agx runs one only when you ask. Use this page to see how full a login is, to let agx choose the login with the most headroom for a run, and to know what each of those costs.
+A home's usage comes from a free endpoint, but a setup-token cannot read that endpoint (it answers 403). So agx reads a login's usage with a **probe**: one minimal request whose response headers carry the account's 5-hour and weekly windows. An account whose plan has no 5-hour window shows only the weekly one, never a 0% session line. A probe costs a little of that account's quota, so agx runs one only when you ask. Use this page to see how full a login is, to let agx choose the login with the most headroom for a run, and to know what each of those costs.
 
 ## Before you start
 

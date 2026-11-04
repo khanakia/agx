@@ -31,6 +31,7 @@ var (
 	_ provider.ConversationLister = (*Provider)(nil)
 	_ provider.HistoryMover       = (*Provider)(nil)
 	_ provider.HistoryChecker     = (*Provider)(nil)
+	_ provider.HomeEnvNamer       = (*Provider)(nil)
 )
 
 // New returns a Provider that reads the macOS keychain and fetches usage with
@@ -44,6 +45,9 @@ func (p *Provider) ID() provider.ID { return provider.Claude }
 
 // Binary implements provider.Provider.
 func (p *Provider) Binary() string { return Binary }
+
+// HomeEnvName implements provider.HomeEnvNamer.
+func (p *Provider) HomeEnvName() string { return ConfigDirEnv }
 
 // DefaultHome implements provider.Provider.
 func (p *Provider) DefaultHome(userHome string) string { return DefaultHomeFor(userHome) }

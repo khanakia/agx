@@ -272,6 +272,15 @@ type HistoryChecker interface {
 	HasHistory(home, dir string) bool
 }
 
+// HomeEnvNamer is an optional upgrade naming the variable that points the
+// vendor CLI at a non-default home (CLAUDE_CONFIG_DIR, CODEX_HOME), so a
+// caller can tell which home the current environment selects without
+// launching anything (`agx whoami`). Without it, only the default home is
+// known.
+type HomeEnvNamer interface {
+	HomeEnvName() string
+}
+
 // Sentinel errors shared by all providers. Callers branch on them with
 // errors.Is, so providers wrap them (fmt.Errorf("%w ...")) and never
 // replace them with look-alike messages.

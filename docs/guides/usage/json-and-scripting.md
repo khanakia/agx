@@ -42,6 +42,7 @@ Optional fields are left out when empty (an account without an error has no `err
 | [`project.list`](#projectlist) | `agx project ls --json` |
 | [`project.show`](#projectshow) | `agx project show --json` |
 | [`doctor.report`](#doctorreport) | `agx doctor --json` |
+| [`whoami.report`](#whoamireport) | `agx whoami --json` |
 | [`version.show`](#versionshow) | `agx version --json` |
 
 ## Step 2 — Read the kind you need
@@ -459,6 +460,41 @@ One entry per check: `area`, `level` (`ok`, `info`, `warn`, `fail`) and `detail`
       "detail": "inside git repo /home/you — Claude Code would pool every session's memory into it"
     }
   ]
+}
+```
+
+### whoami.report
+
+What the current environment says about the session: `session` is `agx` when all three `AGX_RUN_*` variables are set, `partial` when only some are (`missing` names the others), `none` outside a session agx started. `providers` has one entry per provider with the home its CLI would use here (`home_from` is the variable that chose it, or `default`) and `token_login`: `present` (`token_vars` names the variables, never their values), `absent`, or `unsupported` for a provider without logins. `count` is the number of providers. From inside `agx run -p work --login dummy`:
+
+```json
+{
+  "schema_version": 1,
+  "kind": "whoami.report",
+  "count": 2,
+  "data": {
+    "session": "agx",
+    "profile": "work",
+    "login": "dummy",
+    "home": "/home/you/.claude-work",
+    "providers": [
+      {
+        "provider": "claude",
+        "home": "/home/you/.claude-work",
+        "home_from": "CLAUDE_CONFIG_DIR",
+        "token_login": "present",
+        "token_vars": [
+          "CLAUDE_CODE_OAUTH_TOKEN"
+        ]
+      },
+      {
+        "provider": "codex",
+        "home": "/home/you/.codex",
+        "home_from": "default",
+        "token_login": "unsupported"
+      }
+    ]
+  }
 }
 ```
 

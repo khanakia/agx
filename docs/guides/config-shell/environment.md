@@ -1,6 +1,6 @@
 # Environment variables
 
-agx reads a handful of environment variables: two that move its config folder, one that picks a login for a whole terminal, two that the shell layer uses to talk to the binary, and `NO_COLOR`. It also sets or removes a few credential and home variables in the environment of the agent it launches. Use this page when you keep agx's files somewhere other than `~/.agx`, script agx in CI, or wonder why a variable you exported did or did not reach the agent.
+agx reads a handful of environment variables: two that move its config folder, one that picks a login for a whole terminal, two that the shell layer uses to talk to the binary, and `NO_COLOR`. It also sets or removes a few credential and home variables in the environment of the agent it launches, and sets three `AGX_RUN_*` variables that tell the session what launched it. Use this page when you keep agx's files somewhere other than `~/.agx`, script agx in CI, or wonder why a variable you exported did or did not reach the agent.
 
 ## Before you start
 
@@ -64,6 +64,11 @@ The agent inherits your environment, with these changes:
 | `CLAUDE_CODE_OAUTH_TOKEN` | run on an `oauth-token` login | set to the token; `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` removed |
 | `ANTHROPIC_API_KEY` | run on an `api-key` login | set to the key; `CLAUDE_CODE_OAUTH_TOKEN` and `ANTHROPIC_AUTH_TOKEN` removed |
 | anything in a profile's `env:` / `secrets:` | that profile | set (secrets resolved at launch) |
+| `AGX_RUN_PROFILE` | every launch | set to the profile name |
+| `AGX_RUN_LOGIN` | every launch | set to the login name, or `home` for the home's own login |
+| `AGX_RUN_HOME` | every launch | set to the home folder, also for `~/.claude` and `~/.codex`, where `CLAUDE_CONFIG_DIR` / `CODEX_HOME` stay absent |
+
+The three `AGX_RUN_*` variables are set by agx and never read by it: they are for the session (`agx whoami`, a status line, a script), they hold names and a path but never a token, and each launch overwrites any value inherited from an outer session, so a nested launch reports its own. `AGX_LOGIN` is not set for the agent; one you exported yourself is passed through unchanged.
 
 The default home is launched with the variable absent, not set to `~/.claude`: setting it, even to the default path, makes Claude Code look for its login under a different keychain name and the account appears logged out. `--dry-run` shows every change, with tokens and secrets replaced by their source.
 
@@ -111,6 +116,7 @@ agx: AGX_LOGIN=nope: unknown login (see `agx login ls`; `aglogin` with no argume
 - **Moving the folder moves `tokens.yaml`.** A login stored under `~/.agx` is `stored (missing)` when you run with `AGX_HOME` or `AGX_CONFIG_DIR` pointing elsewhere; `AGX_HOME=/home/you/agxhome agx login ls` in that throwaway home printed `no logins`, because it read a different config.
 - **A stale `AGX_LOGIN` breaks every launch in that shell.** An unknown name is an error, not a skip. `aglogin` with no argument, or `unset AGX_LOGIN`, clears it.
 - **`AGX_PLAN_FILE` in your own environment changes `new`, `resume` and `ws`.** With it set, they write a plan and exit 0 without launching anything (`internal/cli/launch.go`, `launchOrPlan`). Never export it in a profile or CI job.
+- **Exporting `AGX_RUN_LOGIN` or `AGX_RUN_PROFILE` picks nothing.** They are outputs; choose the login with `--login`, `AGX_LOGIN` or `aglogin`, and the profile with `-p`.
 - **Exporting `CLAUDE_CONFIG_DIR` does not pick a home for agx.** agx sets or removes it per profile; choose the home with `-p` instead.
 
 ## Related
@@ -118,3 +124,4 @@ agx: AGX_LOGIN=nope: unknown login (see `agx login ls`; `aglogin` with no argume
 - [Config reference](config-reference.md)
 - [Shell integration](shell-integration.md)
 - [Choosing a login](../logins/choosing-a-login.md)
+- [See which login a session is using](../logins/choosing-a-login.md#step-7--see-which-login-a-session-is-using)

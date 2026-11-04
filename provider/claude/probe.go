@@ -204,16 +204,25 @@ func redact(s, token string) string {
 
 // ParseProbeHeaders maps the anthropic-ratelimit-unified-* headers onto the
 // same windows the usage endpoint yields (session "Current session", weekly
-// "All models"). Utilization and reset are required for every window: a
-// missing or malformed one is an error naming the header.
+// "All models"). A window whose utilization and reset headers are BOTH
+// absent is one the account does not have (some plans carry no 5-hour
+// window: verified 2026-11-04, a Team seat answered with only 7d-*), so it
+// is omitted rather than shown as 0% used. A window with only one of the
+// pair, or a malformed value, is an error naming the header.
 //
-// Invariant: a nil error always comes with one window per probeWindows entry.
+// Invariant: a nil error always comes with at least one window, in
+// probeWindows order; no usable window at all is ErrProbeHeaders.
 func ParseProbeHeaders(h http.Header) (provider.Usage, error) {
 	claim := h.Get(hdrRepresentative)
 	u := provider.Usage{Windows: make([]provider.Window, 0, len(probeWindows))}
+	var absent []string
 	for _, pw := range probeWindows {
 		base := hdrPrefix + pw.infix
 		utilRaw, resetRaw := h.Get(base+hdrUtilization), h.Get(base+hdrReset)
+		if utilRaw == "" && resetRaw == "" {
+			absent = append(absent, base+hdrUtilization)
+			continue
+		}
 		if utilRaw == "" {
 			return provider.Usage{}, fmt.Errorf("%w: %s missing", ErrProbeHeaders, base+hdrUtilization)
 		}
@@ -236,6 +245,9 @@ func ParseProbeHeaders(h http.Header) (provider.Usage, error) {
 			Severity: probeSeverity(h.Get(base + hdrStatus)), ResetsAt: &reset,
 			IsActive: claim == pw.claim,
 		}))
+	}
+	if len(u.Windows) == 0 {
+		return provider.Usage{}, fmt.Errorf("%w: %s missing", ErrProbeHeaders, strings.Join(absent, ", "))
 	}
 	return u, nil
 }

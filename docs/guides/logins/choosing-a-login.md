@@ -75,6 +75,39 @@ agx run -p work --dry-run
 
 `agx profiles` has a `LOGIN` column naming each profile's login and the step it came from: `personal (profile)`, `personal (provider)`, `viacmd (AGX_LOGIN)`, `home`. `--dry-run` prints the same choice plus the environment, with the token shown only as `<token:stored>`, `<token:cmd>` or `<token:env>`; the token is not resolved.
 
+## Step 7 — See which login a session is using
+
+Every launch sets `AGX_RUN_PROFILE`, `AGX_RUN_LOGIN` and `AGX_RUN_HOME` in the agent's environment ([Environment variables](../config-shell/environment.md#step-5--know-what-agx-changes-for-the-agent)), so a shell or tool running inside the session can ask:
+
+```sh
+agx whoami
+agx whoami --json
+echo "$AGX_RUN_PROFILE · $AGX_RUN_LOGIN"
+```
+
+`agx whoami` reads only the environment: no config, no network. A token variable is shown as present or absent, never its value. The `echo` line works anywhere the variables are inherited, for example as a status line command. Inside a session started with `agx run -p work --login dummy` (a throwaway home, `dummy` an `--env` login):
+
+```text
+$ agx whoami
+session:  started by agx
+profile:  work
+login:    dummy
+home:     ~/.claude-work
+claude:   ~/.claude-work (CLAUDE_CONFIG_DIR) · token login present (CLAUDE_CODE_OAUTH_TOKEN)
+codex:    ~/.codex (default) · no token logins
+```
+
+On the default home with the home's own login, `login:` is `home` and the claude row says `~/.claude (default) · token login absent`. In a terminal agx did not start:
+
+```text
+$ agx whoami
+session:  not inside a session started by agx
+claude:   ~/.claude (default) · token login absent
+codex:    ~/.codex (default) · no token logins
+```
+
+A launch from inside a session overwrites the outer values, so `whoami` always describes the innermost launch.
+
 ## Try it
 
 A throwaway home (`/home/you`) with logins `personal` (stored) and `viacmd` (cmd), profiles `personal` and `work`:
@@ -150,4 +183,5 @@ agx: AGX_LOGIN unset — profile and provider defaults apply
 - [Add and manage logins](add-and-manage.md)
 - [Login usage and `--login auto`](usage-and-auto.md)
 - [Environment variables: `AGX_LOGIN`](../config-shell/environment.md#step-2--pick-a-login-for-a-terminal-agx_login)
+- [JSON: `whoami.report`](../usage/json-and-scripting.md#whoamireport)
 - [Shell integration: `aglogin`](../config-shell/shell-integration.md#step-4--switch-logins-per-terminal-with-aglogin)

@@ -548,6 +548,7 @@ func (a *app) launch(ctx context.Context, p provider.Profile, req provider.Launc
 			return err
 		}
 	}
+	cmd.Env = tagLaunch(cmd.Env, p, lc)
 	if dryRun {
 		return a.printDryRun(p, cmd, secretNames, lc, loginLines)
 	}
@@ -555,6 +556,17 @@ func (a *app) launch(ctx context.Context, p provider.Profile, req provider.Launc
 		a.warn(p.Name + " · login " + lc.Login.Name)
 	}
 	return a.Exec(cmd)
+}
+
+// tagLaunch sets the AGX_RUN_* variables (appmeta) that tell the launched
+// session which profile, login and home it runs on. SetEnv replaces any
+// inherited entry, so a launch from inside another agx session reports its
+// own values, never the outer ones. Only names and the home path are set:
+// the login's token stays in the vendor's own variable.
+func tagLaunch(env []string, p provider.Profile, lc loginChoice) []string {
+	env = provider.SetEnv(env, appmeta.EnvRunProfile, p.Name)
+	env = provider.SetEnv(env, appmeta.EnvRunLogin, lc.name())
+	return provider.SetEnv(env, appmeta.EnvRunHome, filepath.Clean(p.Home))
 }
 
 // printDryRun shows the command without secret values: only the env vars
