@@ -73,7 +73,7 @@ Both use the same policy (lowest highest-window percent wins, ties in config ord
 | Cost | free usage endpoint per home | free endpoint for the home's login, plus one probe per fitting token login (`internal/cli/loginusage.go`, `autoLogin`) |
 | Ties | config order | the home's own login first, then config order |
 | On `resume` | not accepted: resume already uses the conversation's home | accepted |
-| Guide | [Auto-pick](../guides/running/auto-pick.md) | [Login usage and `--login auto`](../guides/logins/usage-and-auto.md#step-5--let-agx-pick-the-login-for-a-run) |
+| Guide | [Auto-pick](../guides/running/auto-pick.md) | [Login usage and `--login auto`](../guides/logins/usage-and-auto.md#step-6--let-agx-pick-the-login-for-a-run) |
 | Example | [autopick](../../examples/autopick/) | [autopick](../../examples/autopick/) (same `pick.Best`) |
 
 If your homes have separate history you care about, prefer `--login auto`: it keeps the project's conversations where they are and still spends the emptiest quota.
