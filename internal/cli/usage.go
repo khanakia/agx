@@ -54,6 +54,12 @@ type usageOpts struct {
 	table bool
 	// pick chooses the token logins interactively, then prints the table.
 	pick bool
+	// sort orders the table's rows (--sort day,-left); sortKeys is it parsed.
+	sort     string
+	sortKeys []sortKey
+	// tz is the --tz zone name; loc is it resolved (the local zone when empty).
+	tz  string
+	loc *time.Location
 }
 
 // Flags of `agx usage` beyond the shared ones.
@@ -64,6 +70,10 @@ const (
 	flagTable = "table"
 	// flagPick is `agx usage --pick`.
 	flagPick = "pick"
+	// flagSort is `agx usage --sort`.
+	flagSort = "sort"
+	// flagTZ is `agx usage --tz`.
+	flagTZ = "tz"
 )
 
 // pickPrompt heads the --pick checklist.
@@ -81,7 +91,12 @@ func newUsageCmd(a *app) *cobra.Command {
 			"--table prints one row per token login (5H USED, WEEKLY USED, LEFT, RESETS, STATUS) instead\n" +
 			"of bars; --login a,b or --login all prints that table for the named logins, and --pick lets\n" +
 			"you choose them in a checklist (space: mark, a: all/none, enter: show, esc/q: cancel).\n" +
-			"Every login in the table is probed, so each one spends a few tokens of its own quota.",
+			"Every login in the table is probed, so each one spends a few tokens of its own quota.\n\n" +
+			"After WEEKLY RESETS, RESET DAY and RESETS ON show the weekday and date the weekly window\n" +
+			"resets, and a line under the table sums, per weekday, the weekly USED of the logins that\n" +
+			"reset then (the room they get back), soonest first. --sort orders the rows by comma-separated\n" +
+			"keys (login, left, 5h, 5h-reset, weekly, weekly-reset, day, status; prefix - for high to low;\n" +
+			"a row without the value goes last). --tz sets the zone of the days and dates (default: local).",
 		Example: "  agx                      # same as agx usage\n" +
 			"  agx usage work           # one profile\n" +
 			"  agx usage --logins       # homes, then one probed row per token login\n" +
@@ -89,6 +104,7 @@ func newUsageCmd(a *app) *cobra.Command {
 			"  agx usage --login amank,erman  # table for these logins (probes each)\n" +
 			"  agx usage --login all\n" +
 			"  agx usage --pick         # choose logins in a checklist, then the table\n" +
+			"  agx usage --login all --sort day,-left --tz Asia/Kolkata  # by reset day, most left first\n" +
 			"  agx usage --login personal\n" +
 			"  agx usage --provider codex\n" +
 			"  agx usage --json | jq '.data[] | {profile, windows: [.windows[] | {label, percent}]}'",
@@ -104,6 +120,8 @@ func newUsageCmd(a *app) *cobra.Command {
 	f.BoolVar(&o.logins, flagLogins, false, "add one probed row per token login (each probe spends a few tokens)")
 	f.BoolVar(&o.table, flagTable, false, "print token logins as one row each (with --logins, --login, --pick)")
 	f.BoolVar(&o.pick, flagPick, false, "choose token logins in a checklist, then print their table (each probe spends a few tokens)")
+	f.StringVar(&o.sort, flagSort, "", "order the table's rows: comma keys login, left, 5h, 5h-reset, weekly, weekly-reset, day, status; - prefix = high to low (e.g. day,-left)")
+	f.StringVar(&o.tz, flagTZ, "", "time zone of RESET DAY, RESETS ON, the summary and --sort day, an IANA name such as Asia/Kolkata (default: local)")
 	return c
 }
 
@@ -133,6 +151,10 @@ type usageJSON struct {
 	StatusReason string      `json:"status_reason,omitempty"`
 	LeftPercent  *float64    `json:"left_percent,omitempty"`
 	LeftResetsAt *time.Time  `json:"left_resets_at,omitempty"`
+	// WeeklyResetsAt (RFC3339 in the --tz zone) and WeeklyResetDay ("Tue")
+	// are when the weekly window resets; absent without one.
+	WeeklyResetsAt string `json:"weekly_resets_at,omitempty"`
+	WeeklyResetDay string `json:"weekly_reset_day,omitempty"`
 }
 
 func (a *app) runUsage(ctx context.Context, o *usageOpts, names []string) error {
@@ -140,6 +162,9 @@ func (a *app) runUsage(ctx context.Context, o *usageOpts, names []string) error 
 		return err
 	}
 	if err := checkTimeout(o.timeout); err != nil {
+		return err
+	}
+	if err := checkTableOpts(o); err != nil {
 		return err
 	}
 	cfg, err := a.config()
@@ -186,7 +211,7 @@ func (a *app) runUsage(ctx context.Context, o *usageOpts, names []string) error 
 	if o.json {
 		out := make([]usageJSON, 0, len(reports))
 		for _, r := range reports {
-			out = append(out, toUsageJSON(r))
+			out = append(out, toUsageJSON(r, o.loc))
 		}
 		if err := output.JSON(a.Stdout, kindUsageList, out, len(out)); err != nil {
 			return err
@@ -278,7 +303,27 @@ func withHint(err error, p provider.Profile) error {
 	}
 }
 
-func toUsageJSON(r render.UsageReport) usageJSON {
+// checkTableOpts validates --tz and --sort before anything is probed and
+// stores their parsed forms in o. --sort is for the login table only.
+func checkTableOpts(o *usageOpts) error {
+	loc, err := parseTZ(o.tz)
+	if err != nil {
+		return err
+	}
+	keys, err := parseSortKeys(o.sort)
+	if err != nil {
+		return err
+	}
+	if len(keys) > 0 && !tableMode(o) {
+		return usageErr(errSortNeedsTable)
+	}
+	o.loc, o.sortKeys = loc, keys
+	return nil
+}
+
+// toUsageJSON is one usage.list entry; loc is the zone of weekly_resets_at
+// and weekly_reset_day.
+func toUsageJSON(r render.UsageReport, loc *time.Location) usageJSON {
 	j := usageJSON{
 		Profile: r.Profile.Name, Provider: r.Profile.Provider, Home: r.Profile.Home, Billing: r.Profile.Billing,
 		Email: r.Usage.Identity.Email, Organization: r.Usage.Identity.Organization, Plan: r.Usage.Identity.Plan,
@@ -289,6 +334,10 @@ func toUsageJSON(r render.UsageReport) usageJSON {
 	}
 	v := usageVerdictOf(r)
 	j.Status, j.StatusReason, j.LeftPercent, j.LeftResetsAt = v.Status, v.Reason, v.Left, v.ResetsAt
+	if at := weeklyResetsAt(r.Usage.Windows); at != nil {
+		t := at.In(loc)
+		j.WeeklyResetsAt, j.WeeklyResetDay = t.Format(time.RFC3339), t.Format(resetDayFmt)
+	}
 	if r.Err != nil {
 		j.Error = r.Err.Error()
 		return j

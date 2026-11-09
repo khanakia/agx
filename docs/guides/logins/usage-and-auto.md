@@ -49,28 +49,32 @@ agx usage --logins --table        # every token login, one row each
 agx usage --login amank,erman     # only these (a comma list prints the table without --table)
 agx usage --login all             # every token login, same as --logins --table
 agx usage --pick                  # mark logins in a checklist, then the table
+agx usage --login all --sort day,-left --tz Asia/Kolkata   # by weekly reset day, most left first
 ```
 
 Each row is one probe, all run at once with the per-account `--timeout`. Homes are not shown: the table is for token logins. An example with four logins (accounts are placeholders):
 
 ```text
-#  LOGIN     PROVIDER  ACCOUNT        5H USED  5H RESETS    WEEKLY USED  WEEKLY RESETS  LEFT  STATUS
-1  khanakia  claude    —              —        —            —            —              —     rejected: blocked by org
-2  erman     claude    e@example.com  0%       1 hr 0 min   98%          2 d 19 hr      2%    ok
-5  ismail    claude    —              100%     1 hr 41 min  53%          3 d 18 hr      0%    limit reached
-7  amank     claude    —              —        —            2%           6 d 22 hr      98%   ok
+#  LOGIN     PROVIDER  ACCOUNT        5H USED  5H RESETS    WEEKLY USED  WEEKLY RESETS  RESET DAY  RESETS ON         LEFT  STATUS
+1  khanakia  claude    —              —        —            —            —              —          —                 —     rejected: blocked by org
+2  erman     claude    e@example.com  0%       1 hr 0 min   98%          2 d 19 hr      Sat        Sat 7 Nov 07:00   2%    ok
+5  ismail    claude    —              100%     1 hr 41 min  53%          3 d 18 hr      Sun        Sun 8 Nov 06:00   0%    limit reached
+7  amank     claude    —              —        —            2%           6 d 22 hr      Wed        Wed 11 Nov 10:00  98%   ok
+Weekly resets: Sat 1 (+98%) · Sun 1 (+53%) · Wed 1 (+2%)
   khanakia: login rejected by the server (HTTP 403: OAuth authentication is currently not allowed for this organization.)
 ```
 
 - **#** is the login's position in `agx login ls`, so a row keeps its number whatever subset you show.
 - **USED / RESETS** come in a pair per window: the 5-hour window, the weekly window, and a per-model weekly window (for example `FABLE WEEKLY`) only when some probe returned one. A window the account does not have is `—` in both cells, never `0%`: an account whose plan has no 5-hour window is not an idle one.
+- **RESET DAY / RESETS ON** are the weekday and date the weekly window resets, in the `--tz` zone (default: the machine's local zone); `—` when the row has no weekly reset. The line under the table sums them up per weekday: how many logins reset then and the weekly USED they get back, soonest reset first.
+- **--sort** orders the rows by comma-separated keys: `login`, `left`, `5h`, `5h-reset`, `weekly`, `weekly-reset`, `day` (Mon..Sun), `status`. A `-` prefix sorts high to low (`--sort day,-left`: by reset day, most left first within a day); a row without the value goes last either way, ties keep `agx login ls` order, and `#` stays the login's own number. `--sort` works only with the table.
 - **LEFT** is 100 minus the fullest window, because any one window at its cap blocks the account. It is amber under 20% and red at 0%, and `—` when the probe returned no windows.
 - **STATUS** is `ok`, `limit reached`, `rejected` (the server refused the token; `blocked by org` when the organisation disallows this kind of login, else the HTTP status), `expired`, `per token` (an api-key login, never probed) or `error` with a short reason (`timeout`, `rate-limited`, `inference-only token`, `not logged in`, or the start of the message). The full message of every failed row is printed under the table.
 - The command exits 1 when any row failed, like the rest of `agx usage`.
 
 In the checklist, space marks a login, `a` marks all (again: none), Enter shows the marked ones (or the one under the cursor when none is marked), and Esc or `q` cancels with exit 1. `--pick` needs a terminal on stdin and stdout; in a script, name the logins with `--login a,b`.
 
-`--json` keeps the `usage.list` envelope and gives every row, home or login, with or without `--table`, the same verdict: `status`, `status_reason`, `left_percent` and `left_resets_at` (the last two absent when there are no windows):
+`--json` keeps the `usage.list` envelope and gives every row, home or login, with or without `--table`, the same verdict: `status`, `status_reason`, `left_percent` and `left_resets_at` (the last two absent when there are no windows), plus `weekly_resets_at` (RFC3339 in the `--tz` zone) and `weekly_reset_day` when the row has a weekly window:
 
 ```sh
 agx usage --login all --json | jq -r '.data[] | "\(.login) \(.status) \(.left_percent // "-")"'

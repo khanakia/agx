@@ -444,6 +444,7 @@ agx usage --login personal                             # one login's 5-hour and 
 agx usage --logins --table                             # one row per login: 5H, WEEKLY, LEFT, STATUS
 agx usage --login personal,spare                       # the same table for these logins (all: every login)
 agx usage --pick                                       # mark logins in a checklist, then the table
+agx usage --login all --sort day,-left --tz Asia/Kolkata  # by weekly reset day, most left first
 agx login add personal --stdin --replace               # rotate a token (kind and account are kept)
 agx login rm personal                                  # refused while a profile uses it; --force clears those too
 ```
@@ -693,7 +694,7 @@ agx new -p auto --provider codex my spike   # auto-pick among Codex accounts
 
 | Command | Flags |
 |---|---|
-| `agx` / [`agx usage`](ds:block?id=newusagecmd-r3ert49b) | `--provider claude\|codex` · `--json` · `--color auto\|always\|never` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) · `--logins` · `--login NAME\|a,b\|all\|home` · `--table` · `--pick` (all but `home` probe) |
+| `agx` / [`agx usage`](ds:block?id=newusagecmd-r3ert49b) | `--provider claude\|codex` · `--json` · `--color auto\|always\|never` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) · `--logins` · `--login NAME\|a,b\|all\|home` · `--table` · `--pick` (all but `home` probe) · `--sort day,-left` (table only) · `--tz Asia/Kolkata` |
 | [`agx plan`](ds:block?id=newplancmd-urn3m4qd) | `[profile…]` · `--json` · [`--timeout 15s`](ds:block?id=defaultusagetimeout-sz3xwdbj) · `--login home` (alias: `agx subscription`) |
 | [`agx profiles`](ds:block?id=newprofilescmd-ndr78yh5) | `--json` (aliases: `agx who`, `agx accounts`) |
 | `agx whoami` | `--json` |
