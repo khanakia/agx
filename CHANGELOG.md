@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.9] - 2026-11-09
+
 ### Added
 
 - The usage login table (`agx usage --logins --table`, `--login a,b`, `--login all`, `--pick`) gains `RESET DAY` (e.g. `Tue`) and `RESETS ON` (e.g. `Tue 10 Nov 05:33`) right after `WEEKLY RESETS`, from the weekly window's reset time (`—` when a row has none), and a line under the table, `Weekly resets: Tue 1 (+79%) · Wed 2 (+164%)`: per weekday, how many logins' weekly windows reset then and the sum of their weekly USED (the room they get back), soonest reset first.
@@ -215,7 +217,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.8...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.9...HEAD
+[0.3.9]: https://github.com/khanakia/agx/compare/v0.3.8...v0.3.9
 [0.3.8]: https://github.com/khanakia/agx/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/khanakia/agx/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/khanakia/agx/compare/v0.3.5...v0.3.6
