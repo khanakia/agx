@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- The usage login table (`agx usage --logins --table`, `--login a,b`, `--login all`, `--pick`) gains `RESET DAY` (e.g. `Tue`) and `RESETS ON` (e.g. `Tue 10 Nov 05:33`) right after `WEEKLY RESETS`, from the weekly window's reset time (`—` when a row has none), and a line under the table, `Weekly resets: Tue 1 (+79%) · Wed 2 (+164%)`: per weekday, how many logins' weekly windows reset then and the sum of their weekly USED (the room they get back), soonest reset first.
+- `agx usage --sort KEYS` orders the table's rows by comma-separated keys `login`, `left`, `5h`, `5h-reset`, `weekly`, `weekly-reset`, `day`, `status`; a `-` prefix sorts high to low (`--sort day,-left`). `day` is calendar order Mon..Sun, `weekly-reset` the actual reset time, soonest first, and a row without the value goes last in either direction. The sort is stable and `#` keeps each login's own number. It works only with the table; an unknown key is a usage error listing the valid ones.
+- `agx usage --tz ZONE` (an IANA name such as `Asia/Kolkata`; default: the machine's local zone) sets the zone of `RESET DAY`, `RESETS ON`, the summary line and `--sort day`. An unknown zone is a usage error.
+- `usage.list` JSON gains `weekly_resets_at` (RFC3339 in the `--tz` zone) and `weekly_reset_day` (e.g. `Tue`) on every entry with a weekly window.
+
 ## [0.3.8] - 2026-11-04
 
 ### Added

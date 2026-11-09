@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -102,6 +103,23 @@ const (
 	// colModelSuffix follows a per-model weekly window's label ("FABLE WEEKLY").
 	colModelSuffix = " WEEKLY"
 	percentFmt     = "%.0f%%"
+	// colResetDay and colResetsOn follow WEEKLY RESETS: the weekday and the
+	// date the weekly window resets, in the --tz zone.
+	colResetDay = "RESET DAY"
+	colResetsOn = "RESETS ON"
+	// resetDayFmt and resetsOnFmt format those two cells ("Tue",
+	// "Tue 10 Nov 05:33").
+	resetDayFmt = "Mon"
+	resetsOnFmt = "Mon 2 Jan 15:04"
+)
+
+// The weekly-reset summary under the table ("Weekly resets: Tue 1 (+79%) ·
+// Wed 2 (+164%)").
+const (
+	summaryPrefix  = "Weekly resets: "
+	summarySep     = " · "
+	summaryDayFmt  = "%s %d (+%.0f%%)"
+	summaryNewline = "\n"
 )
 
 // usageVerdict is what one row comes to: its status, why, how much is left
@@ -232,16 +250,20 @@ func modelColumns(reports []render.UsageReport) []string {
 // buildLoginTable turns reports into the table. ordinals[i] is report i's
 // position in `agx login ls` (1-based), so a row keeps its number whatever
 // subset is shown. Pure: now is the reference for RESETS.
-func buildLoginTable(reports []render.UsageReport, ordinals []int, now time.Time) loginTable {
+// loc is the zone of RESET DAY and RESETS ON.
+func buildLoginTable(reports []render.UsageReport, ordinals []int, now time.Time, loc *time.Location) loginTable {
 	models := modelColumns(reports)
 	header := []string{colNum, colLogin, colProvider, colAccount}
 	for _, name := range append([]string{col5hName, colWeeklyName}, modelNames(models)...) {
 		header = append(header, name+colUsedSuffix, name+colResetSufix)
+		if name == colWeeklyName {
+			header = append(header, colResetDay, colResetsOn)
+		}
 	}
 	header = append(header, colLeft, colStatus)
 	t := loginTable{Header: header}
 	for i, r := range reports {
-		t.Rows = append(t.Rows, loginTableRow(r, ordinals[i], models, now))
+		t.Rows = append(t.Rows, loginTableRow(r, ordinals[i], models, now, loc))
 	}
 	return t
 }
@@ -258,7 +280,7 @@ func modelNames(models []string) []string {
 // loginTableRow builds one row. A window the report lacks is "—" in both
 // its USED and RESETS cells, never 0%: an account without a 5-hour window
 // is not an idle one.
-func loginTableRow(r render.UsageReport, ordinal int, models []string, now time.Time) []render.Cell {
+func loginTableRow(r render.UsageReport, ordinal int, models []string, now time.Time, loc *time.Location) []render.Cell {
 	v := usageVerdictOf(r)
 	account := r.Account
 	if account == "" {
@@ -271,7 +293,8 @@ func loginTableRow(r render.UsageReport, ordinal int, models []string, now time.
 		dimIfMissing(account),
 	}
 	row = append(row, windowCells(r.Usage.Windows, now, func(w provider.Window) bool { return w.Kind == provider.WindowSession })...)
-	row = append(row, windowCells(r.Usage.Windows, now, func(w provider.Window) bool { return w.Kind == provider.WindowWeekly })...)
+	row = append(row, windowCells(r.Usage.Windows, now, isWeekly)...)
+	row = append(row, weeklyDateCells(weeklyResetsAt(r.Usage.Windows), loc)...)
 	for _, m := range models {
 		row = append(row, windowCells(r.Usage.Windows, now, func(w provider.Window) bool { return w.Kind == provider.WindowScoped && w.Label == m })...)
 	}
@@ -297,6 +320,74 @@ func windowCells(ws []provider.Window, now time.Time, match func(provider.Window
 	}
 	missing := render.Cell{Text: cellMissingWindow, Tone: render.ToneDim}
 	return []render.Cell{missing, missing}
+}
+
+// isWeekly matches the all-models weekly window.
+func isWeekly(w provider.Window) bool { return w.Kind == provider.WindowWeekly }
+
+// weeklyResetsAt is when the weekly window resets; nil when the report has
+// no weekly window or it carries no reset time.
+func weeklyResetsAt(ws []provider.Window) *time.Time {
+	for _, w := range ws {
+		if isWeekly(w) {
+			return w.ResetsAt
+		}
+	}
+	return nil
+}
+
+// weeklyDateCells is the RESET DAY and RESETS ON pair in loc, or "—" twice.
+func weeklyDateCells(at *time.Time, loc *time.Location) []render.Cell {
+	if at == nil {
+		missing := render.Cell{Text: cellMissingWindow, Tone: render.ToneDim}
+		return []render.Cell{missing, missing}
+	}
+	t := at.In(loc)
+	return []render.Cell{{Text: t.Format(resetDayFmt)}, {Text: t.Format(resetsOnFmt)}}
+}
+
+// weeklyResetSummary is the line under the table: for each weekday (in
+// loc) on which some weekly window resets, how many logins reset then and
+// the sum of their weekly USED (the room they get back), soonest reset
+// first. Empty when no row has a weekly reset. Pure.
+func weeklyResetSummary(reports []render.UsageReport, loc *time.Location) string {
+	type day struct {
+		name     string
+		soonest  time.Time
+		logins   int
+		returned float64
+	}
+	byDay := map[time.Weekday]*day{}
+	var days []*day
+	for _, r := range reports {
+		for _, w := range r.Usage.Windows {
+			if !isWeekly(w) || w.ResetsAt == nil {
+				continue
+			}
+			t := w.ResetsAt.In(loc)
+			d, ok := byDay[t.Weekday()]
+			if !ok {
+				d = &day{name: t.Format(resetDayFmt), soonest: t}
+				byDay[t.Weekday()] = d
+				days = append(days, d)
+			}
+			if t.Before(d.soonest) {
+				d.soonest = t
+			}
+			d.logins++
+			d.returned += w.Percent
+			break
+		}
+	}
+	if len(days) == 0 {
+		return ""
+	}
+	slices.SortStableFunc(days, func(a, b *day) int { return a.soonest.Compare(b.soonest) })
+	parts := make([]string, len(days))
+	for i, d := range days {
+		parts[i] = fmt.Sprintf(summaryDayFmt, d.name, d.logins, d.returned)
+	}
+	return summaryPrefix + strings.Join(parts, summarySep)
 }
 
 // leftCell colours what is left: red at zero, amber when low.
@@ -339,12 +430,18 @@ func statusCell(v usageVerdict) render.Cell {
 	return render.Cell{Text: text, Tone: statusTones[v.Status]}
 }
 
-// writeLoginTable prints the table, then the full message of every failed
-// row (the STATUS cell carries only a short reason).
-func writeLoginTable(w io.Writer, reports []render.UsageReport, ordinals []int, now time.Time, color bool) error {
-	t := buildLoginTable(reports, ordinals, now)
+// writeLoginTable prints the table, the weekly-reset summary, then the
+// full message of every failed row (the STATUS cell carries only a short
+// reason). loc is the zone of the reset days and dates.
+func writeLoginTable(w io.Writer, reports []render.UsageReport, ordinals []int, now time.Time, loc *time.Location, color bool) error {
+	t := buildLoginTable(reports, ordinals, now, loc)
 	if err := render.StyledTable(w, t.Header, t.Rows, color); err != nil {
 		return err
+	}
+	if s := weeklyResetSummary(reports, loc); s != "" {
+		if _, err := io.WriteString(w, s+summaryNewline); err != nil {
+			return err
+		}
 	}
 	for _, r := range reports {
 		if r.Err != nil && !errors.Is(r.Err, provider.ErrAPIBilled) {
@@ -425,15 +522,16 @@ func (a *app) runLoginTable(ctx context.Context, cfg config.Config, o *usageOpts
 		return err
 	}
 	reports := a.probeLogins(ctx, ls, o.timeout)
+	reports, ord = sortLoginRows(reports, ord, o.sortKeys, o.loc)
 	if o.json {
 		out := make([]usageJSON, 0, len(reports))
 		for _, r := range reports {
-			out = append(out, toUsageJSON(r))
+			out = append(out, toUsageJSON(r, o.loc))
 		}
 		if err := output.JSON(a.Stdout, kindUsageList, out, len(out)); err != nil {
 			return err
 		}
-	} else if err := writeLoginTable(a.Stdout, reports, ord, a.Now(), a.wantColor(o.color)); err != nil {
+	} else if err := writeLoginTable(a.Stdout, reports, ord, a.Now(), o.loc, a.wantColor(o.color)); err != nil {
 		return err
 	}
 	if anyFailed(reports) {
