@@ -103,8 +103,8 @@ func TestBuildLoginTable_Mix(t *testing.T) {
 		{Login: "slow", Profile: provider.Profile{Provider: provider.Codex}, Err: context.DeadlineExceeded},
 		{Login: "old", Profile: provider.Profile{Provider: provider.Claude}, Err: provider.ErrExpired},
 	}
-	tb := buildLoginTable(reports, []int{1, 2, 5, 7, 8, 9}, tableNow)
-	wantHeader := []string{colNum, colLogin, colProvider, colAccount, "5H USED", "5H RESETS", "WEEKLY USED", "WEEKLY RESETS", "FABLE WEEKLY USED", "FABLE WEEKLY RESETS", colLeft, colStatus}
+	tb := buildLoginTable(reports, []int{1, 2, 5, 7, 8, 9}, tableNow, time.UTC)
+	wantHeader := []string{colNum, colLogin, colProvider, colAccount, "5H USED", "5H RESETS", "WEEKLY USED", "WEEKLY RESETS", "RESET DAY", "RESETS ON", "FABLE WEEKLY USED", "FABLE WEEKLY RESETS", colLeft, colStatus}
 	if strings.Join(tb.Header, "|") != strings.Join(wantHeader, "|") {
 		t.Fatalf("header %v, want %v", tb.Header, wantHeader)
 	}
@@ -116,12 +116,12 @@ func TestBuildLoginTable_Mix(t *testing.T) {
 		return strings.Join(s, "|")
 	}
 	want := []string{
-		"1|khanakia|claude|—|—|—|—|—|—|—|—|rejected: blocked by org",
-		"2|erman|claude|e@example.com|0%|1 hr 0 min|98%|2 d 19 hr|—|—|2%|ok",
-		"5|ismail|claude|—|100%|1 hr 41 min|53%|3 d 18 hr|12%|3 d 18 hr|0%|limit reached",
-		"7|amank|claude|—|—|—|2%|6 d 22 hr|—|—|98%|ok",
-		"8|slow|codex|—|—|—|—|—|—|—|—|error: timeout",
-		"9|old|claude|—|—|—|—|—|—|—|—|expired",
+		"1|khanakia|claude|—|—|—|—|—|—|—|—|—|—|rejected: blocked by org",
+		"2|erman|claude|e@example.com|0%|1 hr 0 min|98%|2 d 19 hr|Sat|Sat 7 Nov 07:00|—|—|2%|ok",
+		"5|ismail|claude|—|100%|1 hr 41 min|53%|3 d 18 hr|Sun|Sun 8 Nov 06:00|12%|3 d 18 hr|0%|limit reached",
+		"7|amank|claude|—|—|—|2%|6 d 22 hr|Wed|Wed 11 Nov 10:00|—|—|98%|ok",
+		"8|slow|codex|—|—|—|—|—|—|—|—|—|—|error: timeout",
+		"9|old|claude|—|—|—|—|—|—|—|—|—|—|expired",
 	}
 	for i, w := range want {
 		if got := texts(tb.Rows[i]); got != w {
@@ -133,13 +133,216 @@ func TestBuildLoginTable_Mix(t *testing.T) {
 	}
 	// LEFT tones: 2% is a warning, 0% is bad, 98% is fine.
 	for i, tone := range map[int]render.Tone{1: render.ToneWarn, 2: render.ToneBad, 3: render.ToneGood} {
-		if got := tb.Rows[i][10].Tone; got != tone {
+		if got := tb.Rows[i][12].Tone; got != tone {
 			t.Errorf("row %d LEFT tone %v, want %v", i, got, tone)
 		}
 	}
 	// No per-model column when no probe returned one.
-	if h := buildLoginTable(reports[:2], []int{1, 2}, tableNow).Header; len(h) != 10 {
+	if h := buildLoginTable(reports[:2], []int{1, 2}, tableNow, time.UTC).Header; len(h) != 12 {
 		t.Errorf("header without a scoped window: %v", h)
+	}
+	// A missing weekly reset is a dim "—" in both date cells.
+	for _, c := range tb.Rows[0][8:10] {
+		if c.Tone != render.ToneDim {
+			t.Errorf("missing RESET DAY / RESETS ON not dim: %+v", c)
+		}
+	}
+	// --tz moves ismail's Sun 06:00 UTC reset back past midnight into Saturday.
+	la := mustZone(t, "America/Los_Angeles")
+	if got := texts(buildLoginTable(reports, []int{1, 2, 5, 7, 8, 9}, tableNow, la).Rows[2][8:10]); got != "Sat|Sat 7 Nov 22:00" {
+		t.Errorf("ismail in America/Los_Angeles = %s, want Sat|Sat 7 Nov 22:00", got)
+	}
+}
+
+func mustZone(t *testing.T, name string) *time.Location {
+	t.Helper()
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return loc
+}
+
+// weeklyReport is a login with a 5-hour and a weekly window.
+func weeklyReport(name string, used5h, usedWeekly float64, weeklyIn time.Duration) render.UsageReport {
+	return render.UsageReport{Login: name, Profile: provider.Profile{Provider: provider.Claude}, Usage: provider.Usage{Windows: []provider.Window{
+		win(provider.WindowSession, "Current session", used5h, tat(time.Hour+time.Duration(used5h)*time.Minute)),
+		win(provider.WindowWeekly, "All models", usedWeekly, tat(weeklyIn))}}}
+}
+
+// TestWeeklyResetSummary: per weekday, the logins resetting then and the
+// weekly USED they get back, soonest first, in the chosen zone.
+func TestWeeklyResetSummary(t *testing.T) {
+	t.Parallel()
+	// tableNow is Wed 4 Nov 12:00 UTC.
+	reports := []render.UsageReport{
+		weeklyReport("sat1", 0, 98, 67*time.Hour), // Sat 7 Nov 07:00 UTC
+		weeklyReport("tue", 0, 2, 154*time.Hour),  // Tue 10 Nov 22:00 UTC, Wed 03:30 IST
+		weeklyReport("thu", 0, 79, 30*time.Hour),  // Thu 5 Nov 18:00 UTC, 23:30 IST
+		weeklyReport("sat2", 0, 66, 70*time.Hour), // Sat 7 Nov 10:00 UTC
+		weeklyReport("wed", 0, 40, 156*time.Hour), // Wed 11 Nov 00:00 UTC
+		{Login: "dead", Err: provider.ErrExpired}, // no windows: left out
+		{Login: "noreset", Usage: provider.Usage{Windows: []provider.Window{win(provider.WindowWeekly, "All models", 50, nil)}}},
+	}
+	for _, c := range []struct {
+		loc  *time.Location
+		want string
+	}{
+		{time.UTC, "Weekly resets: Thu 1 (+79%) · Sat 2 (+164%) · Tue 1 (+2%) · Wed 1 (+40%)"},
+		{mustZone(t, "Asia/Kolkata"), "Weekly resets: Thu 1 (+79%) · Sat 2 (+164%) · Wed 2 (+42%)"},
+		{mustZone(t, "America/Los_Angeles"), "Weekly resets: Thu 1 (+79%) · Fri 1 (+98%) · Sat 1 (+66%) · Tue 2 (+42%)"},
+	} {
+		if got := weeklyResetSummary(reports, c.loc); got != c.want {
+			t.Errorf("%s:\n got %s\nwant %s", c.loc, got, c.want)
+		}
+	}
+	if got := weeklyResetSummary(reports[5:], time.UTC); got != "" {
+		t.Errorf("no weekly reset: %q, want empty", got)
+	}
+}
+
+// TestSortLoginRows_Matrix: multi-key sort, "-" for high to low, missing
+// values last in both directions, stable, # kept, no keys = unchanged.
+func TestSortLoginRows_Matrix(t *testing.T) {
+	t.Parallel()
+	reports := []render.UsageReport{
+		weeklyReport("c", 10, 20, 67*time.Hour),  // Sat UTC, left 80
+		weeklyReport("a", 50, 30, 154*time.Hour), // Tue UTC / Wed IST, left 50
+		{Login: "x", Err: provider.ErrExpired},   // no windows
+		weeklyReport("b", 5, 90, 30*time.Hour),   // Thu, left 10
+		weeklyReport("d", 0, 25, 68*time.Hour),   // Sat UTC, left 75
+		{Login: "w", Usage: provider.Usage{Windows: []provider.Window{win(provider.WindowWeekly, "All models", 60, tat(156*time.Hour))}}}, // no 5h; Wed 00:00 UTC
+	}
+	ords := []int{3, 1, 9, 2, 4, 7}
+	kolkata := mustZone(t, "Asia/Kolkata")
+	for _, c := range []struct {
+		spec string
+		loc  *time.Location
+		want string
+	}{
+		{"", time.UTC, "c3 a1 x9 b2 d4 w7"},
+		{"login", time.UTC, "a1 b2 c3 d4 w7 x9"},
+		{"-login", time.UTC, "x9 w7 d4 c3 b2 a1"},
+		{"left", time.UTC, "b2 w7 a1 d4 c3 x9"},
+		{"-left", time.UTC, "c3 d4 a1 w7 b2 x9"},
+		{"5h", time.UTC, "d4 b2 c3 a1 x9 w7"},
+		{"-5h", time.UTC, "a1 c3 b2 d4 x9 w7"},
+		{"weekly-reset", time.UTC, "b2 c3 d4 a1 w7 x9"},
+		{"-weekly-reset", time.UTC, "w7 a1 d4 c3 b2 x9"},
+		{"day", time.UTC, "a1 w7 b2 c3 d4 x9"},
+		{"day,left", time.UTC, "a1 w7 b2 d4 c3 x9"},
+		{"day,-left", time.UTC, "a1 w7 b2 c3 d4 x9"},
+		// In Asia/Kolkata a's Tue 22:00 UTC reset is Wednesday, beside w.
+		{"day,left", kolkata, "w7 a1 b2 d4 c3 x9"},
+		{"day,-left", kolkata, "a1 w7 b2 c3 d4 x9"},
+		{"-day", time.UTC, "c3 d4 b2 w7 a1 x9"},
+		{"-weekly,login", time.UTC, "b2 w7 a1 d4 c3 x9"},
+		{"status,-login", time.UTC, "w7 d4 c3 b2 a1 x9"},
+		{"5h-reset", time.UTC, "d4 b2 c3 a1 x9 w7"},
+	} {
+		keys, err := parseSortKeys(c.spec)
+		if err != nil {
+			t.Fatalf("%q: %v", c.spec, err)
+		}
+		rs, so := sortLoginRows(reports, ords, keys, c.loc)
+		var got []string
+		for i, r := range rs {
+			got = append(got, fmt.Sprintf("%s%d", r.Login, so[i]))
+		}
+		if g := strings.Join(got, " "); g != c.want {
+			t.Errorf("--sort %q (%s): %s, want %s", c.spec, c.loc, g, c.want)
+		}
+	}
+	// The inputs are not reordered.
+	if reports[0].Login != "c" || ords[0] != 3 {
+		t.Errorf("sortLoginRows modified its input")
+	}
+}
+
+// TestParseSortKeysAndTZ_Errors: bad keys and zones are usage errors that
+// say what is valid.
+func TestParseSortKeysAndTZ_Errors(t *testing.T) {
+	t.Parallel()
+	for _, spec := range []string{"bogus", "day,nope", "day,", "--left", "Day"} {
+		_, err := parseSortKeys(spec)
+		if err == nil || ExitCode(err) != ExitUsage || !strings.Contains(err.Error(), "valid keys: login, left, 5h, 5h-reset, weekly, weekly-reset, day, status") {
+			t.Errorf("--sort %q: %v", spec, err)
+		}
+	}
+	if keys, err := parseSortKeys(" day , -left "); err != nil || fmt.Sprint(keys) != "[{day false} {left true}]" {
+		t.Errorf("spaced keys: %v %v", keys, err)
+	}
+	for _, name := range []string{"Nowhere/Land", "asia/kolkata_x"} {
+		if _, err := parseTZ(name); err == nil || ExitCode(err) != ExitUsage || !strings.Contains(err.Error(), "unknown time zone") {
+			t.Errorf("--tz %q: %v", name, err)
+		}
+	}
+	if loc, err := parseTZ(""); err != nil || loc != time.Local {
+		t.Errorf("empty --tz = %v %v, want local", loc, err)
+	}
+}
+
+// TestUsageTable_SortTZCommand runs the real command with --sort and --tz:
+// rows reorder with # kept, the date columns and summary use the zone, the
+// JSON gains weekly_resets_at / weekly_reset_day, and bad values are
+// refused before any probe.
+func TestUsageTable_SortTZCommand(t *testing.T) {
+	t.Parallel()
+	h := probeHarness(t)
+	h.now = tableNow
+	h.env["X_TOKEN"] = tokX
+	weekly := func(p float64, d time.Duration) provider.Usage {
+		return provider.Usage{Windows: []provider.Window{win(provider.WindowWeekly, "All models", p, tat(d))}}
+	}
+	h.claude.probeUsage = map[string]provider.Usage{
+		tokA: weekly(30, 154*time.Hour), // Tue 10 Nov 22:00 UTC = Wed 03:30 IST
+		tokB: weekly(70, 30*time.Hour),  // Thu 5 Nov 18:00 UTC = 23:30 IST
+		tokX: weekly(10, 160*time.Hour), // Wed 11 Nov 04:00 UTC = 09:30 IST
+	}
+	if code := h.run("usage", "--login", "a,b,x", "--sort", "day,-left", "--tz", "Asia/Kolkata"); code != ExitOK {
+		t.Fatalf("exit %d: %s", code, h.stderr.String())
+	}
+	lines := strings.Split(strings.TrimRight(h.stdout.String(), "\n"), "\n")
+	if len(lines) != 5 || !strings.Contains(lines[0], "WEEKLY RESETS  RESET DAY  RESETS ON") {
+		t.Fatalf("table:\n%s", h.stdout.String())
+	}
+	for i, want := range []string{"4  x", "1  a", "2  b"} {
+		if !strings.HasPrefix(lines[1+i], want) {
+			t.Errorf("row %d = %q, want prefix %q", i, lines[1+i], want)
+		}
+	}
+	if !strings.Contains(lines[1], "Wed 11 Nov 09:30") || !strings.Contains(lines[3], "Thu 5 Nov 23:30") {
+		t.Errorf("dates not in Asia/Kolkata:\n%s", h.stdout.String())
+	}
+	if lines[4] != "Weekly resets: Thu 1 (+70%) · Wed 2 (+40%)" {
+		t.Errorf("summary = %q", lines[4])
+	}
+
+	if code := h.run("usage", "--login", "a,b", "--json", "--tz", "Asia/Kolkata", "--sort", "-weekly"); code != ExitOK {
+		t.Fatalf("json: exit %d %s", code, h.stderr.String())
+	}
+	env := decode[[]usageJSON](t, h.stdout.Bytes())
+	if len(env.Data) != 2 || env.Data[0].Login != "b" || env.Data[0].WeeklyResetsAt != "2026-11-05T23:30:00+05:30" || env.Data[0].WeeklyResetDay != "Thu" ||
+		env.Data[1].WeeklyResetsAt != "2026-11-11T03:30:00+05:30" || env.Data[1].WeeklyResetDay != "Wed" {
+		t.Errorf("json: %+v", env.Data)
+	}
+
+	for _, c := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"usage", "--login", "all", "--sort", "bogus"}, "valid keys: login, left"},
+		{[]string{"usage", "--login", "all", "--tz", "Nowhere/Land"}, "unknown time zone"},
+		{[]string{"usage", "--sort", "day"}, "--sort orders the login table"},
+		{[]string{"usage", "--login", "a", "--sort", "day"}, "--sort orders the login table"},
+	} {
+		before := h.probeCount()
+		if code := h.run(c.args...); code != ExitUsage || !strings.Contains(h.stderr.String(), c.want) {
+			t.Errorf("%v: exit %d %q", c.args, code, h.stderr.String())
+		}
+		if h.probeCount() != before {
+			t.Errorf("%v probed although refused", c.args)
+		}
 	}
 }
 

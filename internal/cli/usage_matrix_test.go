@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/khanakia/agx/internal/render"
 	"github.com/khanakia/agx/provider"
@@ -60,7 +61,7 @@ func TestToUsageJSON(t *testing.T) {
 	extra := []byte(`{"overage":{"used":3}}`)
 	win := []provider.Window{{Label: "Current session", Percent: 12}}
 
-	plain := toUsageJSON(render.UsageReport{Profile: prof, Usage: provider.Usage{Windows: win, Extra: extra, Identity: provider.Identity{Email: "me@home"}}})
+	plain := toUsageJSON(render.UsageReport{Profile: prof, Usage: provider.Usage{Windows: win, Extra: extra, Identity: provider.Identity{Email: "me@home"}}}, time.UTC)
 	if plain.Profile != "personal" || plain.Home != home || plain.Email != "me@home" || plain.Source != "" || len(plain.Windows) != 1 || string(plain.Extra) != string(extra) {
 		t.Errorf("plain = %+v", plain)
 	}
@@ -68,17 +69,17 @@ func TestToUsageJSON(t *testing.T) {
 		t.Errorf("marshal: %v", err)
 	}
 
-	lr := toUsageJSON(render.UsageReport{Profile: prof, Login: "w", Account: "ops@example.com", Usage: provider.Usage{Windows: win}})
+	lr := toUsageJSON(render.UsageReport{Profile: prof, Login: "w", Account: "ops@example.com", Usage: provider.Usage{Windows: win}}, time.UTC)
 	if lr.Profile != "" || lr.Home != "" || lr.Login != "w" || lr.Account != "ops@example.com" || lr.Source != usageSourceProbe {
 		t.Errorf("login row = %+v", lr)
 	}
 
-	er := toUsageJSON(render.UsageReport{Profile: prof, Err: errors.New("boom"), Usage: provider.Usage{Windows: win, Extra: extra}})
+	er := toUsageJSON(render.UsageReport{Profile: prof, Err: errors.New("boom"), Usage: provider.Usage{Windows: win, Extra: extra}}, time.UTC)
 	if er.Error != "boom" || er.Windows != nil || er.Extra != nil {
 		t.Errorf("error row = %+v", er)
 	}
 
-	none := toUsageJSON(render.UsageReport{Profile: prof})
+	none := toUsageJSON(render.UsageReport{Profile: prof}, time.UTC)
 	raw, err := json.Marshal(none)
 	if err != nil || strings.Contains(string(raw), `"extra"`) || strings.Contains(string(raw), `"windows"`) {
 		t.Errorf("empty row = %s %v", raw, err)
