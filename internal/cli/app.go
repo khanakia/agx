@@ -10,10 +10,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/ubgo/voltkit/appdir"
+	"github.com/ubgo/appdir"
 
 	"github.com/khanakia/agx/config"
 	"github.com/khanakia/agx/internal/appmeta"
@@ -113,26 +114,12 @@ func SystemDeps() (Deps, error) {
 		return Deps{}, fmt.Errorf("home dir: %w", err)
 	}
 	return Deps{
-		Stdout:    os.Stdout,
-		Stderr:    os.Stderr,
-		Stdin:     os.Stdin,
-		UserHome:  home,
-		Providers: []provider.Provider{claude.New(home), codex.New(home)},
-		ConfigPath: func() (string, string, error) {
-			d, err := appdir.New(appmeta.Name,
-				appdir.WithDirName(appmeta.DirName),
-				appdir.WithEnvPrefix(appmeta.EnvPrefix),
-				appdir.WithLayout(appdir.AllHomeDotfile))
-			if err != nil {
-				return "", "", err
-			}
-			p, err := d.ConfigFile(config.FileName)
-			if err != nil {
-				return "", "", err
-			}
-			rung, err := d.Rung(appdir.Config)
-			return p, string(rung), err
-		},
+		Stdout:     os.Stdout,
+		Stderr:     os.Stderr,
+		Stdin:      os.Stdin,
+		UserHome:   home,
+		Providers:  []provider.Provider{claude.New(home), codex.New(home)},
+		ConfigPath: func() (string, string, error) { return configPath(os.LookupEnv) },
 		Now:        time.Now,
 		Getwd:      os.Getwd,
 		LookupEnv:  os.LookupEnv,
@@ -147,6 +134,75 @@ func SystemDeps() (Deps, error) {
 		PromptSecret:   promptSecret,
 		Interactive:    interactive,
 	}, nil
+}
+
+// Where agx keeps config.yaml (and tokens.yaml beside it). These rules are
+// older than ubgo/appdir and existing users rely on them, so they are kept
+// exactly (spec: no user's data moves):
+//
+//	AGX_CONFIG_DIR set  -> $AGX_CONFIG_DIR/config.yaml      (env-category)
+//	AGX_HOME set        -> $AGX_HOME/config/config.yaml     (env-home)
+//	otherwise           -> ~/.agx/config.yaml               (home-dotfile)
+//
+// The rung names are the ones `agx doctor` has always printed.
+const (
+	rungEnvCategory = "env-category"
+	rungEnvHome     = "env-home"
+	rungHomeDotfile = "home-dotfile"
+)
+
+// configKind is agx's own config kind. appdir's standard config kind is
+// config.jsonc and has no <APP>_CONFIG_DIR variable, so agx replaces it with
+// a global, overridable config.yaml: AGX_CONFIG_DIR keeps working.
+const configKind appdir.Kind = "config"
+
+// configPath resolves the config file through ubgo/appdir with agx's
+// historic layout. lookupEnv is the process environment (a seam for tests).
+func configPath(lookupEnv func(string) (string, bool)) (string, string, error) {
+	envCategory := appmeta.EnvPrefix + "_CONFIG_DIR"
+	envHome := appmeta.EnvPrefix + "_HOME"
+	set := func(name string) (string, bool) {
+		v, ok := lookupEnv(name)
+		return v, ok && v != ""
+	}
+	rung := rungHomeDotfile
+	env := lookupEnv
+	_, hasCategory := set(envCategory)
+	if home, ok := set(envHome); ok && !hasCategory {
+		// appdir reads AGX_HOME as the home itself (config at
+		// $AGX_HOME/config.yaml); agx always read $AGX_HOME/config/, so the
+		// variable is handed to appdir as the config folder instead.
+		rung = rungEnvHome
+		env = func(name string) (string, bool) {
+			switch name {
+			case envHome:
+				return "", false
+			case envCategory:
+				return filepath.Join(home, "config"), true
+			}
+			return lookupEnv(name)
+		}
+	} else if hasCategory {
+		rung = rungEnvCategory
+	}
+	d, err := appdir.New(appmeta.Name,
+		appdir.WithDirName(appmeta.DirName),
+		appdir.WithEnvPrefix(appmeta.EnvPrefix),
+		appdir.WithMode(appdir.ModeGlobal),
+		// One home for every build, as before: a dev profile would move a
+		// locally built agx to ~/.agx-dev and hide the user's config.
+		appdir.WithRelease(true),
+		appdir.WithEnv(env),
+		appdir.WithoutKind(appdir.KindConfig),
+		appdir.WithKind(configKind, appdir.File(config.FileName), appdir.Scoped(appdir.ScopeGlobal)))
+	if err != nil {
+		return "", "", err
+	}
+	p, err := d.PathIn(configKind, appdir.ScopeGlobal)
+	if err != nil {
+		return "", "", err
+	}
+	return p, rung, nil
 }
 
 // app is the per-invocation state shared by commands.

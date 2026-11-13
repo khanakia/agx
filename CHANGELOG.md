@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- agx now locates its config folder with `github.com/ubgo/appdir` v0.1.0 instead of `github.com/ubgo/voltkit/appdir`, which is retired. The folder is unchanged for every user: `AGX_CONFIG_DIR`, then `AGX_HOME/config`, then `~/.agx`, for every build, and `agx doctor` names the same rules. Nothing is moved or created.
+
 ## [0.3.9] - 2026-11-09
 
 ### Added

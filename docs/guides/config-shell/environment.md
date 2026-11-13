@@ -9,7 +9,7 @@ agx reads a handful of environment variables: two that move its config folder, o
 
 ## Step 1 — Move the config folder: `AGX_CONFIG_DIR` and `AGX_HOME`
 
-agx keeps `config.yaml` and `tokens.yaml` in one folder. It is chosen by the first rule that applies (voltkit `appdir`, with agx's prefix `AGX` and dot-dir `.agx`):
+agx keeps `config.yaml` and `tokens.yaml` in one folder. It is chosen by the first rule that applies (`github.com/ubgo/appdir`, with agx's prefix `AGX` and dot-dir `.agx`):
 
 | Order | Rule | Folder | `agx doctor` says |
 |---|---|---|---|
