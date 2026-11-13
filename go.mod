@@ -5,7 +5,7 @@ go 1.26.4
 require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.9
-	github.com/ubgo/appdir v0.1.1
+	github.com/ubgo/appdir v0.1.2
 	github.com/ubgo/voltkit/output v0.2.0
 	github.com/ubgo/voltkit/versioncmd v0.2.1
 	golang.org/x/term v0.45.0

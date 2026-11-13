@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.12] - 2026-11-13
+
+### Changed
+
+- `github.com/ubgo/appdir` is updated to v0.1.2. agx folder locations are unchanged.
+
+### Fixed
+
+- Windows: a directory junction inside an agx folder that leads outside it is now caught like a symlink (Go 1.23 stopped following junctions).
+- The temp-folder fallback used when there is no home folder now honours the environment agx passes in.
+
 ## [0.3.11] - 2026-11-13
 
 ### Changed
@@ -236,7 +247,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.11...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.12...HEAD
+[0.3.12]: https://github.com/khanakia/agx/compare/v0.3.11...v0.3.12
 [0.3.11]: https://github.com/khanakia/agx/compare/v0.3.10...v0.3.11
 [0.3.10]: https://github.com/khanakia/agx/compare/v0.3.9...v0.3.10
 [0.3.9]: https://github.com/khanakia/agx/compare/v0.3.8...v0.3.9
