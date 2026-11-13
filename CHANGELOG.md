@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.11] - 2026-11-13
+
+### Changed
+
+- `github.com/ubgo/appdir` is updated to v0.1.1. agx folder locations are unchanged.
+
+### Fixed
+
+- A legacy-folder move across disks now follows a symlinked old home and moves what it points to. Before, only the link was copied and nothing moved.
+- Windows: finding the worktree root now walks up correctly when it starts from a folder that does not exist.
+- Windows: a legacy-folder move no longer overwrites a file already at the new home path.
+
 ## [0.3.10] - 2026-11-13
 
 ### Changed
@@ -224,7 +236,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.10...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.11...HEAD
+[0.3.11]: https://github.com/khanakia/agx/compare/v0.3.10...v0.3.11
 [0.3.10]: https://github.com/khanakia/agx/compare/v0.3.9...v0.3.10
 [0.3.9]: https://github.com/khanakia/agx/compare/v0.3.8...v0.3.9
 [0.3.8]: https://github.com/khanakia/agx/compare/v0.3.7...v0.3.8
