@@ -6,9 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.10] - 2026-11-13
+
 ### Changed
 
-- agx now locates its config folder with `github.com/ubgo/appdir` v0.1.0 instead of `github.com/ubgo/voltkit/appdir`, which is retired. The folder is unchanged for every user: `AGX_CONFIG_DIR`, then `AGX_HOME/config`, then `~/.agx`, for every build, and `agx doctor` names the same rules. Nothing is moved or created.
+- agx now locates its config folder with `github.com/ubgo/appdir` v0.1.0 (it moved there from `github.com/ubgo/voltkit/appdir`, which is retired). The folder is unchanged for every user: `AGX_CONFIG_DIR`, then `AGX_HOME/config`, then `~/.agx`, for every build, and `agx doctor` names the same rules. Nothing is moved or created.
+- One behaviour change: `~` and `${VAR}` inside the AGX_* path variables (`AGX_HOME`, `AGX_CONFIG_DIR`, …) are now expanded, so `AGX_HOME=~/agx` or `AGX_CONFIG_DIR=${XDG_CONFIG_HOME}/agx` work as written. Folder locations are unchanged.
 
 ## [0.3.9] - 2026-11-09
 
@@ -221,7 +224,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.9...HEAD
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.10...HEAD
+[0.3.10]: https://github.com/khanakia/agx/compare/v0.3.9...v0.3.10
 [0.3.9]: https://github.com/khanakia/agx/compare/v0.3.8...v0.3.9
 [0.3.8]: https://github.com/khanakia/agx/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/khanakia/agx/compare/v0.3.6...v0.3.7
