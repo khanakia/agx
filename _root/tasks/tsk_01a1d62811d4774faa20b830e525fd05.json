@@ -1,0 +1,38 @@
+{
+  "_hlc": "2026-11-13T18:25:13.085Z/0000/act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+  "_live": {
+    "hlc": "2026-11-13T18:25:13.085Z/0000/act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+    "live_since": "2026-11-13T18:25:13Z"
+  },
+  "_o": {
+    "cmd": "task add",
+    "git": {
+      "branch": "main",
+      "commit": "33b7c96e173eb5c8d71bdafc57e1e2663f3e91ed",
+      "state": "branch"
+    },
+    "project": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+    "store": "repo"
+  },
+  "_table": "tasks",
+  "_v": 2,
+  "_w": {
+    "v": "0.1.18-dev+ee.e5fd805b.core.f6c8717b"
+  },
+  "body": "User: 'lets first create design spec for the agent itself as all these we should be able to use package too in another project. so agent info separate project or whatever, that will provide all the info agx needs and a common provider, and also there will be some specific capability that explicitly it provides itself.' Spec at docsi/AGENTLIB_SPEC.md.",
+  "commitment": "accepted",
+  "created_at": "2026-11-13T18:25:13.085000000Z",
+  "created_by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+  "created_by_actor_id": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+  "id": "tsk_01a1d62811d4774faa20b830e525fd05",
+  "priority": "medium",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "status": "todo",
+  "tasklist_id": "tlt_01a1d6280426722a9492c0d4506362ba",
+  "title": "Design spec for reusable agent library",
+  "updated_at": "2026-11-13T18:25:13.085000000Z",
+  "updated_by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+  "watchers": [
+    "act_7b6e2727126b7bbb9f3a5a9cefc0022f"
+  ]
+}

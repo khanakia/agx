@@ -1,0 +1,31 @@
+{
+  "_hlc": "2026-11-13T18:25:09.603Z/0000/act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+  "_live": {
+    "companion": true,
+    "hlc": "2026-11-13T18:25:09.603Z/0000/act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+    "live_since": "2026-11-13T18:25:13Z"
+  },
+  "_o": {
+    "cmd": "tasklist add",
+    "git": {
+      "branch": "main",
+      "commit": "33b7c96e173eb5c8d71bdafc57e1e2663f3e91ed",
+      "state": "branch"
+    },
+    "project": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+    "store": "repo"
+  },
+  "_table": "task_lists",
+  "_v": 2,
+  "_w": {
+    "v": "0.1.18-dev+ee.e5fd805b.core.f6c8717b"
+  },
+  "created_at": "2026-11-13T18:25:09.603000000Z",
+  "created_by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+  "id": "tlt_01a1d6280426722a9492c0d4506362ba",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "status_str": "active",
+  "title": "Agent library design",
+  "updated_at": "2026-11-13T18:25:09.603000000Z",
+  "updated_by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f"
+}
