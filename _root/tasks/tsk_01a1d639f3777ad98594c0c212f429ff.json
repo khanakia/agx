@@ -1,7 +1,7 @@
 {
-  "_hlc": "2026-11-13T18:45:17.278Z/0000/act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+  "_hlc": "2026-11-13T18:58:02.332Z/0000/act_7b6e2727126b7bbb9f3a5a9cefc0022f",
   "_live": {
-    "hlc": "2026-11-13T18:45:17.278Z/0000/act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+    "hlc": "2026-11-13T18:58:02.332Z/0000/act_7b6e2727126b7bbb9f3a5a9cefc0022f",
     "live_since": "2026-11-13T18:44:45Z"
   },
   "_o": {
@@ -20,10 +20,13 @@
     "v": "0.1.18-dev+ee.e5fd805b.core.f6c8717b"
   },
   "body": "User: setup the dir in khanakia with the name you suggest, setup repolink with docsi, claude.md and full api or design spec; start with claude and codex, try to figure every possible API interface. Each provider its own Go module.",
+  "close_reason": "completed",
   "commitment": "accepted",
+  "completed_at": "2026-11-13T18:58:01.588186000Z",
   "created_at": "2026-11-13T18:44:44.996000000Z",
   "created_by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
   "created_by_actor_id": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+  "done_by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
   "history": [
     {
       "at": "2026-11-13T18:45:16Z",
@@ -32,16 +35,32 @@
       "from": "todo",
       "id": "the_01a1d63a71f0788fa738f55470a71dea",
       "to": "in_progress"
+    },
+    {
+      "at": "2026-11-13T18:58:01Z",
+      "by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+      "field": "status",
+      "from": "in_progress",
+      "id": "the_01a1d6461cf57ea2942374a64a126868",
+      "note": "open_items_at_close: 0",
+      "to": "done"
+    },
+    {
+      "at": "2026-11-13T18:58:01Z",
+      "by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+      "field": "close_reason",
+      "id": "the_01a1d6461cf57eadbf05d456776c700b",
+      "to": "completed"
     }
   ],
   "id": "tsk_01a1d639f3777ad98594c0c212f429ff",
   "priority": "medium",
   "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
   "started_at": "2026-11-13T18:45:16.911810000Z",
-  "status": "in_progress",
+  "status": "done",
   "tasklist_id": "tlt_01a1d6280426722a9492c0d4506362ba",
   "title": "Claude Code full API surface (CLAUDE_API.md)",
-  "updated_at": "2026-11-13T18:45:17.278000000Z",
+  "updated_at": "2026-11-13T18:58:02.332000000Z",
   "updated_by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
   "watchers": [
     "act_7b6e2727126b7bbb9f3a5a9cefc0022f"
