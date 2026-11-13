@@ -1,0 +1,32 @@
+{
+  "_hlc": "2026-11-13T18:25:04.868Z/0000/act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+  "_live": {
+    "hlc": "2026-11-13T18:25:04.868Z/0000/act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+    "live_since": "2026-11-13T18:25:04Z"
+  },
+  "_o": {
+    "cmd": "mission add",
+    "git": {
+      "branch": "main",
+      "commit": "33b7c96e173eb5c8d71bdafc57e1e2663f3e91ed",
+      "state": "branch"
+    },
+    "project": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+    "store": "repo"
+  },
+  "_table": "missions",
+  "_v": 2,
+  "_w": {
+    "v": "0.1.18-dev+ee.e5fd805b.core.f6c8717b"
+  },
+  "body": "agx drifted Claude-specific; extract a reusable package/module that provides all agent info agx needs, common provider interface + explicit provider-specific capabilities.",
+  "created_at": "2026-11-13T18:25:04.868000000Z",
+  "created_by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+  "created_by_actor_id": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+  "id": "msn_01a1d627f1627bac994027a473247761",
+  "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
+  "status": "active",
+  "title": "Agent library — reusable multi-provider agent info package",
+  "updated_at": "2026-11-13T18:25:04.868000000Z",
+  "updated_by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f"
+}

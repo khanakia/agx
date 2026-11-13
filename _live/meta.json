@@ -1,0 +1,7 @@
+{
+  "features": [
+    "hlc",
+    "live"
+  ],
+  "min_lore_version": "0.1.18"
+}
