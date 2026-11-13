@@ -20,7 +20,9 @@ func fakeSecurity(t *testing.T, body string) string {
 }
 
 func TestKeychainGet(t *testing.T) {
-	t.Parallel()
+	// Not parallel: this test writes a script and then runs it. On Linux a
+	// parallel test that forks at that moment can hold the script open for
+	// writing, and running it then fails with "text file busy" (ETXTBSY).
 	// Found: the password is printed with a trailing newline, which Get trims.
 	// The service is argument 3 and -w comes last, with or without "-a <account>" between.
 	k := Keychain{Bin: fakeSecurity(t, `last=""; for a in "$@"; do last="$a"; done; [ "$1" = find-generic-password ] && [ "$3" = "svc-1" ] && [ "$last" = -w ] && printf 'secret-json\n'`)}
@@ -54,7 +56,9 @@ func TestKeychainGet(t *testing.T) {
 // the service name — a stale "unknown"-account one listed first, and the live
 // one under the user's account. Get must return the account's entry.
 func TestKeychainGet_PrefersAccount(t *testing.T) {
-	t.Parallel()
+	// Not parallel: this test writes a script and then runs it. On Linux a
+	// parallel test that forks at that moment can hold the script open for
+	// writing, and running it then fails with "text file busy" (ETXTBSY).
 	script := `case "$*" in
   *"-a khanakia"*) printf 'fresh-login\n' ;;
   *"-a "*) exit 44 ;;

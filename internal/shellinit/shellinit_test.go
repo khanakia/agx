@@ -70,7 +70,9 @@ func TestScriptParses(t *testing.T) {
 // leaves the previous value alone. bash must be installed (every supported
 // platform has it); other shells are checked when present.
 func TestAglogin(t *testing.T) {
-	t.Parallel()
+	// Not parallel: this test writes a script and then runs it. On Linux a
+	// parallel test that forks at that moment can hold the script open for
+	// writing, and running it then fails with "text file busy" (ETXTBSY).
 	bin := t.TempDir()
 	fake := "#!/bin/sh\n[ \"$1 $2\" = \"login exists\" ] || exit 9\ncase \"$3\" in work|home) exit 0 ;; esac\necho \"agx: unknown login \\\"$3\\\"\" >&2\nexit 1\n"
 	if err := os.WriteFile(filepath.Join(bin, "agx"), []byte(fake), 0o755); err != nil {

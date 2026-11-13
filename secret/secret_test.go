@@ -99,7 +99,9 @@ func fakeGopass(t *testing.T, body string) string {
 }
 
 func TestSystemResolveGopass(t *testing.T) {
-	t.Parallel()
+	// Not parallel: this test writes a script and then runs it. On Linux a
+	// parallel test that forks at that moment can hold the script open for
+	// writing, and running it then fails with "text file busy" (ETXTBSY).
 	ctx := context.Background()
 	ref := Ref{SchemeGopass, "ai/kimi"}
 
@@ -124,9 +126,15 @@ func TestSystemResolveGopass(t *testing.T) {
 		t.Error("missing gopass should fail")
 	}
 	// A pinentry prompt nobody answers times out.
-	s = System{GopassBin: fakeGopass(t, "sleep 5"), Timeout: 100 * time.Millisecond}
+	s = System{GopassBin: fakeGopass(t, "sleep 5 2>/dev/null"), Timeout: 100 * time.Millisecond}
+	start := time.Now()
 	if _, err := s.Resolve(ctx, ref); err == nil {
 		t.Error("hung gopass should time out")
+	}
+	// The timeout ends the call even though the sleep child still holds stdout
+	// (its stderr goes to /dev/null so it does not hold up go test itself).
+	if d := time.Since(start); d > 2*time.Second {
+		t.Errorf("timed-out gopass took %s; the timeout must end the call", d)
 	}
 }
 

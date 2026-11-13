@@ -28,7 +28,9 @@ exit 9
 // final exec, a failing or plan-less command returns its exit code without
 // moving and removes its plan file.
 func TestScript_AliasesAndPlanProtocol(t *testing.T) {
-	t.Parallel()
+	// Not parallel: this test writes a script and then runs it. On Linux a
+	// parallel test that forks at that moment can hold the script open for
+	// writing, and running it then fails with "text file busy" (ETXTBSY).
 	bin := t.TempDir()
 	if err := os.WriteFile(filepath.Join(bin, "agx"), []byte(fakeAgx), 0o755); err != nil {
 		t.Fatal(err)
