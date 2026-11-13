@@ -23,7 +23,9 @@ func fakeFzf(t *testing.T, body string) string {
 // TestPickFzf drives Pick through a fake fzf (FzfBin), the path a real
 // terminal takes when fzf is installed.
 func TestPickFzf(t *testing.T) {
-	t.Parallel()
+	// Not parallel: this test writes a script and then runs it. On Linux a
+	// parallel test that forks at that moment can hold the script open for
+	// writing, and running it then fails with "text file busy" (ETXTBSY).
 	items := []string{"first", "second\nwith newline", "third"}
 	// fzf echoes the chosen "index<TAB>text" line; here: the second line.
 	if i, err := pickWith(fakeFzf(t, "sed -n 2p"), items); err != nil || i != 1 {
@@ -88,7 +90,9 @@ func TestPickNumbered(t *testing.T) {
 }
 
 func TestTerminalPicker(t *testing.T) {
-	t.Parallel()
+	// Not parallel: this test writes a script and then runs it. On Linux a
+	// parallel test that forks at that moment can hold the script open for
+	// writing, and running it then fails with "text file busy" (ETXTBSY).
 	if _, err := (TerminalPicker{}).Pick("x", nil); !errors.Is(err, ErrCancelled) {
 		t.Errorf("empty list = %v", err)
 	}

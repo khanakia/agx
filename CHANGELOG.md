@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- A gopass call that times out (an unanswered GPG passphrase prompt) now ends at the timeout even when a child process gopass started still holds its output; before, the call waited until that child exited.
+- Tests that write a fake tool script and run it no longer run in parallel, so they cannot fail on Linux with "text file busy" when another test forks at the same moment.
+
 ## [0.3.12] - 2026-11-13
 
 ### Changed

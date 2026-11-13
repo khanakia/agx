@@ -43,7 +43,9 @@ func TestSystem_Defaults(t *testing.T) {
 // TestSystem_GopassOutputShapes: trailing CR/LF is trimmed, inner bytes kept,
 // and a newline-only answer is empty.
 func TestSystem_GopassOutputShapes(t *testing.T) {
-	t.Parallel()
+	// Not parallel: this test writes a script and then runs it. On Linux a
+	// parallel test that forks at that moment can hold the script open for
+	// writing, and running it then fails with "text file busy" (ETXTBSY).
 	ctx := context.Background()
 	for _, c := range []struct {
 		name, body, want string

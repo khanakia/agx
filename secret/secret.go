@@ -77,6 +77,12 @@ const GopassBin = "gopass"
 // passphrase, and a prompt nobody answers must not hang a launch forever.
 const defaultTimeout = 60 * time.Second
 
+// gopassWaitDelay bounds how long a timed-out gopass call waits for its
+// output pipe to close. Killing gopass does not kill a child it started
+// (gpg, pinentry) that still holds stdout, so without this bound the
+// timeout would not end the call until that child exits.
+const gopassWaitDelay = 200 * time.Millisecond
+
 // System resolves references using the real environment and gopass.
 type System struct {
 	// LookupEnv overrides os.LookupEnv (tests).
@@ -135,6 +141,7 @@ func (s System) gopass(ctx context.Context, path string) (string, error) {
 		bin = GopassBin
 	}
 	cmd := exec.CommandContext(ctx, bin, "show", "-o", path)
+	cmd.WaitDelay = gopassWaitDelay
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
 	var out bytes.Buffer
