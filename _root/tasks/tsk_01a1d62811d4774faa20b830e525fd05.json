@@ -1,7 +1,7 @@
 {
-  "_hlc": "2026-11-13T18:25:19.741Z/0000/act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+  "_hlc": "2026-11-13T18:45:12.864Z/0000/act_7b6e2727126b7bbb9f3a5a9cefc0022f",
   "_live": {
-    "hlc": "2026-11-13T18:25:19.741Z/0000/act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+    "hlc": "2026-11-13T18:45:12.864Z/0000/act_7b6e2727126b7bbb9f3a5a9cefc0022f",
     "live_since": "2026-11-13T18:25:13Z"
   },
   "_o": {
@@ -20,10 +20,13 @@
     "v": "0.1.18-dev+ee.e5fd805b.core.f6c8717b"
   },
   "body": "User: 'lets first create design spec for the agent itself as all these we should be able to use package too in another project. so agent info separate project or whatever, that will provide all the info agx needs and a common provider, and also there will be some specific capability that explicitly it provides itself.' Spec at docsi/AGENTLIB_SPEC.md.",
+  "close_reason": "completed",
   "commitment": "accepted",
+  "completed_at": "2026-11-13T18:45:12.529415000Z",
   "created_at": "2026-11-13T18:25:13.085000000Z",
   "created_by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
   "created_by_actor_id": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+  "done_by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
   "history": [
     {
       "at": "2026-11-13T18:25:19Z",
@@ -32,16 +35,32 @@
       "from": "todo",
       "id": "the_01a1d6282c347dbf8d5edaf140de39c5",
       "to": "in_progress"
+    },
+    {
+      "at": "2026-11-13T18:45:12Z",
+      "by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+      "field": "status",
+      "from": "in_progress",
+      "id": "the_01a1d63a60d17cf8b3d3ebe74dd88ec8",
+      "note": "open_items_at_close: 0",
+      "to": "done"
+    },
+    {
+      "at": "2026-11-13T18:45:12Z",
+      "by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
+      "field": "close_reason",
+      "id": "the_01a1d63a60d17d0090d950c12fd26104",
+      "to": "completed"
     }
   ],
   "id": "tsk_01a1d62811d4774faa20b830e525fd05",
   "priority": "medium",
   "project_id": "prj_01a144f172517b4e9c5b5e5fe6c5ce1d",
   "started_at": "2026-11-13T18:25:19.412033000Z",
-  "status": "in_progress",
+  "status": "done",
   "tasklist_id": "tlt_01a1d6280426722a9492c0d4506362ba",
   "title": "Design spec for reusable agent library",
-  "updated_at": "2026-11-13T18:25:19.741000000Z",
+  "updated_at": "2026-11-13T18:45:12.864000000Z",
   "updated_by": "act_7b6e2727126b7bbb9f3a5a9cefc0022f",
   "watchers": [
     "act_7b6e2727126b7bbb9f3a5a9cefc0022f"
