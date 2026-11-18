@@ -1,3 +1,9 @@
+> **This repository is archived.** agx continues as a complete rewrite at **[github.com/ubgo/agx](https://github.com/ubgo/agx)** (`go install github.com/ubgo/agx@latest`).
+>
+> **Why:** agx v0.3 grew Claude-first: Codex support was a reduced copy, and adding Gemini, pi and other coding agents would have meant more vendor-specific code. The new agx is rebuilt on [agentio](https://github.com/ubgo/agentio), a library that knows every agent's files, logins, usage and launch rules, so all agents work the same way. It also brings named flags only, a typed JSONC config, `--dry-run` that shows where every decision came from, and no hidden defaults.
+>
+> It is a clean break: commands, flags and config changed, so v0.3 configs do not carry over (`agx config init` in the new version sets you up). v0.3.13 stays installable here for anyone who needs it, but gets no further updates.
+
 <h1 align="center">agx</h1>
 <p align="center"><strong>One CLI for your coding agents and all their accounts.</strong></p>
 <p align="center">See Claude Code and Codex plan usage for every account at once, launch on the account with the most headroom, resume any conversation on the account that holds it, and keep your session folders tidy.</p>

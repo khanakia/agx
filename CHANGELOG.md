@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.13] - 2026-11-18
+
+### Deprecated
+
+- agx moved to [github.com/ubgo/agx](https://github.com/ubgo/agx), a complete rewrite for every coding agent (Claude Code, Codex, Gemini CLI, pi) built on [agentio](https://github.com/ubgo/agentio). This repository is archived and gets no further updates; v0.3 configs do not carry over (`agx config init` in the new version sets you up).
+
 ### Fixed
 
 - A gopass call that times out (an unanswered GPG passphrase prompt) now ends at the timeout even when a child process gopass started still holds its output; before, the call waited until that child exited.
