@@ -1,3 +1,4 @@
+// Deprecated: moved to github.com/ubgo/agx
 module github.com/khanakia/agx
 
 go 1.26.4
