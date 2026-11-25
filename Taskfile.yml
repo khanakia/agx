@@ -44,9 +44,14 @@ tasks:
       - task: build
 
   names:
-    desc: Fail when a tracked file holds a private name (hashed deny list in .github/denyhash.txt)
+    desc: Fail when a tracked file or commit message holds a private name from the local word list (~/.config/names-guard/terms.txt or $NAMES_GUARD_FILE; warns and passes without it)
     cmds:
       - scripts/check-names.sh
+
+  hooks:install:
+    desc: Use the repo's git hooks (.githooks) in this clone; they run the private-name check on each commit
+    cmds:
+      - git config --local core.hooksPath .githooks
 
   docs:check:
     desc: docsync - fail when code a README sentence cites (ds:block links) changed since the sentence was acked; needs the ds CLI (go install github.com/ubgo/docsync/cli/cmd/ds@latest)

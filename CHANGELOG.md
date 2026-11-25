@@ -6,11 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [0.3.14] - 2026-11-25
+## [0.3.15] - 2026-11-25
 
 ### Changed
 
-- Examples in the docs, help text and tests use generic names. The repository history was rewritten to match, so the tags v0.1.0 to v0.3.13 were removed from GitHub; those versions stay available through the Go module proxy. `task check` now also fails when a tracked file holds a name from the hashed deny list in `.github/denyhash.txt`.
+- Examples in the docs, help text and tests use generic names. The repository history was rewritten to match, so the tags v0.1.0 to v0.3.14 were removed from GitHub; those versions stay available through the Go module proxy. `scripts/check-names.sh` checks changes, tracked files and commit messages against a word list kept outside the repo (`~/.config/names-guard/terms.txt`); `task hooks:install` runs it on each commit and `task check` runs it too (without the list it warns and passes).
 
 ## [0.3.13] - 2026-11-18
 
@@ -264,8 +264,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Minimum Go version is now 1.26 (required by voltkit).
 
-[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.14...HEAD
-[0.3.14]: https://github.com/khanakia/agx/releases/tag/v0.3.14
+[Unreleased]: https://github.com/khanakia/agx/compare/v0.3.15...HEAD
+[0.3.15]: https://github.com/khanakia/agx/releases/tag/v0.3.15
 [0.3.12]: https://github.com/khanakia/agx/compare/v0.3.11...v0.3.12
 [0.3.11]: https://github.com/khanakia/agx/compare/v0.3.10...v0.3.11
 [0.3.10]: https://github.com/khanakia/agx/compare/v0.3.9...v0.3.10
