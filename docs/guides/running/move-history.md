@@ -75,7 +75,7 @@ would move 3 claude conversation(s) for ~/code/docker_setup_mac
   from ~/.claude → ~/.claude-work (work)
     33f18428-fc35-4b31-baeb-8e9f01576ff9  (untitled)
     6144697a-4e8c-4ef3-8caa-f5c0498e8530  (untitled)
-    aeba9843-dbea-4d03-a715-7f83e009bf7c  Hatchet, ClickHouse, HyperDX services
+    aeba9843-dbea-4d03-a715-7f83e009bf7c  Grafana, ClickHouse, HyperDX services
   6 file(s)/folder(s) involved
 
 $ agx sessions move --to work
@@ -83,13 +83,13 @@ moved 3 claude conversation(s) for ~/code/docker_setup_mac
   from ~/.claude → ~/.claude-work (work)
     33f18428-fc35-4b31-baeb-8e9f01576ff9  (untitled)
     6144697a-4e8c-4ef3-8caa-f5c0498e8530  (untitled)
-    aeba9843-dbea-4d03-a715-7f83e009bf7c  Hatchet, ClickHouse, HyperDX services
+    aeba9843-dbea-4d03-a715-7f83e009bf7c  Grafana, ClickHouse, HyperDX services
   6 file(s)/folder(s) involved
   backup: ~/.claude/backups/agx-move-docker_setup_mac-20261017-024917
 done — continue with: cd ~/code/docker_setup_mac && agx resume  (or claude -c on work)
 
 $ agx resume --list
-1 d ago      claude work       Hatchet, ClickHouse, HyperDX se… ~/code/docker_setup_mac       aeba9843
+1 d ago      claude work       Grafana, ClickHouse, HyperDX se… ~/code/docker_setup_mac       aeba9843
 1 d ago      claude work       (untitled)                       ~/code/docker_setup_mac       33f18428
 1 d ago      claude work       (untitled)                       ~/code/docker_setup_mac       6144697a
 
@@ -103,7 +103,7 @@ A partial move lists what stays:
 $ agx sessions move --to work --only aeba --dry-run
 would move 1 claude conversation(s) for ~/code/docker_setup_mac
   from ~/.claude → ~/.claude-work (work)
-    aeba9843-dbea-4d03-a715-7f83e009bf7c  Hatchet, ClickHouse, HyperDX services
+    aeba9843-dbea-4d03-a715-7f83e009bf7c  Grafana, ClickHouse, HyperDX services
   3 file(s)/folder(s) involved
   · left in place: ~/.claude/projects/-home-you-code-docker-setup-mac/33f18428-fc35-4b31-baeb-8e9f01576ff9.jsonl
   · left in place: ~/.claude/projects/-home-you-code-docker-setup-mac/6144697a-4e8c-4ef3-8caa-f5c0498e8530.jsonl
@@ -117,7 +117,7 @@ can't move 3 claude conversation(s) for ~/code/docker_setup_mac
   from ~/.claude → ~/.claude-work (work)
     33f18428-fc35-4b31-baeb-8e9f01576ff9  (untitled)
     6144697a-4e8c-4ef3-8caa-f5c0498e8530  (untitled)
-    aeba9843-dbea-4d03-a715-7f83e009bf7c  Hatchet, ClickHouse, HyperDX services
+    aeba9843-dbea-4d03-a715-7f83e009bf7c  Grafana, ClickHouse, HyperDX services
   6 file(s)/folder(s) involved
   ✗ Claude is running in this folder (pid 2740010) — exit it first
 agx: move blocked — see the reasons above; nothing was changed
@@ -127,7 +127,7 @@ can't move 3 claude conversation(s) for ~/code/docker_setup_mac
   from ~/.claude → ~/.claude-work (work)
     33f18428-fc35-4b31-baeb-8e9f01576ff9  (untitled)
     6144697a-4e8c-4ef3-8caa-f5c0498e8530  (untitled)
-    aeba9843-dbea-4d03-a715-7f83e009bf7c  Hatchet, ClickHouse, HyperDX services
+    aeba9843-dbea-4d03-a715-7f83e009bf7c  Grafana, ClickHouse, HyperDX services
   6 file(s)/folder(s) involved
   ✗ /home/you/.claude-work/projects/-home-you-code-docker-setup-mac/aeba9843-dbea-4d03-a715-7f83e009bf7c.jsonl already exists in the target account
 agx: move blocked — see the reasons above; nothing was changed

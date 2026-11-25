@@ -9,7 +9,7 @@ By participating, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md
 ```sh
 git clone https://github.com/khanakia/agx.git
 cd agx
-task check   # gofmt, go vet, staticcheck, go test -race, cross-compile, build (needs Go 1.26+, Task, staticcheck)
+task check   # private-name scan, gofmt, go vet, staticcheck, go test -race, cross-compile, build (needs Go 1.26+, Task, staticcheck)
 ```
 
 ## Ways to contribute

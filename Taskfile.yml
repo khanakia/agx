@@ -35,12 +35,18 @@ tasks:
         cmd: GOOS={{index (splitList "/" .ITEM) 0}} GOARCH={{index (splitList "/" .ITEM) 1}} go build -o /dev/null .
 
   check:
-    desc: Everything that must be green before a commit (lint + test + cross + build)
+    desc: Everything that must be green before a commit (names + lint + test + cross + build)
     cmds:
+      - task: names
       - task: lint
       - task: test
       - task: cross
       - task: build
+
+  names:
+    desc: Fail when a tracked file holds a private name (hashed deny list in .github/denyhash.txt)
+    cmds:
+      - scripts/check-names.sh
 
   docs:check:
     desc: docsync - fail when code a README sentence cites (ds:block links) changed since the sentence was acked; needs the ds CLI (go install github.com/ubgo/docsync/cli/cmd/ds@latest)

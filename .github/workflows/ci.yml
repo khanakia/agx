@@ -1,5 +1,5 @@
 # ci: the repo's own gate on every push and pull request to main.
-# This is `task check` (gofmt, go vet, staticcheck, race tests, cross-build,
+# This is `task check` (private-name scan, gofmt, go vet, staticcheck, race tests, cross-build,
 # build) plus golangci-lint, the same commands a contributor runs locally.
 # The repo is public, so Actions minutes are free; the local `task check`
 # stays the gate before a commit.

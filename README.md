@@ -378,7 +378,7 @@ would move 3 claude conversation(s) for ~/code/docker_setup_mac
   from ~/.claude → ~/.claude-work (work)
     33f18428-fc35-4b31-baeb-8e9f01576ff9  (untitled)
     6144697a-4e8c-4ef3-8caa-f5c0498e8530  (untitled)
-    aeba9843-dbea-4d03-a715-7f83e009bf7c  Hatchet, ClickHouse, HyperDX services
+    aeba9843-dbea-4d03-a715-7f83e009bf7c  Grafana, ClickHouse, HyperDX services
   8 file(s)/folder(s) involved
 
 $ agx sessions move --to work
@@ -846,7 +846,7 @@ Guides: [Use agx as a Go library](docs/guides/library/README.md) (package map, l
 ## Development
 
 ```sh
-task check      # gofmt, go vet, staticcheck, race tests, cross-compile for every platform, build
+task check      # private-name scan, gofmt, go vet, staticcheck, race tests, cross-compile for every platform, build
 task test       # tests only
 task run -- resume --list
 ```

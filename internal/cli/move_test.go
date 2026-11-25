@@ -42,7 +42,7 @@ profiles:
 	}
 	proj := claude.HistoryDir(filepath.Join(h.home, ".claude"), project)
 	for path, body := range map[string]string{
-		filepath.Join(proj, "sid-main.jsonl"):                                 `{"type":"attachment","cwd":"` + project + `"}` + "\n" + `{"type":"ai-title","aiTitle":"Hatchet services"}`,
+		filepath.Join(proj, "sid-main.jsonl"):                                 `{"type":"attachment","cwd":"` + project + `"}` + "\n" + `{"type":"ai-title","aiTitle":"Grafana services"}`,
 		filepath.Join(proj, "sid-main", "tool-results", "r.txt"):              "R",
 		filepath.Join(proj, "sid-two.jsonl"):                                  `{"type":"attachment","cwd":"` + project + `"}`,
 		filepath.Join(h.home, ".claude", "file-history", "sid-main", "f.txt"): "F",
@@ -82,7 +82,7 @@ func TestSessionsMove_EndToEnd(t *testing.T) {
 	if code := runWith(h, d, project, "sessions", "move", "--to", "work", "--dry-run"); code != ExitOK {
 		t.Fatalf("dry run: %d %s", code, h.stderr.String())
 	}
-	if out := h.stdout.String(); !strings.Contains(out, "would move 2 claude conversation(s)") || !strings.Contains(out, "Hatchet services") {
+	if out := h.stdout.String(); !strings.Contains(out, "would move 2 claude conversation(s)") || !strings.Contains(out, "Grafana services") {
 		t.Errorf("dry run output:\n%s", out)
 	}
 	if _, err := os.Stat(filepath.Join(src, "sid-main.jsonl")); err != nil {

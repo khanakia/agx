@@ -132,7 +132,7 @@ $ agx resume --all --list
 1 hr ago     codex  codex      (untitled)                       ~/code/app                    019eea1d
 1 hr ago     claude personal   Add pagination to orders         ~/code/app                    5c9565db
 10 hr ago    claude personal   Explore PGlite from Go           …/pglite_spike_20261010_101…  9f1c2d3e
-1 d ago      claude personal   Hatchet, ClickHouse, HyperDX se… ~/code/docker_setup_mac       aeba9843
+1 d ago      claude personal   Grafana, ClickHouse, HyperDX se… ~/code/docker_setup_mac       aeba9843
 1 d ago      claude personal   (untitled)                       ~/code/docker_setup_mac       33f18428
 1 d ago      claude personal   (untitled)                       ~/code/docker_setup_mac       6144697a
 
